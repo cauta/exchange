@@ -21,15 +21,11 @@ FROM oven/bun:1-slim
 
 WORKDIR /app
 
-# Copy built application
-COPY --from=builder /app/.next ./.next
+# Copy built application from builder
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copy env defaults
-COPY .env.defaults .env.defaults
 
 EXPOSE 3000
 
-CMD ["bun", "run", "start"]
+CMD ["bun", "server.js"]

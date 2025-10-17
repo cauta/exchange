@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # PostgreSQL
   postgres:
@@ -48,12 +46,11 @@ services:
       context: ./apps/backend
       dockerfile: Dockerfile
     container_name: exchange-backend
-    environment:
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/exchange
-      CLICKHOUSE_URL: http://clickhouse:8123
-      RUST_LOG: info,backend=debug
-      HOST: 0.0.0.0
-      PORT: 8888
+    env_file:
+      - path: ./apps/backend/.env.defaults
+        required: true
+      - path: .env
+        required: false
     ports:
       - "8888:8888"
     depends_on:
@@ -71,8 +68,11 @@ services:
   #     context: ./apps/bots
   #     dockerfile: Dockerfile
   #   container_name: exchange-bots
-  #   environment:
-  #     API_URL: http://backend:8888
+  #   env_file:
+  #     - path: ./apps/bots/.env.defaults
+  #       required: true
+  #     - path: .env
+  #       required: false
   #   depends_on:
   #     - backend
   #   networks:
@@ -85,9 +85,11 @@ services:
       context: ./apps/frontend
       dockerfile: Dockerfile
     container_name: exchange-frontend
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8888
-      NEXT_PUBLIC_WS_URL: ws://localhost:8888/ws
+    env_file:
+      - path: ./apps/frontend/.env.defaults
+        required: true
+      - path: .env
+        required: false
     ports:
       - "3000:3000"
     depends_on:

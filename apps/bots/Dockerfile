@@ -28,8 +28,5 @@ RUN apt-get update && apt-get install -y \
 # Copy binary
 COPY --from=builder /app/target/release/bots /usr/local/bin/bots
 
-# Copy .env.defaults
-COPY .env.defaults .env.defaults
-
 # Run
 CMD ["bots"]

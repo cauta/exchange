@@ -33,9 +33,6 @@ RUN apt-get update && apt-get install -y \
 # Copy binary
 COPY --from=builder /app/target/release/backend /usr/local/bin/backend
 
-# Copy .env.defaults (not .env - that's local only)
-COPY .env.defaults .env.defaults
-
 # Expose port
 EXPOSE 8888
 

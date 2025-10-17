@@ -2,6 +2,8 @@
 
 - for learning purposes
 
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/U5i6Da?referralCode=trevor)
+
 ### todo
 
 db -> me -> api -> web / bot
