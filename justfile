@@ -14,6 +14,9 @@ run-frontend:
 run-backend:
   cd apps/backend && cargo run
 
+compose:
+  docker compose up --build
+
 # ================================
 
 test:

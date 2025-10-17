@@ -16,6 +16,14 @@ COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY scripts ./scripts
 
+# get environment variables from Railway
+ARG PG_URL
+ARG CH_URL
+
+# set environment variables from Railway
+ENV PG_URL=$PG_URL
+ENV CH_URL=$CH_URL
+
 # Build
 RUN cargo build --release --bin backend
 

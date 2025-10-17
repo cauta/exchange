@@ -12,8 +12,13 @@ RUN bun install --frozen-lockfile
 # Copy source
 COPY . .
 
-# Build
-ENV NEXT_TELEMETRY_DISABLED=1
+# get environment variables from Railway
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_WS_URL
+
+# set environment variables from Railway
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
 RUN bun run build
 
 # Stage 2: Runtime

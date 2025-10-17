@@ -21,6 +21,8 @@ async fn main() {
     println!("Backend server running on http://{}:{}", host, port);
     println!("OpenAPI JSON available at http://{}:{}/api/openapi.json", host, port);
     println!("Swagger UI available at http://{}:{}/api/docs", host, port);
+    println!("Postgres URL: {}", std::env::var("PG_URL").unwrap_or_else(|_| "PG_URL not set".to_string()));
+    println!("Clickhouse URL: {}", std::env::var("CH_URL").unwrap_or_else(|_| "CH_URL not set".to_string()));
 
     axum::serve(listener, app).await.unwrap();
 }
