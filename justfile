@@ -1,6 +1,10 @@
 default:
   just --list
 
+just install:
+  cd apps/frontend && bun install
+  cd apps/backend && cargo build
+
 run-frontend:
   cd apps/frontend && bun run dev
 
@@ -13,6 +17,10 @@ test:
   cd apps/backend && cargo test
 
 # ================================
+
+openapi:
+  cd apps/backend && cargo run --bin generate-openapi
+  cd apps/frontend && bun run generate-openapi
 
 fmt:
   cd apps/frontend && bun run format

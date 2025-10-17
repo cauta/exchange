@@ -4,34 +4,32 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 pub mod models;
-pub mod routes;
-pub mod services;
+pub mod api;
 
-use models::{ApiResponse, MintRequest, MintResponse, MintError};
+use models::ApiResponse;
+use api::rest;
 
 #[derive(OpenApi)]
 #[openapi(
     info(
-        title = "Token Minting API",
+        title = "Exchange API",
         version = "0.1.0",
-        description = "API for minting stock tokens on-chain"
+        description = "API for the Exchange"
     ),
     paths(
-        routes::health::health_check,
-        routes::mint::mint_tokens
+        rest::health::health_check,
     ),
     components(
-        schemas(ApiResponse, MintRequest, MintResponse, MintError)
+        schemas(ApiResponse)
     ),
     tags(
-        (name = "api", description = "General API endpoints"),
-        (name = "minting", description = "Token minting operations")
+        (name = "api", description = "General API endpoints")
     )
 )]
 pub struct ApiDoc;
 
 pub async fn create_app() -> Router {
-    routes::create_routes()
+    rest::create_routes()
         .merge(SwaggerUi::new("/api/docs").url("/api/openapi.json", ApiDoc::openapi()))
         .layer(CorsLayer::permissive())
 }
