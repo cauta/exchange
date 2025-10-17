@@ -1,7 +1,7 @@
 services:
   # PostgreSQL
   postgres:
-    image: timescale/timescaledb-ha:pg17
+    image: postgres:17
     container_name: exchange-postgres
     environment:
       POSTGRES_DB: exchange
