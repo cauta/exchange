@@ -4,6 +4,8 @@
 
 ### todo
 
+db -> me -> api -> web / bot
+
 frontend
 
 - [ ] websockets
