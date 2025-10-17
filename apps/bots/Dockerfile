@@ -1,7 +1,6 @@
-# syntax=docker/dockerfile:1
 
 # Stage 1: Builder
-FROM rust:1.83-slim AS builder
+FROM rust:1.90-slim AS builder
 WORKDIR /app
 
 # Install build dependencies
@@ -14,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 COPY . .
 
 # Build
-RUN cargo build --release --bin market_maker
+RUN cargo build --release --bin bots
 
 # Stage 2: Runtime
 FROM debian:bookworm-slim AS runtime
@@ -27,10 +26,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary
-COPY --from=builder /app/target/release/market_maker /usr/local/bin/market_maker
+COPY --from=builder /app/target/release/bots /usr/local/bin/bots
 
 # Copy .env.defaults
 COPY .env.defaults .env.defaults
 
 # Run
-CMD ["market_maker"]
+CMD ["bots"]

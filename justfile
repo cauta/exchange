@@ -1,9 +1,9 @@
 default:
   just --list
 
-install:
+build:
   cd apps/frontend && bun install
-  cd apps/backend && cargo install
+  cd apps/backend && cargo build
 
 run-db:
   docker compose up postgres clickhouse

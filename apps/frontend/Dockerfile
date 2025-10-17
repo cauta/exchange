@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # Stage 1: Builder
 FROM oven/bun:1 AS builder
 
