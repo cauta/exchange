@@ -2,20 +2,19 @@
 
 - for learning purposes
 
-
 ### todo
 
 frontend
-- [ ] openapi
-- [ ] shadcn
+
+- [ ] websockets
 
 backend
-- [ ] opeanpi
+
 - [ ] clickhouse
 
 infra
+
 - [ ] github actions
 - [ ] devcontainers
 - [ ] vercel
-- [ ] justfile
 - [ ] local dockercompose
