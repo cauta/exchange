@@ -1,10 +1,66 @@
+"use client";
+
 import Image from "next/image";
+import { useState, useEffect } from "react";
 
 export default function Home() {
+  const [backendStatus, setBackendStatus] = useState<{
+    connected: boolean;
+    message: string;
+    timestamp?: number;
+  }>({
+    connected: false,
+    message: "Checking connection...",
+  });
+
+  useEffect(() => {
+    const checkBackendConnection = async () => {
+      try {
+        const response = await fetch("http://localhost:8888/api/health");
+        if (response.ok) {
+          const data = await response.json();
+          setBackendStatus({
+            connected: true,
+            message: data.message || "Backend connected successfully",
+            timestamp: data.timestamp,
+          });
+        } else {
+          setBackendStatus({
+            connected: false,
+            message: `Backend responded with status: ${response.status}`,
+          });
+        }
+      } catch (error) {
+        setBackendStatus({
+          connected: false,
+          message: `Failed to connect to backend: ${error instanceof Error ? error.message : "Unknown error"}`,
+        });
+      }
+    };
+
+    checkBackendConnection();
+  }, []);
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
         <Image className="dark:invert" src="/next.svg" alt="Next.js logo" width={180} height={38} priority />
+
+        {/* Backend Connection Status */}
+        <div className="w-full max-w-md p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-3 h-3 rounded-full ${backendStatus.connected ? "bg-green-500" : "bg-red-500"}`} />
+            <span className="font-semibold text-sm">
+              Backend Status: {backendStatus.connected ? "Connected" : "Disconnected"}
+            </span>
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400">{backendStatus.message}</p>
+          {backendStatus.timestamp && (
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+              Timestamp: {new Date(backendStatus.timestamp).toLocaleString()}
+            </p>
+          )}
+        </div>
+
         <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
           <li className="mb-2 tracking-[-.01em]">
             Get started by editing{" "}

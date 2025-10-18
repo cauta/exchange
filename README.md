@@ -55,3 +55,14 @@ missing production
 - decide on clickhouse for candles, postgres for everything else
 - decide to add wallet to make it crypto
 -
+
+### frontend dev
+
+just run-db
+just run-backend
+bun dev
+
+### backend dev
+
+just run-db
+cargo run --release
