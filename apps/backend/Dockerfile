@@ -41,7 +41,7 @@ RUN apt-get update && apt-get install -y \
 # Copy binary
 COPY --from=builder /app/target/release/backend /usr/local/bin/backend
 
-# Expose port
+ENV PORT=8888
 EXPOSE 8888
 
 # Health check
