@@ -15,13 +15,13 @@ frontend
 
 backend
 
-- [ ] supabase with foreign clickhouse table
+- [ ] make db schema
+- [ ] make api endpoints
+- [ ] db migrations
 
 infra
 
-- [ ] local docker-compose
-- [ ] railway
-- [ ] vercel
+- [ ] railway testing?
 
 devx
 
@@ -54,7 +54,7 @@ missing production
 - considered different db setup and ease of deployment. opted to not use supabase because dont want to manage that and clickhouse account. prefer one click deploy
 - decide on clickhouse for candles, postgres for everything else
 - decide to add wallet to make it crypto
--
+- make one-click deploy on railway
 
 ### frontend dev
 
