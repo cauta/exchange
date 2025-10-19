@@ -43,5 +43,10 @@ clean:
   cd apps/frontend && bun run clean
   cd apps/backend && cargo clean
 
+ci:
+  just openapi
+  just fmt
+  just lint
+
 
 
