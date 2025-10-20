@@ -19,6 +19,7 @@ db-setup:
   cd apps/backend && cargo run --bin setup-db
 
 db-reset:
+  # assumes exchange database is already created from docker compose
   psql postgresql://postgres:password@localhost:5432/exchange -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" 2>/dev/null || true
   clickhouse client --user default --password password --query "DROP TABLE IF EXISTS exchange.candles" 2>/dev/null || true
   just db-setup

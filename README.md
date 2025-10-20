@@ -63,11 +63,13 @@ missing production
 
 ### frontend dev
 
-just run-db
+just db-run
+just db-setup
 just run-backend
 bun dev
 
 ### backend dev
 
-just run-db
+just db-run
+just db-setup
 cargo run --release

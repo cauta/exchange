@@ -1,10 +1,10 @@
 // Database modules
-pub mod postgres;
-pub mod clickhouse;
+pub mod ch;
+pub mod pg;
 
 // Re-export common types
-pub use sqlx::postgres::PgPool;
 pub use clickhouse::Client;
+pub use sqlx::postgres::PgPool;
 
 /// Main database handle with connections to both databases
 pub struct Db {
@@ -15,8 +15,8 @@ pub struct Db {
 impl Db {
     /// Create a new Db instance with connections to both databases
     pub async fn connect() -> anyhow::Result<Self> {
-        let postgres = postgres::create_pool().await?;
-        let clickhouse = clickhouse::create_client();
+        let postgres = pg::create_pool().await?;
+        let clickhouse = ch::create_client().await?;
 
         Ok(Self {
             postgres,
