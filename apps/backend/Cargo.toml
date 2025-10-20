@@ -18,6 +18,7 @@ name = "setup-db"
 path = "src/db/setup.rs"
 
 [dependencies]
+anyhow = "1.0"
 axum = "0.8"
 clickhouse = { version = "0.14", features = ["rustls-tls"] }
 dotenvy = "0.15"
