@@ -5,6 +5,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 pub mod api;
 pub mod db;
+pub mod engine;
 pub mod models;
 
 use api::rest;

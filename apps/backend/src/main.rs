@@ -10,6 +10,9 @@ async fn main() {
     // Initialize logging
     env_logger::init();
 
+    // create engine
+    // run engine on seperate thread
+
     // Get configuration from environment
     let host = std::env::var("HOST").unwrap_or_else(|_| "localhost".to_string());
     let port = std::env::var("PORT").unwrap_or_else(|_| "8888".to_string());

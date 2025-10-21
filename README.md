@@ -18,6 +18,8 @@ backend
 - [ ] make db schema
 - [ ] make api endpoints
 - [ ] db migrations
+- [ ] env logger vs tracing
+- [ ] socketio consideration?
 
 infra
 
@@ -64,6 +66,7 @@ missing production
 - use models for type management
 - understand db <> domain <> api From and Into conversions
 - use u128 integers and keep everything in atoms
+- continue refining understanding of me and api layer architecture. consider socketio for ws.
 -
 
 ### frontend dev
