@@ -9,14 +9,6 @@ default-run = "backend"
 name = "backend"
 path = "src/main.rs"
 
-[[bin]]
-name = "generate-openapi"
-path = "scripts/generate_openapi.rs"
-
-[[bin]]
-name = "setup-db"
-path = "src/db/setup.rs"
-
 [dependencies]
 anyhow = "1.0"
 axum = "0.8"

@@ -17,11 +17,12 @@ exchange/
 │   │   │   ├── api/
 │   │   │   │   ├── rest/     # REST endpoints
 │   │   │   │   └── ws/       # WebSocket handlers
+│   │   │   ├── bin/          # Binary utilities
+│   │   │   │   ├── generate_openapi.rs
+│   │   │   │   └── setup_db.rs
 │   │   │   ├── models.rs     # Data structures
 │   │   │   ├── lib.rs        # Library entry point
 │   │   │   └── main.rs       # Binary entry point
-│   │   └── scripts/
-│   │       └── generate_openapi.rs
 │   └── frontend/         # Next.js React app
 │       ├── src/
 │       │   ├── app/          # Next.js app router
