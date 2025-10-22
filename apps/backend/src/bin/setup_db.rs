@@ -25,7 +25,7 @@ async fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     // clickhouse setup
-    let schema_sql = include_str!("ch/schema.sql");
+    let schema_sql = include_str!("../db/ch/schema.sql");
     db.clickhouse.query(schema_sql).execute().await?;
 
     Ok(())

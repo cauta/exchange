@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS users (
     address TEXT PRIMARY KEY,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS tokens (
@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS orders (
     type order_type NOT NULL,
     status order_status NOT NULL,
     filled_size NUMERIC(39, 0) NOT NULL DEFAULT 0 CHECK (filled_size >= 0 AND filled_size <= size), -- in base token atoms (u128)
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS trades (
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS trades (
     seller_order_id UUID NOT NULL REFERENCES orders(id),
     price NUMERIC(39, 0) NOT NULL CHECK (price > 0), -- in quote token atoms (u128)
     size NUMERIC(39, 0) NOT NULL CHECK (size > 0), -- in base token atoms (u128)
-    timestamp TIMESTAMP NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL,
     CHECK (buyer_address != seller_address) -- self trading prevention
 );
 
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS balances (
     token_ticker TEXT NOT NULL REFERENCES tokens(ticker),
     amount NUMERIC(39, 0) NOT NULL DEFAULT 0 CHECK (amount >= 0),
     open_interest NUMERIC(39, 0) NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (user_address, token_ticker)
 );
 

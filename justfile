@@ -1,3 +1,5 @@
+export DATABASE_URL := "postgresql://postgres:password@localhost:5432/exchange"
+
 default:
   just --list
 
@@ -16,13 +18,16 @@ db-run:
   docker compose up -d postgres clickhouse
 
 db-setup:
-  cd apps/backend && cargo run --bin setup-db
+  cd apps/backend && cargo run --bin setup_db
 
 db-reset:
   # assumes exchange database is already created from docker compose
-  psql postgresql://postgres:password@localhost:5432/exchange -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" 2>/dev/null || true
+  psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" 2>/dev/null || true
   clickhouse client --user default --password password --query "DROP TABLE IF EXISTS exchange.candles" 2>/dev/null || true
   just db-setup
+
+db-prepare:
+  cd apps/backend && cargo sqlx prepare
 
 # ================================
 
