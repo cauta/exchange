@@ -1,53 +1,51 @@
+use anyhow::Context;
 use backend::create_app;
-use sqlx::postgres::PgPoolOptions;
+use backend::db::Db;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     // Load environment variables: .env.defaults first, then .env overrides
-    dotenvy::from_filename(".env.defaults").ok();
-    dotenvy::dotenv().ok();
+    dotenvy::from_filename(".env.defaults")
+        .context("Failed to load .env.defaults - file may be missing")?;
+    dotenvy::dotenv().context("Failed to load .env file")?;
 
     // Initialize logging
     env_logger::init();
-
-    // create engine
-    // run engine on seperate thread
 
     // Get configuration from environment
     let host = std::env::var("HOST").unwrap_or_else(|_| "localhost".to_string());
     let port = std::env::var("PORT").unwrap_or_else(|_| "8888".to_string());
     let addr = format!("{}:{}", host, port);
 
+    // Connect to databases
+    let db = Db::connect()
+        .await
+        .context("Failed to connect to databases")?;
+
+    log::info!("Connected to PostgreSQL and ClickHouse");
+
+    // Verify database connection by running a simple query
+    let user_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
+        .fetch_one(&db.postgres)
+        .await
+        .context("Failed to query database - ensure migrations have been run")?;
+
+    log::info!("Database connection verified - {} users in database", user_count.0);
+
+    // Create and start the application
     let app = create_app().await;
 
-    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-
-    println!("Backend server running on http://{}:{}", host, port);
-    println!(
-        "OpenAPI JSON available at http://{}:{}/api/openapi.json",
-        host, port
-    );
-    println!("Swagger UI available at http://{}:{}/api/docs", host, port);
-    println!(
-        "Postgres URL: {}",
-        std::env::var("PG_URL").unwrap_or_else(|_| "PG_URL not set".to_string())
-    );
-    println!(
-        "Clickhouse URL: {}",
-        std::env::var("CH_URL").unwrap_or_else(|_| "CH_URL not set".to_string())
-    );
-
-    let pool = PgPoolOptions::new()
-        .max_connections(10)
-        .connect(&std::env::var("PG_URL").unwrap())
+    let listener = tokio::net::TcpListener::bind(&addr)
         .await
-        .unwrap();
+        .context(format!("Failed to bind to address {}", addr))?;
 
-    let row = sqlx::query("SELECT * from users limit 1")
-        .fetch_one(&pool)
+    println!("Backend server running on http://{}", addr);
+    println!("OpenAPI JSON available at http://{}/api/openapi.json", addr);
+    println!("Swagger UI available at http://{}/api/docs", addr);
+
+    axum::serve(listener, app)
         .await
-        .unwrap();
+        .context("Server error")?;
 
-    println!("Database connection successful: {:?}", row);
-    axum::serve(listener, app).await.unwrap();
+    Ok(())
 }

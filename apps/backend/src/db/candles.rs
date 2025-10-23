@@ -1,4 +1,5 @@
 use crate::db::Db;
+use crate::errors::Result;
 use crate::models::{db::CandleRow, domain::Candle};
 use chrono::{DateTime, Utc};
 
@@ -10,7 +11,7 @@ impl Db {
         market_id: String,
         timestamp: DateTime<Utc>,
         ohlcv: (u128, u128, u128, u128, u128), // (open, high, low, close, volume)
-    ) -> Result<(), clickhouse::error::Error> {
+    ) -> Result<()> {
         let candle_row = CandleRow {
             market_id,
             timestamp: timestamp.timestamp() as u32,
@@ -34,7 +35,7 @@ impl Db {
         market_id: &str,
         start: DateTime<Utc>,
         end: DateTime<Utc>,
-    ) -> Result<Vec<Candle>, clickhouse::error::Error> {
+    ) -> Result<Vec<Candle>> {
         let candles = self
             .clickhouse
             .query("SELECT market_id, timestamp, open, high, low, close, volume FROM candles WHERE market_id = ? AND timestamp >= ? AND timestamp < ? ORDER BY timestamp ASC")

@@ -1,6 +1,7 @@
 use bigdecimal::BigDecimal;
 
 use crate::db::Db;
+use crate::errors::{ExchangeError, Result};
 use crate::models::{db::MarketRow, domain::Market};
 use crate::utils::BigDecimalExt;
 
@@ -15,10 +16,18 @@ impl Db {
         min_size: u128,
         maker_fee_bps: i32,
         taker_fee_bps: i32,
-    ) -> Result<Market, sqlx::Error> {
+    ) -> Result<Market> {
         // Check if both tokens exist before creating the market
-        self.get_token(&base_ticker).await?;
-        self.get_token(&quote_ticker).await?;
+        self.get_token(&base_ticker)
+            .await
+            .map_err(|_| ExchangeError::TokenNotFound {
+                ticker: base_ticker.clone(),
+            })?;
+        self.get_token(&quote_ticker)
+            .await
+            .map_err(|_| ExchangeError::TokenNotFound {
+                ticker: quote_ticker.clone(),
+            })?;
 
         // Manually construct the market ID as "base_ticker/quote_ticker"
         let id = format!("{}/{}", base_ticker, quote_ticker);
@@ -36,7 +45,13 @@ impl Db {
             taker_fee_bps
         )
         .fetch_one(&self.postgres)
-        .await?;
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::Database(db_err) if db_err.constraint().is_some() => {
+                ExchangeError::MarketAlreadyExists { market_id: id }
+            }
+            _ => ExchangeError::Database(e),
+        })?;
 
         Ok(Market {
             id: row.id,
@@ -51,11 +66,12 @@ impl Db {
     }
 
     /// Get a market by id
-    pub async fn get_market(&self, market_id: &str) -> Result<Market, sqlx::Error> {
+    pub async fn get_market(&self, market_id: &str) -> Result<Market> {
         let row: MarketRow =
             sqlx::query_as!(MarketRow, "SELECT id, base_ticker, quote_ticker, tick_size, lot_size, min_size, maker_fee_bps, taker_fee_bps FROM markets WHERE id = $1", market_id)
                 .fetch_one(&self.postgres)
-                .await?;
+                .await
+                .map_err(ExchangeError::from)?;
 
         Ok(Market {
             id: row.id,

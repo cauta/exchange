@@ -251,3 +251,50 @@ async fn test_database_isolation() {
         .expect("Failed to list tokens");
     assert_eq!(tokens.len(), 2, "Should have created SOL and USD tokens");
 }
+
+#[tokio::test]
+async fn test_market_creation_with_missing_tokens() {
+    let test_db = TestDb::setup()
+        .await
+        .expect("Failed to setup test database");
+
+    // Try to create a market without creating the tokens first
+    let result = test_db
+        .db
+        .create_market(
+            "NONEXISTENT".to_string(),
+            "USD".to_string(),
+            1000,    // tick_size
+            1000000, // lot_size
+            1000000, // min_size
+            10,      // maker_fee_bps
+            20,      // taker_fee_bps
+        )
+        .await;
+
+    // Should fail with TokenNotFound error
+    assert!(result.is_err());
+    let error = result.unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("Token 'NONEXISTENT' does not exist"));
+
+    // Try with the other token missing
+    let result = test_db
+        .db
+        .create_market(
+            "BTC".to_string(),
+            "NONEXISTENT".to_string(),
+            1000,    // tick_size
+            1000000, // lot_size
+            1000000, // min_size
+            10,      // maker_fee_bps
+            20,      // taker_fee_bps
+        )
+        .await;
+
+    // Should fail with TokenNotFound error
+    assert!(result.is_err());
+    let error = result.unwrap_err();
+    assert!(error.to_string().contains("Token 'BTC' does not exist"));
+}

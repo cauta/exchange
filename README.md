@@ -75,6 +75,8 @@ culmination of my frontend skills and new backend learning. made this as clean a
 - decide on bigdecimal or u128. make conversion from db and domain
 - clickhouse candles table a bit different than postgres
 - add testcontainers for e2e testing, containers need to pass from utils to stay alive
+- fix candles for half open interval. fix market creation with missing tokens.
+- add error handling, thiserror and anyhow. learning about Result/Error/unwrap_or_else. use from macro.
 
 ### frontend dev
 

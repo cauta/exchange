@@ -24,8 +24,13 @@ pub struct Db {
 impl Db {
     /// Create a new Db instance with connections to both databases
     pub async fn connect() -> anyhow::Result<Self> {
-        let postgres = pg::create_pool().await?;
-        let clickhouse = ch::create_client().await?;
+        let postgres = pg::create_pool()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to create PostgreSQL pool: {}", e))?;
+
+        let clickhouse = ch::create_client()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to create ClickHouse client: {}", e))?;
 
         Ok(Self {
             postgres,

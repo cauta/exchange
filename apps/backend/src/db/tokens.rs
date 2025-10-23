@@ -1,4 +1,5 @@
 use crate::db::Db;
+use crate::errors::Result;
 use crate::models::{db::TokenRow, domain::Token};
 
 impl Db {
@@ -8,7 +9,7 @@ impl Db {
         ticker: String,
         decimals: u8,
         name: String,
-    ) -> Result<Token, sqlx::Error> {
+    ) -> Result<Token> {
         let row = sqlx::query_as!(
             TokenRow,
             "INSERT INTO tokens (ticker, decimals, name) VALUES ($1, $2, $3)
@@ -29,7 +30,7 @@ impl Db {
     }
 
     /// Get a token by ticker
-    pub async fn get_token(&self, ticker: &str) -> Result<Token, sqlx::Error> {
+    pub async fn get_token(&self, ticker: &str) -> Result<Token> {
         let row = sqlx::query_as!(
             TokenRow,
             "SELECT ticker, decimals, name FROM tokens WHERE ticker = $1",
@@ -46,7 +47,7 @@ impl Db {
     }
 
     /// List all tokens
-    pub async fn list_tokens(&self) -> Result<Vec<Token>, sqlx::Error> {
+    pub async fn list_tokens(&self) -> Result<Vec<Token>> {
         let rows = sqlx::query_as!(
             TokenRow,
             "SELECT ticker, decimals, name FROM tokens ORDER BY ticker",
