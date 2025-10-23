@@ -1,3 +1,6 @@
+-- Enable UUID extension for gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE IF NOT EXISTS users (
     address TEXT PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -14,7 +17,7 @@ CREATE TYPE order_type AS ENUM ('limit', 'market');
 CREATE TYPE order_status AS ENUM ('pending', 'filled', 'partially_filled', 'cancelled');
 
 CREATE TABLE IF NOT EXISTS markets (
-    id TEXT GENERATED ALWAYS AS (base_ticker || '/' || quote_ticker) STORED PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     base_ticker TEXT NOT NULL REFERENCES tokens(ticker),
     quote_ticker TEXT NOT NULL REFERENCES tokens(ticker),
     tick_size NUMERIC(39, 0) NOT NULL CHECK (tick_size > 0), -- in quote token atoms (u128)

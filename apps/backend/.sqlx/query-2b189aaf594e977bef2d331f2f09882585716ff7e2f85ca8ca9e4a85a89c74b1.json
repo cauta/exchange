@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO markets (base_ticker, quote_ticker, tick_size, lot_size, min_size, maker_fee_bps, taker_fee_bps) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, base_ticker, quote_ticker, tick_size, lot_size, min_size, maker_fee_bps, taker_fee_bps",
+  "query": "INSERT INTO markets (id, base_ticker, quote_ticker, tick_size, lot_size, min_size, maker_fee_bps, taker_fee_bps) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, base_ticker, quote_ticker, tick_size, lot_size, min_size, maker_fee_bps, taker_fee_bps",
   "describe": {
     "columns": [
       {
@@ -48,6 +48,7 @@
       "Left": [
         "Text",
         "Text",
+        "Text",
         "Numeric",
         "Numeric",
         "Numeric",
@@ -66,5 +67,5 @@
       false
     ]
   },
-  "hash": "4a3d28856c6b3ca01e8f84bca59b40bb9446328c1516abc9d9fd60b7aa0d0f85"
+  "hash": "2b189aaf594e977bef2d331f2f09882585716ff7e2f85ca8ca9e4a85a89c74b1"
 }

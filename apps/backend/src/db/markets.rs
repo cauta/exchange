@@ -16,9 +16,13 @@ impl Db {
         maker_fee_bps: i32,
         taker_fee_bps: i32,
     ) -> Result<Market, sqlx::Error> {
+        // Manually construct the market ID as "base_ticker/quote_ticker"
+        let id = format!("{}/{}", base_ticker, quote_ticker);
+
         let row = sqlx::query_as!(
             MarketRow,
-            "INSERT INTO markets (base_ticker, quote_ticker, tick_size, lot_size, min_size, maker_fee_bps, taker_fee_bps) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, base_ticker, quote_ticker, tick_size, lot_size, min_size, maker_fee_bps, taker_fee_bps",
+            "INSERT INTO markets (id, base_ticker, quote_ticker, tick_size, lot_size, min_size, maker_fee_bps, taker_fee_bps) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, base_ticker, quote_ticker, tick_size, lot_size, min_size, maker_fee_bps, taker_fee_bps",
+            id,
             base_ticker,
             quote_ticker,
             BigDecimal::from(tick_size),

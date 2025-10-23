@@ -46,6 +46,8 @@ missing production
 
 ### process
 
+culmination of my frontend skills and new backend learning. made this as clean as possible while keeping scope tight.
+
 - want to build exchange
 - reference previous code
 - talk to claude a lot
@@ -72,6 +74,7 @@ missing production
 - use sqlx prepare
 - decide on bigdecimal or u128. make conversion from db and domain
 - clickhouse candles table a bit different than postgres
+- add testcontainers for e2e testing, containers need to pass from utils to stay alive
 
 ### frontend dev
 

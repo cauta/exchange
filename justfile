@@ -43,7 +43,7 @@ test:
 # ================================
 
 openapi:
-  cd apps/backend && cargo run --bin generate-openapi
+  cd apps/backend && cargo run --bin generate_openapi
   cd apps/frontend && bun run generate-openapi
 
 fmt:
@@ -65,6 +65,7 @@ ci:
   just openapi
   just fmt
   just lint
+  just db-prepare
 
 
 

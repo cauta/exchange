@@ -1,0 +1,172 @@
+use backend::db::Db;
+use clickhouse::Client;
+use testcontainers::runners::AsyncRunner;
+use testcontainers_modules::{clickhouse::ClickHouse, postgres::Postgres};
+
+/// Test database container setup
+pub struct TestDb {
+    pub db: Db,
+    #[allow(dead_code)]
+    postgres_container: testcontainers::ContainerAsync<Postgres>,
+    #[allow(dead_code)]
+    clickhouse_container: testcontainers::ContainerAsync<ClickHouse>,
+}
+
+impl TestDb {
+    /// Set up test databases with containers
+    pub async fn setup() -> anyhow::Result<Self> {
+        // ================================ Start containers ================================
+        let postgres_container = Postgres::default()
+            .start()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to start PostgreSQL container: {}", e))?;
+
+        let clickhouse_container = ClickHouse::default()
+            .start()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to start ClickHouse container: {}", e))?;
+
+        let postgres_port = postgres_container
+            .get_host_port_ipv4(5432)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to get PostgreSQL port: {}", e))?;
+
+        let clickhouse_port = clickhouse_container
+            .get_host_port_ipv4(8123)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to get ClickHouse port: {}", e))?;
+
+        // ================================ Create database connections ================================
+        let postgres_url = format!(
+            "postgres://postgres:postgres@{}:{}/postgres",
+            postgres_container.get_host().await.unwrap(),
+            postgres_port
+        );
+
+        let clickhouse_url = format!(
+            "http://{}:{}",
+            clickhouse_container.get_host().await.unwrap(),
+            clickhouse_port
+        );
+
+        let postgres = sqlx::postgres::PgPoolOptions::new()
+            .max_connections(10)
+            .acquire_timeout(std::time::Duration::from_secs(30))
+            .connect(&postgres_url)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to connect to PostgreSQL: {}", e))?;
+
+        // Create ClickHouse client without database first
+        let clickhouse_temp = Client::default()
+            .with_url(&clickhouse_url)
+            .with_user("default");
+
+        // ================================ Run migrations ================================
+        sqlx::migrate!("./src/db/pg/migrations")
+            .run(&postgres)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to run PostgreSQL migrations: {}", e))?;
+
+        // Initialize ClickHouse schema (creates database)
+        Self::setup_clickhouse_schema(&clickhouse_temp).await?;
+
+        // Now create client with the database set
+        let clickhouse = Client::default()
+            .with_url(&clickhouse_url)
+            .with_user("default")
+            .with_database("exchange");
+
+        let db = Db {
+            postgres,
+            clickhouse,
+        };
+
+        Ok(TestDb {
+            db,
+            postgres_container,
+            clickhouse_container,
+        })
+    }
+
+    /// Set up ClickHouse schema for testing using schema.sql file
+    async fn setup_clickhouse_schema(client: &Client) -> anyhow::Result<()> {
+        // Create database first
+        client
+            .query("CREATE DATABASE IF NOT EXISTS exchange")
+            .execute()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to create ClickHouse database: {}", e))?;
+
+        // Read and execute schema from schema.sql file
+        let schema_path = std::path::Path::new("src/db/ch/schema.sql");
+        let schema_sql = std::fs::read_to_string(schema_path)
+            .map_err(|e| anyhow::anyhow!("Failed to read ClickHouse schema file: {}", e))?;
+
+        // Execute the schema SQL
+        client
+            .query(&schema_sql)
+            .execute()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to execute ClickHouse schema: {}", e))?;
+
+        Ok(())
+    }
+}
+
+/// Helper function to create test user
+pub async fn create_test_user(
+    db: &Db,
+    address: &str,
+) -> anyhow::Result<backend::models::domain::User> {
+    db.create_user(address.to_string())
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to create test user: {}", e))
+}
+
+/// Helper function to create test token
+pub async fn create_test_token(
+    db: &Db,
+    ticker: &str,
+    decimals: u8,
+    name: &str,
+) -> anyhow::Result<backend::models::domain::Token> {
+    db.create_token(ticker.to_string(), decimals, name.to_string())
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to create test token: {}", e))
+}
+
+/// Helper function to create test market
+/// Automatically creates the base and quote tokens if they don't exist
+pub async fn create_test_market(
+    db: &Db,
+    base_ticker: &str,
+    quote_ticker: &str,
+) -> anyhow::Result<backend::models::domain::Market> {
+    // Create tokens first to satisfy foreign key constraints
+    create_test_token(db, base_ticker, 18, &format!("{} Token", base_ticker)).await?;
+    create_test_token(db, quote_ticker, 18, &format!("{} Token", quote_ticker)).await?;
+
+    db.create_market(
+        base_ticker.to_string(),
+        quote_ticker.to_string(),
+        1000,    // tick_size
+        1000000, // lot_size
+        1000000, // min_size
+        10,      // maker_fee_bps
+        20,      // taker_fee_bps
+    )
+    .await
+    .map_err(|e| anyhow::anyhow!("Failed to create test market: {}", e))
+}
+
+/// Helper function to create test candle
+pub async fn create_test_candle(
+    db: &Db,
+    market_id: &str,
+    timestamp: chrono::DateTime<chrono::Utc>,
+    ohlcv: (u128, u128, u128, u128, u128), // (open, high, low, close, volume)
+) -> anyhow::Result<()> {
+    db.insert_candle(market_id.to_string(), timestamp, ohlcv)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to create test candle: {}", e))
+}

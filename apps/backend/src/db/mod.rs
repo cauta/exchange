@@ -7,7 +7,7 @@ pub mod pg;
 pub mod candles;
 pub mod markets;
 // pub mod orders;
-// pub mod tokens;
+pub mod tokens;
 // pub mod trades;
 pub mod users;
 

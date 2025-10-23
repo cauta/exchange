@@ -12,20 +12,16 @@ impl Db {
         &self,
         market_id: String,
         timestamp: DateTime<Utc>,
-        open: u128,
-        high: u128,
-        low: u128,
-        close: u128,
-        volume: u128,
+        ohlcv: (u128, u128, u128, u128, u128), // (open, high, low, close, volume)
     ) -> Result<(), clickhouse::error::Error> {
         let candle_row = CandleRow {
             market_id,
-            timestamp,
-            open,
-            high,
-            low,
-            close,
-            volume,
+            timestamp: timestamp.timestamp() as u32,
+            open: ohlcv.0,
+            high: ohlcv.1,
+            low: ohlcv.2,
+            close: ohlcv.3,
+            volume: ohlcv.4,
         };
 
         let mut insert = self.clickhouse.insert::<CandleRow>("candles").await?;
@@ -46,8 +42,8 @@ impl Db {
             .clickhouse
             .query("SELECT market_id, timestamp, open, high, low, close, volume FROM candles WHERE market_id = ? AND timestamp >= ? AND timestamp <= ?")
             .bind(market_id)
-            .bind(start)
-            .bind(end)
+            .bind(start.timestamp() as u32)
+            .bind(end.timestamp() as u32)
             .fetch_all::<CandleRow>()
             .await?;
 
@@ -55,7 +51,8 @@ impl Db {
             .into_iter()
             .map(|row| Candle {
                 market_id: row.market_id,
-                timestamp: row.timestamp,
+                timestamp: DateTime::from_timestamp(row.timestamp as i64, 0)
+                    .unwrap_or_else(|| DateTime::UNIX_EPOCH),
                 open: row.open,
                 high: row.high,
                 low: row.low,

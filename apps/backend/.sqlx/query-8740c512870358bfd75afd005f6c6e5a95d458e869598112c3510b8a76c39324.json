@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO tokens (ticker, decimals, name) VALUES ($1, $2, $3)\n             ON CONFLICT (ticker) DO UPDATE SET decimals = $2, name = $3\n             RETURNING ticker, decimals, name",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ticker",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "decimals",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8740c512870358bfd75afd005f6c6e5a95d458e869598112c3510b8a76c39324"
+}

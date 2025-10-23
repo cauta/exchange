@@ -18,7 +18,7 @@ pub struct UserRow {
 #[derive(Debug, Clone, FromRow)]
 pub struct TokenRow {
     pub ticker: String,
-    pub decimals: u8,
+    pub decimals: i32,
     pub name: String,
 }
 
@@ -75,7 +75,7 @@ pub struct BalanceRow {
 #[derive(Debug, Clone, Row, Serialize, Deserialize)]
 pub struct CandleRow {
     pub market_id: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: u32,  // ClickHouse DateTime is stored as Unix timestamp (u32)
     pub open: u128,
     pub high: u128,
     pub low: u128,
