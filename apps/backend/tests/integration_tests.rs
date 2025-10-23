@@ -54,7 +54,7 @@ async fn test_market_operations() {
 
     // Test creating a market
     let market = test_db
-        .create_test_market("BTC", "USD")
+        .create_test_market_with_tokens("BTC", "USD")
         .await
         .expect("Failed to create market");
 
@@ -86,7 +86,7 @@ async fn test_candle_operations() {
 
     // First create a market to associate candles with
     let market = test_db
-        .create_test_market("ETH", "USD")
+        .create_test_market_with_tokens("ETH", "USD")
         .await
         .expect("Failed to create market");
 
@@ -156,12 +156,12 @@ async fn test_multiple_markets_and_candles() {
 
     // Create multiple markets
     let btc_market = test_db
-        .create_test_market("BTC", "USD")
+        .create_test_market_with_tokens("BTC", "USD")
         .await
         .expect("Failed to create BTC market");
 
     let eth_market = test_db
-        .create_test_market("ETH", "USD")
+        .create_test_market_with_tokens("ETH", "USD")
         .await
         .expect("Failed to create ETH market");
 
@@ -228,7 +228,7 @@ async fn test_database_isolation() {
         .expect("Failed to create user");
 
     let market = test_db
-        .create_test_market("SOL", "USD")
+        .create_test_market_with_tokens("SOL", "USD")
         .await
         .expect("Failed to create market");
 
@@ -243,7 +243,7 @@ async fn test_database_isolation() {
         .expect("Failed to get market");
     assert_eq!(retrieved_market.id, market.id);
 
-    // Verify tokens were auto-created by create_test_market
+    // Verify tokens were created by create_test_market_with_tokens
     let tokens = test_db
         .db
         .list_tokens()

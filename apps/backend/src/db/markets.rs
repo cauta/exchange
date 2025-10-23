@@ -16,6 +16,10 @@ impl Db {
         maker_fee_bps: i32,
         taker_fee_bps: i32,
     ) -> Result<Market, sqlx::Error> {
+        // Check if both tokens exist before creating the market
+        self.get_token(&base_ticker).await?;
+        self.get_token(&quote_ticker).await?;
+
         // Manually construct the market ID as "base_ticker/quote_ticker"
         let id = format!("{}/{}", base_ticker, quote_ticker);
 

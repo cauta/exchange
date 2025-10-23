@@ -138,18 +138,12 @@ impl TestDb {
     }
 
     /// Helper function to create test market
-    /// Automatically creates the base and quote tokens if they don't exist
+    /// Requires that both base and quote tokens already exist
     pub async fn create_test_market(
         self: &TestDb,
         base_ticker: &str,
         quote_ticker: &str,
     ) -> anyhow::Result<backend::models::domain::Market> {
-        // Create tokens first to satisfy foreign key constraints
-        self.create_test_token(base_ticker, 18, &format!("{} Token", base_ticker))
-            .await?;
-        self.create_test_token(quote_ticker, 18, &format!("{} Token", quote_ticker))
-            .await?;
-
         self.db
             .create_market(
                 base_ticker.to_string(),
@@ -162,6 +156,23 @@ impl TestDb {
             )
             .await
             .map_err(|e| anyhow::anyhow!("Failed to create test market: {}", e))
+    }
+
+    /// Helper function to create test market with tokens
+    /// Creates the tokens first, then the market
+    pub async fn create_test_market_with_tokens(
+        self: &TestDb,
+        base_ticker: &str,
+        quote_ticker: &str,
+    ) -> anyhow::Result<backend::models::domain::Market> {
+        // Create tokens first
+        self.create_test_token(base_ticker, 18, &format!("{} Token", base_ticker))
+            .await?;
+        self.create_test_token(quote_ticker, 18, &format!("{} Token", quote_ticker))
+            .await?;
+
+        // Then create the market
+        self.create_test_market(base_ticker, quote_ticker).await
     }
 
     /// Helper function to create test candle
