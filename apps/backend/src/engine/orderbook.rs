@@ -2,11 +2,14 @@
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::collections::VecDeque;
+
+use crate::models::domain::Order;
 
 struct Orderbook {
     market_id: String,
-    bids: BTreeMap<u128, u128>,
-    asks: BTreeMap<u128, u128>,
+    bids: BTreeMap<u128, VecDeque<Order>>,
+    asks: BTreeMap<u128, VecDeque<Order>>,
 }
 
 pub struct Orderbooks {
