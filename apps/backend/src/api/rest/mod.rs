@@ -22,41 +22,39 @@ pub mod user;
     ),
     paths(
         health::health_check,
-        info::get_token_info,
-        info::get_market_info,
-        info::get_all_tokens,
-        info::get_all_markets,
-        user::get_user_orders,
-        user::get_user_balances,
-        user::get_user_trades,
-        trade::place_order,
-        trade::cancel_order,
-        drip::drip_tokens,
-        drip::get_drip_balance,
+        info::info,
+        user::user,
+        trade::trade,
+        drip::drip,
     ),
     components(
         schemas(
             ApiResponse,
-            crate::models::api::TokenInfoRequest,
-            crate::models::api::TokenInfoResponse,
-            crate::models::api::MarketInfoRequest,
-            crate::models::api::MarketInfoResponse,
-            crate::models::api::AllTokensResponse,
-            crate::models::api::AllMarketsResponse,
-            crate::models::api::UserOrdersRequest,
-            crate::models::api::UserOrdersResponse,
-            crate::models::api::UserBalancesRequest,
-            crate::models::api::UserBalancesResponse,
-            crate::models::api::UserTradesRequest,
-            crate::models::api::UserTradesResponse,
-            crate::models::api::PlaceOrderRequest,
-            crate::models::api::CancelOrderRequest,
-            crate::models::api::OrderPlaced,
-            crate::models::api::OrderCancelled,
+            // Info types
+            crate::models::api::InfoRequest,
+            crate::models::api::InfoResponse,
+            crate::models::api::InfoErrorResponse,
+            // User types
+            crate::models::api::UserRequest,
+            crate::models::api::UserResponse,
+            crate::models::api::UserErrorResponse,
+            // Trade types
+            crate::models::api::TradeRequest,
+            crate::models::api::TradeResponse,
             crate::models::api::TradeErrorResponse,
-            crate::models::api::DripTokensRequest,
-            crate::models::api::DripTokensResponse,
+            // Drip types
+            crate::models::api::DripRequest,
+            crate::models::api::DripResponse,
             crate::models::api::DripErrorResponse,
+            // Domain types
+            crate::models::domain::Token,
+            crate::models::domain::Market,
+            crate::models::domain::Order,
+            crate::models::domain::Trade,
+            crate::models::domain::Balance,
+            crate::models::domain::Side,
+            crate::models::domain::OrderType,
+            crate::models::domain::OrderStatus,
         )
     ),
     tags(
@@ -64,48 +62,17 @@ pub mod user;
         (name = "info", description = "Information endpoints"),
         (name = "user", description = "User data endpoints"),
         (name = "trade", description = "Trading endpoints"),
-        (name = "drip", description = "Development/testing endpoints")
+        (name = "drip", description = "Get free money")
     )
 )]
 pub struct ApiDoc;
 
 pub fn create_rest() -> Router<crate::AppState> {
     Router::new()
-        // Health endpoint
         .route("/api/health", get(health::health_check))
-        // Info endpoints
-        .route("/api/info/token", get(info::get_token_info))
-        .route("/api/info/market", get(info::get_market_info))
-        .route("/api/info/tokens", get(info::get_all_tokens))
-        .route("/api/info/markets", get(info::get_all_markets))
-        // User endpoints
-        .route("/api/user/orders", get(user::get_user_orders))
-        .route("/api/user/balances", get(user::get_user_balances))
-        .route("/api/user/trades", get(user::get_user_trades))
-        // Trade endpoints
-        .route("/api/trade/order", post(trade::place_order))
-        .route("/api/trade/cancel", post(trade::cancel_order))
-        // Drip endpoints (development/testing)
-        .route("/api/drip/tokens", post(drip::drip_tokens))
-        .route("/api/drip/balance", get(drip::get_drip_balance))
-        // Documentation
+        .route("/api/info", post(info::info))
+        .route("/api/user", post(user::user))
+        .route("/api/trade", post(trade::trade))
+        .route("/api/drip", post(drip::drip))
         .merge(SwaggerUi::new("/api/docs").url("/api/openapi.json", ApiDoc::openapi()))
 }
-
-// request -> handler -> db -> response
-// /info
-// - token info
-// - market info
-
-// /user
-// - orders
-// - balances
-// - trades
-
-// /trade - signature required
-// request -> handler -> me -> response
-// - order
-// - cancel
-
-// /drip - signature required
-// - drip amount of tokens

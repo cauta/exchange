@@ -1,91 +1,44 @@
-use axum::{
-    extract::{Query, State},
-    response::Json,
-};
+use axum::{extract::State, response::Json};
 
-use crate::models::api::{
-    AllMarketsResponse, AllTokensResponse, MarketInfoRequest, MarketInfoResponse, TokenInfoRequest,
-    TokenInfoResponse,
-};
+use crate::models::api::{InfoErrorResponse, InfoRequest, InfoResponse};
 
-/// Get information about a specific token
+/// Get information about tokens, markets, etc.
 #[utoipa::path(
-    get,
-    path = "/api/info/token",
-    params(
-        ("ticker" = String, Query, description = "Token ticker symbol")
-    ),
+    post,
+    path = "/api/info",
+    request_body = InfoRequest,
     responses(
-        (status = 200, description = "Token information", body = TokenInfoResponse),
-        (status = 404, description = "Token not found")
+        (status = 200, description = "Success", body = InfoResponse),
+        (status = 400, description = "Invalid request", body = InfoErrorResponse),
+        (status = 404, description = "Resource not found", body = InfoErrorResponse),
+        (status = 500, description = "Internal server error", body = InfoErrorResponse)
     ),
     tag = "info"
 )]
-pub async fn get_token_info(
+pub async fn info(
     State(state): State<crate::AppState>,
-    Query(params): Query<TokenInfoRequest>,
-) -> Result<Json<TokenInfoResponse>, axum::http::StatusCode> {
-    match state.db.get_token(&params.ticker).await {
-        Ok(token) => Ok(Json(TokenInfoResponse { token })),
-        Err(_) => Err(axum::http::StatusCode::NOT_FOUND),
-    }
-}
-
-/// Get information about a specific market
-#[utoipa::path(
-    get,
-    path = "/api/info/market",
-    params(
-        ("market_id" = String, Query, description = "Market ID (e.g., 'BTC/USD')")
-    ),
-    responses(
-        (status = 200, description = "Market information", body = MarketInfoResponse),
-        (status = 404, description = "Market not found")
-    ),
-    tag = "info"
-)]
-pub async fn get_market_info(
-    State(state): State<crate::AppState>,
-    Query(params): Query<MarketInfoRequest>,
-) -> Result<Json<MarketInfoResponse>, axum::http::StatusCode> {
-    match state.db.get_market(&params.market_id).await {
-        Ok(market) => Ok(Json(MarketInfoResponse { market })),
-        Err(_) => Err(axum::http::StatusCode::NOT_FOUND),
-    }
-}
-
-/// Get all available tokens
-#[utoipa::path(
-    get,
-    path = "/api/info/tokens",
-    responses(
-        (status = 200, description = "List of all tokens", body = AllTokensResponse)
-    ),
-    tag = "info"
-)]
-pub async fn get_all_tokens(
-    State(state): State<crate::AppState>,
-) -> Result<Json<AllTokensResponse>, axum::http::StatusCode> {
-    match state.db.list_tokens().await {
-        Ok(tokens) => Ok(Json(AllTokensResponse { tokens })),
-        Err(_) => Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR),
-    }
-}
-
-/// Get all available markets
-#[utoipa::path(
-    get,
-    path = "/api/info/markets",
-    responses(
-        (status = 200, description = "List of all markets", body = AllMarketsResponse)
-    ),
-    tag = "info"
-)]
-pub async fn get_all_markets(
-    State(state): State<crate::AppState>,
-) -> Result<Json<AllMarketsResponse>, axum::http::StatusCode> {
-    match state.db.list_markets().await {
-        Ok(markets) => Ok(Json(AllMarketsResponse { markets })),
-        Err(_) => Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR),
+    Json(request): Json<InfoRequest>,
+) -> Result<Json<InfoResponse>, Json<InfoErrorResponse>> {
+    match request {
+        InfoRequest::TokenDetails { ticker } => {
+            // TODO: Implement token details lookup
+            // Example: state.db.get_token(&ticker).await
+            todo!("Implement token details lookup for ticker: {}", ticker)
+        }
+        InfoRequest::MarketDetails { market_id } => {
+            // TODO: Implement market details lookup
+            // Example: state.db.get_market(&market_id).await
+            todo!("Implement market details lookup for market_id: {}", market_id)
+        }
+        InfoRequest::AllMarkets => {
+            // TODO: Implement list all markets
+            // Example: state.db.list_markets().await
+            todo!("Implement list all markets")
+        }
+        InfoRequest::AllTokens => {
+            // TODO: Implement list all tokens
+            // Example: state.db.list_tokens().await
+            todo!("Implement list all tokens")
+        }
     }
 }

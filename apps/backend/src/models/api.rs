@@ -30,95 +30,101 @@ pub struct OrderCancelled {
 // INFO API TYPES
 // ============================================================================
 
+/// Info request with type discriminator
 #[derive(Debug, Deserialize, ToSchema)]
-pub struct TokenInfoRequest {
-    pub ticker: String,
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum InfoRequest {
+    TokenDetails { ticker: String },
+    MarketDetails { market_id: String },
+    AllMarkets,
+    AllTokens,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct MarketInfoRequest {
-    pub market_id: String,
+/// Info response with type discriminator
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum InfoResponse {
+    TokenDetails { token: Token },
+    MarketDetails { market: Market },
+    AllMarkets { markets: Vec<Market> },
+    AllTokens { tokens: Vec<Token> },
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct TokenInfoResponse {
-    pub token: Token,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct MarketInfoResponse {
-    pub market: Market,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct AllTokensResponse {
-    pub tokens: Vec<Token>,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct AllMarketsResponse {
-    pub markets: Vec<Market>,
+pub struct InfoErrorResponse {
+    pub error: String,
+    pub code: String,
 }
 
 // ============================================================================
 // USER API TYPES
 // ============================================================================
 
+/// User request with type discriminator
 #[derive(Debug, Deserialize, ToSchema)]
-pub struct UserOrdersRequest {
-    pub user_address: String,
-    pub market_id: Option<String>,
-    pub status: Option<String>,
-    pub limit: Option<u32>,
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum UserRequest {
+    Orders {
+        user_address: String,
+        market_id: Option<String>,
+        status: Option<String>,
+        limit: Option<u32>,
+    },
+    Balances {
+        user_address: String,
+    },
+    Trades {
+        user_address: String,
+        market_id: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct UserBalancesRequest {
-    pub user_address: String,
-}
-
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct UserTradesRequest {
-    pub user_address: String,
-    pub market_id: Option<String>,
-    pub limit: Option<u32>,
+/// User response with type discriminator
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum UserResponse {
+    Orders { orders: Vec<Order> },
+    Balances { balances: Vec<Balance> },
+    Trades { trades: Vec<Trade> },
 }
 
 #[derive(Debug, Serialize, ToSchema)]
-pub struct UserOrdersResponse {
-    pub orders: Vec<Order>,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct UserBalancesResponse {
-    pub balances: Vec<Balance>,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct UserTradesResponse {
-    pub trades: Vec<Trade>,
+pub struct UserErrorResponse {
+    pub error: String,
+    pub code: String,
 }
 
 // ============================================================================
 // TRADE API TYPES
 // ============================================================================
 
+/// Trade request with type discriminator
 #[derive(Debug, Deserialize, ToSchema)]
-pub struct PlaceOrderRequest {
-    pub user_address: String,
-    pub market_id: String,
-    pub side: Side,
-    pub order_type: OrderType,
-    pub price: String, // u128 as string
-    pub size: String,  // u128 as string
-    pub signature: String, // Cryptographic signature for authentication
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum TradeRequest {
+    PlaceOrder {
+        user_address: String,
+        market_id: String,
+        side: Side,
+        order_type: OrderType,
+        price: String,     // u128 as string
+        size: String,      // u128 as string
+        signature: String, // Cryptographic signature for authentication
+    },
+    CancelOrder {
+        user_address: String,
+        order_id: String,  // UUID as string
+        signature: String, // Cryptographic signature for authentication
+    },
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct CancelOrderRequest {
-    pub user_address: String,
-    pub order_id: String, // UUID as string
-    pub signature: String, // Cryptographic signature for authentication
+/// Trade response with type discriminator
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum TradeResponse {
+    PlaceOrder { order: Order, trades: Vec<Trade> },
+    CancelOrder { order_id: String },
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -131,20 +137,28 @@ pub struct TradeErrorResponse {
 // DRIP API TYPES
 // ============================================================================
 
+/// Drip request with type discriminator
 #[derive(Debug, Deserialize, ToSchema)]
-pub struct DripTokensRequest {
-    pub user_address: String,
-    pub token_ticker: String,
-    pub amount: String, // u128 as string
-    pub signature: String, // Cryptographic signature for authentication
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum DripRequest {
+    Faucet {
+        user_address: String,
+        token_ticker: String,
+        amount: String,    // u128 as string
+        signature: String, // Cryptographic signature for authentication
+    },
 }
 
+/// Drip response with type discriminator
 #[derive(Debug, Serialize, ToSchema)]
-pub struct DripTokensResponse {
-    pub user_address: String,
-    pub token_ticker: String,
-    pub amount: String,
-    pub new_balance: String,
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum DripResponse {
+    Faucet {
+        user_address: String,
+        token_ticker: String,
+        amount: String,
+        new_balance: String,
+    },
 }
 
 #[derive(Debug, Serialize, ToSchema)]
