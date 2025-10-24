@@ -1,9 +1,7 @@
 use axum::{routing::get, Router};
-use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::db::Db;
 use crate::models::ApiResponse;
 
 pub mod health;
@@ -27,12 +25,10 @@ pub mod health;
 )]
 pub struct ApiDoc;
 
-pub fn create_app(db: Db) -> Router {
+pub fn create_rest() -> Router {
     Router::new()
         .route("/api/health", get(health::health_check))
         .merge(SwaggerUi::new("/api/docs").url("/api/openapi.json", ApiDoc::openapi()))
-        .layer(CorsLayer::permissive())
-        .with_state(db)
 }
 
 // request -> handler -> db -> response

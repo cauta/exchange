@@ -44,6 +44,7 @@ missing production
 - write ahead log lmao
 - metrics / alerting
 - backups / disaster recovery
+- scaling / k8s
 
 ### process
 
@@ -82,6 +83,7 @@ decide on structure, schema, and write e2e tests fast so iterate fast. stub out 
 - add error handling, thiserror and anyhow. learning about Result/Error/unwrap_or_else. use from macro.
 - add db/app state to axum.
 - add e2e api tests.
+- setup ws api axum
 
 ### frontend dev
 

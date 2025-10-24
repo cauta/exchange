@@ -1,25 +1,48 @@
 // process
 // price time priority
 
-// pub struct MatchingEngine {
-//     db: Db,
-//     orderbooks: HashMap<String, Orderbook>,
-//     matcher: Matcher,
-//     executor: Executor,
+pub mod executor;
+pub mod matcher;
+pub mod orderbook;
 
-//     send_tx
-//     recv_rx
-// }
+use crate::db::Db;
+use crate::models::domain::{EngineRequest, EngineResponse};
+use executor::Executor;
+use matcher::Matcher;
+use orderbook::Orderbooks;
 
-// engine request response types
+use tokio::sync::{broadcast, mpsc};
 
-// main loop impl
-// wait for requests
-// process request
-// broadcast response
+pub struct MatchingEngine {
+    db: Db,
+    orderbooks: Orderbooks,
+    matcher: Matcher,
+    executor: Executor,
 
-// process requeest
-// based on order type, process order
+    engine_rx: mpsc::Receiver<EngineRequest>,
+    response_tx: broadcast::Sender<EngineResponse>,
+}
+
+impl MatchingEngine {
+    pub fn new(
+        db: Db,
+        engine_rx: mpsc::Receiver<EngineRequest>,
+        response_tx: broadcast::Sender<EngineResponse>,
+    ) -> Self {
+        Self {
+            db: db.clone(),
+            orderbooks: Orderbooks::new(),
+            matcher: Matcher::new(),
+            executor: Executor::new(db),
+            engine_rx,
+            response_tx,
+        }
+    }
+
+    pub async fn run(self) {
+        todo!()
+    }
+}
 
 // process order
 // use orderbook, get orderbook

@@ -5,3 +5,6 @@
 async fn main() {
     println!("Hello, world!");
 }
+
+// make this a cli tool
+// signing txns

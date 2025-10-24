@@ -105,3 +105,17 @@ pub struct Candle {
     pub close: u128,
     pub volume: u128,
 }
+
+// ============================================================================
+// ENGINE REQUEST/RESPONSE TYPES
+// ============================================================================
+
+pub enum EngineRequest {
+    CreateOrder { order: Order },
+    CancelOrder { order_id: Uuid },
+}
+
+pub enum EngineResponse {
+    OrderCreated { order: Order },
+    OrderCancelled { order_id: Uuid },
+}

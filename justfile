@@ -32,7 +32,7 @@ db-prepare:
 
 # ================================
 
-build:
+install:
   cd apps/frontend && bun install
   cd apps/backend && cargo build
 

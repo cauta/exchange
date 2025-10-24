@@ -1,6 +1,17 @@
 use anyhow::Context;
+use axum::Router;
 use backend::api::rest;
+use backend::api::ws;
 use backend::db::Db;
+use backend::engine::MatchingEngine;
+use backend::models::domain::{EngineRequest, EngineResponse};
+use tower_http::cors::CorsLayer;
+
+pub struct AppState {
+    db: Db,
+    engine_tx: mpsc::Sender<EngineRequest>,
+    event_tx: broadcast::Sender<EngineResponse>,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -10,21 +21,56 @@ async fn main() -> anyhow::Result<()> {
 
     env_logger::init();
 
+    // ===============================
     // Server configuration
+    // ===============================
     let host = std::env::var("HOST").unwrap_or_else(|_| "localhost".to_string());
     let port = std::env::var("PORT").unwrap_or_else(|_| "8888".to_string());
     let addr = format!("{}:{}", host, port);
 
+    // ===============================
     // Connect to databases
+    // ===============================
     let db = Db::connect()
         .await
         .context("Failed to connect to databases")?;
     log::info!("Connected to PostgreSQL and ClickHouse");
 
-    // Create app with database state
-    let app = rest::create_app(db);
+    // ===============================
+    // Create engine channels
+    // ===============================
+    let (engine_tx, engine_rx) = mpsc::channel::<EngineRequest>(100);
+    let (event_tx, _) = broadcast::channel::<EngineResponse>(100); // use event_tx to create more listeners
 
+    // ===============================
+    // Run matching engine
+    // ===============================
+    let engine = MatchingEngine::new(db, engine_rx, event_tx);
+
+    tokio::spawn(async move {
+        engine.run().await;
+    });
+
+    // ===============================
+    // Create axum app
+    // ===============================
+    let rest = rest::create_rest();
+    let ws = ws::create_ws();
+    let state = AppState {
+        db,
+        engine_tx,
+        event_tx,
+    };
+
+    let app = Router::new()
+        .merge(rest)
+        .merge(ws)
+        .with_state(state)
+        .layer(CorsLayer::permissive());
+
+    // ===============================
     // Start server
+    // ===============================
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .context(format!("Failed to bind to {}", addr))?;
