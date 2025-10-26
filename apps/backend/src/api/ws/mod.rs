@@ -1,5 +1,4 @@
 mod helpers;
-mod subscribe;
 
 use axum::{
     body::Bytes,
@@ -17,47 +16,29 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use tokio::time::{interval, Duration, Instant};
 
-use crate::models::api::Subscription;
+use crate::models::api::{ClientMessage, Subscription};
 use crate::models::domain::EngineEvent;
 use helpers::{event_to_message, should_send_event};
-use subscribe::handle_subscription_message;
 
 // Configuration constants
 const PING_INTERVAL: Duration = Duration::from_secs(30);
 const PONG_TIMEOUT: Duration = Duration::from_secs(60);
 const UNSUBSCRIBED_TIMEOUT: Duration = Duration::from_secs(300); // 5 minutes
 
-/// Create WebSocket routes
-/// Note: This function is generic to allow any state type
-/// When wiring up in main.rs, you'll need to provide AppState
-pub fn create_ws_routes<S>() -> Router<S>
-where
-    S: Clone + Send + Sync + 'static + WsState,
-{
-    Router::new().route("/ws", get(ws_handler::<S>))
+pub fn create_ws() -> Router<crate::AppState> {
+    Router::new().route("/ws", get(ws_handler))
 }
 
 /// WebSocket upgrade handler
-async fn ws_handler<S>(ws: WebSocketUpgrade, State(state): State<S>) -> Response
-where
-    S: Clone + Send + Sync + 'static + WsState,
-{
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<crate::AppState>) -> Response {
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 
-/// Trait that AppState must implement to provide WebSocket functionality
-pub trait WsState {
-    fn event_tx(&self) -> &broadcast::Sender<EngineEvent>;
-}
-
 /// Handle a WebSocket connection with ping/pong keepalive
-async fn handle_socket<S>(socket: WebSocket, state: S)
-where
-    S: WsState,
-{
+async fn handle_socket(socket: WebSocket, state: crate::AppState) {
     let (sender, receiver) = socket.split();
     let subscriptions = Arc::new(RwLock::new(HashSet::<Subscription>::new()));
-    let event_rx = state.event_tx().subscribe();
+    let event_rx = state.event_tx.subscribe();
 
     let last_pong = Arc::new(RwLock::new(Instant::now()));
     let last_subscription_change = Arc::new(RwLock::new(Instant::now()));
@@ -116,13 +97,34 @@ async fn handle_client_messages(
         match msg {
             Ok(Message::Text(text)) => {
                 // Parse and handle client message
-                if let Ok(client_msg) = serde_json::from_str(&text) {
-                    handle_subscription_message(
-                        client_msg,
-                        &subscriptions,
-                        &last_subscription_change,
-                    )
-                    .await;
+                if let Ok(client_msg) = serde_json::from_str::<ClientMessage>(&text) {
+                    match client_msg {
+                        ClientMessage::Subscribe {
+                            channel,
+                            market_id,
+                            user_address,
+                        } => {
+                            if let Some(sub) =
+                                Subscription::from_channel(&channel, market_id, user_address)
+                            {
+                                subscriptions.write().await.insert(sub);
+                                *last_subscription_change.write().await = Instant::now();
+                                log::debug!("Client subscribed to: {}", channel);
+                            }
+                        }
+                        ClientMessage::Unsubscribe { channel, market_id } => {
+                            if let Some(sub) = Subscription::from_channel(&channel, market_id, None)
+                            {
+                                subscriptions.write().await.remove(&sub);
+                                *last_subscription_change.write().await = Instant::now();
+                                log::debug!("Client unsubscribed from: {}", channel);
+                            }
+                        }
+                        ClientMessage::Ping => {
+                            // Application-level ping (we primarily use WebSocket ping/pong)
+                            log::debug!("Received application ping");
+                        }
+                    }
                 }
             }
             Ok(Message::Pong(_)) => {

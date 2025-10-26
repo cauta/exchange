@@ -16,10 +16,3 @@ pub struct AppState {
     pub engine_tx: mpsc::Sender<EngineRequest>,
     pub event_tx: broadcast::Sender<EngineEvent>,
 }
-
-// Implement WsState trait for AppState
-impl api::ws::WsState for AppState {
-    fn event_tx(&self) -> &broadcast::Sender<EngineEvent> {
-        &self.event_tx
-    }
-}

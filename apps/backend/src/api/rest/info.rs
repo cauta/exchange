@@ -28,7 +28,10 @@ pub async fn info(
         InfoRequest::MarketDetails { market_id } => {
             // TODO: Implement market details lookup
             // Example: state.db.get_market(&market_id).await
-            todo!("Implement market details lookup for market_id: {}", market_id)
+            todo!(
+                "Implement market details lookup for market_id: {}",
+                market_id
+            )
         }
         InfoRequest::AllMarkets => {
             // TODO: Implement list all markets
