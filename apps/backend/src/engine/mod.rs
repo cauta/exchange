@@ -88,8 +88,7 @@ impl MatchingEngine {
 
             // Execute trades if we have matches (also updates order status in DB)
             let trades = if !matches.is_empty() {
-                let maker_orders = orderbook.get_maker_orders(&matches);
-                Executor::execute(self.db.clone(), matches.clone(), &order, &maker_orders).await?
+                Executor::execute(self.db.clone(), matches.clone(), &order).await?
             } else {
                 vec![]
             };

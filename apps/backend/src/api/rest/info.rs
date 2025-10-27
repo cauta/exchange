@@ -16,32 +16,45 @@ use crate::models::api::{InfoErrorResponse, InfoRequest, InfoResponse};
     tag = "info"
 )]
 pub async fn info(
-    State(state): State<crate::AppState>,
+    State(_state): State<crate::AppState>,
     Json(request): Json<InfoRequest>,
 ) -> Result<Json<InfoResponse>, Json<InfoErrorResponse>> {
     match request {
         InfoRequest::TokenDetails { ticker } => {
-            // TODO: Implement token details lookup
-            // Example: state.db.get_token(&ticker).await
-            todo!("Implement token details lookup for ticker: {}", ticker)
+            let token = _state.db.get_token(&ticker).await.map_err(|e| {
+                Json(InfoErrorResponse {
+                    error: format!("Failed to get token: {}", e),
+                    code: "TOKEN_NOT_FOUND".to_string(),
+                })
+            })?;
+            Ok(Json(InfoResponse::TokenDetails { token }))
         }
         InfoRequest::MarketDetails { market_id } => {
-            // TODO: Implement market details lookup
-            // Example: state.db.get_market(&market_id).await
-            todo!(
-                "Implement market details lookup for market_id: {}",
-                market_id
-            )
+            let market = _state.db.get_market(&market_id).await.map_err(|e| {
+                Json(InfoErrorResponse {
+                    error: format!("Failed to get market: {}", e),
+                    code: "MARKET_NOT_FOUND".to_string(),
+                })
+            })?;
+            Ok(Json(InfoResponse::MarketDetails { market }))
         }
         InfoRequest::AllMarkets => {
-            // TODO: Implement list all markets
-            // Example: state.db.list_markets().await
-            todo!("Implement list all markets")
+            let markets = _state.db.list_markets().await.map_err(|e| {
+                Json(InfoErrorResponse {
+                    error: format!("Failed to list markets: {}", e),
+                    code: "LIST_MARKETS_ERROR".to_string(),
+                })
+            })?;
+            Ok(Json(InfoResponse::AllMarkets { markets }))
         }
         InfoRequest::AllTokens => {
-            // TODO: Implement list all tokens
-            // Example: state.db.list_tokens().await
-            todo!("Implement list all tokens")
+            let tokens = _state.db.list_tokens().await.map_err(|e| {
+                Json(InfoErrorResponse {
+                    error: format!("Failed to list tokens: {}", e),
+                    code: "LIST_TOKENS_ERROR".to_string(),
+                })
+            })?;
+            Ok(Json(InfoResponse::AllTokens { tokens }))
         }
     }
 }

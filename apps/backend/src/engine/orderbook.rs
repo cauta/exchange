@@ -81,7 +81,7 @@ impl Orderbook {
     pub fn apply_matches(&mut self, taker_order: &Order, matches: &[Match], market: &Market) {
         // Update maker orders that were matched
         for m in matches {
-            self.update_order_fill(m.maker_order_id, m.size);
+            self.update_order_fill(m.maker_order.id, m.size);
         }
 
         // Add taker order to book if not fully filled
@@ -152,23 +152,6 @@ impl Orderbook {
         }
 
         None
-    }
-
-    /// Get maker orders from a list of matches
-    /// Returns orders in the same order as matches
-    pub fn get_maker_orders(&self, matches: &[Match]) -> Vec<Order> {
-        matches
-            .iter()
-            .filter_map(|m| {
-                // Find maker order in orderbook
-                self.bids
-                    .values()
-                    .chain(self.asks.values())
-                    .flatten()
-                    .find(|o| o.id == m.maker_order_id)
-                    .cloned()
-            })
-            .collect()
     }
 
     /// Generate a snapshot of the current orderbook state

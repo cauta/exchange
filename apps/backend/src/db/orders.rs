@@ -1,7 +1,7 @@
 use crate::db::Db;
 use crate::errors::Result;
 use crate::models::domain::{Order, OrderStatus, OrderType, Side};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use sqlx::Row;
 use uuid::Uuid;
 
@@ -91,22 +91,198 @@ impl Db {
         Ok(())
     }
 
-    pub async fn get_order(&self, _order_id: &Uuid) -> Result<Order> {
-        todo!()
+    /// Update an order's filled size and status (within a transaction)
+    pub async fn update_order_fill_tx(
+        tx: &mut crate::db::Transaction<'_, crate::db::Postgres>,
+        order_id: Uuid,
+        filled_size: u128,
+        status: OrderStatus,
+    ) -> Result<()> {
+        let filled_size_str = filled_size.to_string();
+        let status_str = match status {
+            OrderStatus::Pending => "pending",
+            OrderStatus::PartiallyFilled => "partially_filled",
+            OrderStatus::Filled => "filled",
+            OrderStatus::Cancelled => "cancelled",
+        };
+
+        sqlx::query(
+            r#"
+            UPDATE orders
+            SET filled_size = $1::numeric, status = $2::order_status, updated_at = $3
+            WHERE id = $4
+            "#,
+        )
+        .bind(filled_size_str)
+        .bind(status_str)
+        .bind(Utc::now())
+        .bind(order_id)
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(())
     }
 
-    pub async fn cancel_order(&self, _order_id: &Uuid) -> Result<()> {
-        todo!()
+    pub async fn get_order(&self, order_id: &Uuid) -> Result<Order> {
+        let row = sqlx::query(
+            r#"
+            SELECT id, user_address, market_id, price, size, side, type, status, filled_size, created_at, updated_at
+            FROM orders
+            WHERE id = $1
+            "#
+        )
+        .bind(order_id)
+        .fetch_one(&self.postgres)
+        .await?;
+
+        let price_str: String = row.get("price");
+        let size_str: String = row.get("size");
+        let filled_size_str: String = row.get("filled_size");
+        let side_str: String = row.get("side");
+        let type_str: String = row.get("type");
+        let status_str: String = row.get("status");
+
+        Ok(Order {
+            id: row.get("id"),
+            user_address: row.get("user_address"),
+            market_id: row.get("market_id"),
+            price: price_str.parse().unwrap_or(0),
+            size: size_str.parse().unwrap_or(0),
+            side: match side_str.as_str() {
+                "buy" => Side::Buy,
+                "sell" => Side::Sell,
+                _ => Side::Buy,
+            },
+            order_type: match type_str.as_str() {
+                "limit" => OrderType::Limit,
+                "market" => OrderType::Market,
+                _ => OrderType::Limit,
+            },
+            status: match status_str.as_str() {
+                "pending" => OrderStatus::Pending,
+                "partially_filled" => OrderStatus::PartiallyFilled,
+                "filled" => OrderStatus::Filled,
+                "cancelled" => OrderStatus::Cancelled,
+                _ => OrderStatus::Pending,
+            },
+            filled_size: filled_size_str.parse().unwrap_or(0),
+            created_at: row.get("created_at"),
+            updated_at: row.get("updated_at"),
+        })
     }
 
     pub async fn get_user_orders(
         &self,
-        _user_address: &str,
-        _market_id: Option<&str>,
-        _status: Option<OrderStatus>,
-        _limit: u32,
+        user_address: &str,
+        market_id: Option<&str>,
+        status: Option<OrderStatus>,
+        limit: u32,
     ) -> Result<Vec<Order>> {
-        // TODO: Implement user orders retrieval
-        Ok(vec![])
+        let limit = std::cmp::min(limit, 1000); // Cap at 1000
+
+        let status_str = status.map(|s| match s {
+            OrderStatus::Pending => "pending",
+            OrderStatus::PartiallyFilled => "partially_filled",
+            OrderStatus::Filled => "filled",
+            OrderStatus::Cancelled => "cancelled",
+        });
+
+        let query = if let (Some(market), Some(stat)) = (market_id, status_str) {
+            sqlx::query(
+                r#"
+                SELECT id, user_address, market_id, price, size, side, type, status, filled_size, created_at, updated_at
+                FROM orders
+                WHERE user_address = $1 AND market_id = $2 AND status = $3::order_status
+                ORDER BY created_at DESC
+                LIMIT $4
+                "#
+            )
+            .bind(user_address)
+            .bind(market)
+            .bind(stat)
+            .bind(limit as i64)
+        } else if let Some(market) = market_id {
+            sqlx::query(
+                r#"
+                SELECT id, user_address, market_id, price, size, side, type, status, filled_size, created_at, updated_at
+                FROM orders
+                WHERE user_address = $1 AND market_id = $2
+                ORDER BY created_at DESC
+                LIMIT $3
+                "#
+            )
+            .bind(user_address)
+            .bind(market)
+            .bind(limit as i64)
+        } else if let Some(stat) = status_str {
+            sqlx::query(
+                r#"
+                SELECT id, user_address, market_id, price, size, side, type, status, filled_size, created_at, updated_at
+                FROM orders
+                WHERE user_address = $1 AND status = $2::order_status
+                ORDER BY created_at DESC
+                LIMIT $3
+                "#
+            )
+            .bind(user_address)
+            .bind(stat)
+            .bind(limit as i64)
+        } else {
+            sqlx::query(
+                r#"
+                SELECT id, user_address, market_id, price, size, side, type, status, filled_size, created_at, updated_at
+                FROM orders
+                WHERE user_address = $1
+                ORDER BY created_at DESC
+                LIMIT $2
+                "#
+            )
+            .bind(user_address)
+            .bind(limit as i64)
+        };
+
+        let rows = query.fetch_all(&self.postgres).await?;
+
+        let orders = rows
+            .iter()
+            .map(|row| {
+                let price_str: String = row.get("price");
+                let size_str: String = row.get("size");
+                let filled_size_str: String = row.get("filled_size");
+                let side_str: String = row.get("side");
+                let type_str: String = row.get("type");
+                let status_str: String = row.get("status");
+
+                Order {
+                    id: row.get("id"),
+                    user_address: row.get("user_address"),
+                    market_id: row.get("market_id"),
+                    price: price_str.parse().unwrap_or(0),
+                    size: size_str.parse().unwrap_or(0),
+                    side: match side_str.as_str() {
+                        "buy" => Side::Buy,
+                        "sell" => Side::Sell,
+                        _ => Side::Buy,
+                    },
+                    order_type: match type_str.as_str() {
+                        "limit" => OrderType::Limit,
+                        "market" => OrderType::Market,
+                        _ => OrderType::Limit,
+                    },
+                    status: match status_str.as_str() {
+                        "pending" => OrderStatus::Pending,
+                        "partially_filled" => OrderStatus::PartiallyFilled,
+                        "filled" => OrderStatus::Filled,
+                        "cancelled" => OrderStatus::Cancelled,
+                        _ => OrderStatus::Pending,
+                    },
+                    filled_size: filled_size_str.parse().unwrap_or(0),
+                    created_at: row.get("created_at"),
+                    updated_at: row.get("updated_at"),
+                }
+            })
+            .collect();
+
+        Ok(orders)
     }
 }

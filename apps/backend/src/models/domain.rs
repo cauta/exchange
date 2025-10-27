@@ -193,8 +193,7 @@ where
 /// Represents a match between two orders
 #[derive(Debug, Clone)]
 pub struct Match {
-    pub maker_order_id: Uuid,
-    pub taker_order_id: Uuid,
+    pub maker_order: Order, // Full maker order for easy access
     pub price: u128,
     pub size: u128,
 }

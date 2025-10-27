@@ -1,20 +1,49 @@
 use crate::db::Db;
 use crate::errors::Result;
-use crate::models::{db::CandleRow, domain::Candle};
+use crate::models::{
+    db::{CandleRow, ClickHouseTradeRow},
+    domain::{Candle, Trade},
+};
 use chrono::{DateTime, Utc};
 
-// TODO: this is probably going to need to insert a trade not a candle
 impl Db {
-    /// Insert a new candle
+    /// Insert a trade into ClickHouse for tick data
+    /// This will automatically trigger the materialized view to create 1m candles
+    pub async fn insert_trade_to_clickhouse(&self, trade: &Trade) -> Result<()> {
+        let trade_row = ClickHouseTradeRow {
+            id: trade.id,
+            market_id: trade.market_id.clone(),
+            buyer_address: trade.buyer_address.clone(),
+            seller_address: trade.seller_address.clone(),
+            buyer_order_id: trade.buyer_order_id,
+            seller_order_id: trade.seller_order_id,
+            price: trade.price,
+            size: trade.size,
+            timestamp: trade.timestamp.timestamp() as u32,
+        };
+
+        let mut insert = self
+            .clickhouse
+            .insert::<ClickHouseTradeRow>("trades")
+            .await?;
+        insert.write(&trade_row).await?;
+        insert.end().await?;
+
+        Ok(())
+    }
+
+    /// Insert a candle directly (for backfilling or manual inserts)
     pub async fn insert_candle(
         &self,
         market_id: String,
         timestamp: DateTime<Utc>,
+        interval: String,
         ohlcv: (u128, u128, u128, u128, u128), // (open, high, low, close, volume)
     ) -> Result<()> {
         let candle_row = CandleRow {
             market_id,
             timestamp: timestamp.timestamp() as u32,
+            interval,
             open: ohlcv.0,
             high: ohlcv.1,
             low: ohlcv.2,
@@ -29,17 +58,19 @@ impl Db {
         Ok(())
     }
 
-    /// Get candles for a market
+    /// Get candles for a market at a specific interval
     pub async fn get_candles(
         &self,
         market_id: &str,
+        interval: &str, // '1m', '5m', '15m', '1h', '1d'
         start: DateTime<Utc>,
         end: DateTime<Utc>,
     ) -> Result<Vec<Candle>> {
         let candles = self
             .clickhouse
-            .query("SELECT market_id, timestamp, open, high, low, close, volume FROM candles WHERE market_id = ? AND timestamp >= ? AND timestamp < ? ORDER BY timestamp ASC")
+            .query("SELECT market_id, timestamp, interval, open, high, low, close, volume FROM candles WHERE market_id = ? AND interval = ? AND timestamp >= ? AND timestamp < ? ORDER BY timestamp ASC")
             .bind(market_id)
+            .bind(interval)
             .bind(start.timestamp() as u32)
             .bind(end.timestamp() as u32)
             .fetch_all::<CandleRow>()
@@ -56,6 +87,35 @@ impl Db {
                 low: row.low,
                 close: row.close,
                 volume: row.volume,
+            })
+            .collect())
+    }
+
+    /// Get recent trades for a market (tick data)
+    pub async fn get_recent_trades(&self, market_id: &str, limit: u32) -> Result<Vec<Trade>> {
+        let limit = std::cmp::min(limit, 1000);
+
+        let trades = self
+            .clickhouse
+            .query("SELECT id, market_id, buyer_address, seller_address, buyer_order_id, seller_order_id, price, size, timestamp FROM trades WHERE market_id = ? ORDER BY timestamp DESC LIMIT ?")
+            .bind(market_id)
+            .bind(limit)
+            .fetch_all::<ClickHouseTradeRow>()
+            .await?;
+
+        Ok(trades
+            .into_iter()
+            .map(|row| Trade {
+                id: row.id,
+                market_id: row.market_id,
+                buyer_address: row.buyer_address,
+                seller_address: row.seller_address,
+                buyer_order_id: row.buyer_order_id,
+                seller_order_id: row.seller_order_id,
+                price: row.price,
+                size: row.size,
+                timestamp: DateTime::from_timestamp(row.timestamp as i64, 0)
+                    .unwrap_or(DateTime::UNIX_EPOCH),
             })
             .collect())
     }

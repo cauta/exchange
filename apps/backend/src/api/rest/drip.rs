@@ -25,21 +25,47 @@ pub async fn drip(
             user_address,
             token_ticker,
             amount,
-            signature,
+            signature: _,
         } => {
-            // TODO: Implement faucet
-            // Steps:
-            // 1. Verify signature (if needed for dev/test faucet)
-            // 2. Parse amount from string to u128
-            // 3. Check token exists
-            // 4. Update user balance in database
-            // 5. Return new balance
-            todo!(
-                "Implement faucet: user={}, token={}, amount={}",
+            // TODO: Verify signature (skip for dev/test faucet)
+
+            // Parse amount from string to u128
+            let amount_value = amount.parse::<u128>().map_err(|_| {
+                Json(DripErrorResponse {
+                    error: "Invalid amount format".to_string(),
+                    code: "INVALID_AMOUNT".to_string(),
+                })
+            })?;
+
+            // Check token exists
+            state.db.get_token(&token_ticker).await.map_err(|e| {
+                Json(DripErrorResponse {
+                    error: format!("Token not found: {}", e),
+                    code: "TOKEN_NOT_FOUND".to_string(),
+                })
+            })?;
+
+            // Create user if doesn't exist
+            let _ = state.db.create_user(user_address.clone()).await;
+
+            // Add balance
+            let new_balance = state
+                .db
+                .add_balance(&user_address, &token_ticker, amount_value)
+                .await
+                .map_err(|e| {
+                    Json(DripErrorResponse {
+                        error: format!("Failed to update balance: {}", e),
+                        code: "BALANCE_UPDATE_ERROR".to_string(),
+                    })
+                })?;
+
+            Ok(Json(DripResponse::Faucet {
                 user_address,
                 token_ticker,
-                amount
-            )
+                amount,
+                new_balance: new_balance.amount.to_string(),
+            }))
         }
     }
 }

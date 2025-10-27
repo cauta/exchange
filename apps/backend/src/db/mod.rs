@@ -12,7 +12,8 @@ pub mod users;
 
 // Re-export common types
 pub use clickhouse::Client;
-pub use sqlx::postgres::PgPool;
+pub use sqlx::postgres::{PgPool, Postgres};
+pub use sqlx::Transaction;
 
 /// Main database handle with connections to both databases
 #[derive(Clone)]
@@ -36,5 +37,10 @@ impl Db {
             postgres,
             clickhouse,
         })
+    }
+
+    /// Begin a new database transaction
+    pub async fn begin_transaction(&self) -> crate::errors::Result<Transaction<'_, Postgres>> {
+        Ok(self.postgres.begin().await?)
     }
 }

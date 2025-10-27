@@ -97,17 +97,17 @@ async fn test_candle_operations() {
 
     // Insert test candles (open, high, low, close, volume)
     test_db
-        .create_test_candle(&market.id, timestamp1, (100, 110, 95, 105, 1000))
+        .create_test_candle(&market.id, timestamp1, "1m", (100, 110, 95, 105, 1000))
         .await
         .expect("Failed to create candle 1");
 
     test_db
-        .create_test_candle(&market.id, timestamp2, (105, 120, 100, 115, 1500))
+        .create_test_candle(&market.id, timestamp2, "1m", (105, 120, 100, 115, 1500))
         .await
         .expect("Failed to create candle 2");
 
     test_db
-        .create_test_candle(&market.id, timestamp3, (115, 125, 110, 120, 2000))
+        .create_test_candle(&market.id, timestamp3, "1m", (115, 125, 110, 120, 2000))
         .await
         .expect("Failed to create candle 3");
 
@@ -117,7 +117,7 @@ async fn test_candle_operations() {
 
     let candles = test_db
         .db
-        .get_candles(&market.id, start_time, end_time)
+        .get_candles(&market.id, "1m", start_time, end_time)
         .await
         .expect("Failed to get candles");
 
@@ -140,7 +140,7 @@ async fn test_candle_operations() {
 
     let narrow_candles = test_db
         .db
-        .get_candles(&market.id, narrow_start, narrow_end)
+        .get_candles(&market.id, "1m", narrow_start, narrow_end)
         .await
         .expect("Failed to get narrow candles");
 
@@ -169,12 +169,22 @@ async fn test_multiple_markets_and_candles() {
 
     // Insert candles for both markets
     test_db
-        .create_test_candle(&btc_market.id, timestamp, (50000, 51000, 49000, 50500, 100))
+        .create_test_candle(
+            &btc_market.id,
+            timestamp,
+            "1m",
+            (50000, 51000, 49000, 50500, 100),
+        )
         .await
         .expect("Failed to create BTC candle");
 
     test_db
-        .create_test_candle(&eth_market.id, timestamp, (3000, 3100, 2900, 3050, 500))
+        .create_test_candle(
+            &eth_market.id,
+            timestamp,
+            "1m",
+            (3000, 3100, 2900, 3050, 500),
+        )
         .await
         .expect("Failed to create ETH candle");
 
@@ -184,13 +194,13 @@ async fn test_multiple_markets_and_candles() {
 
     let btc_candles = test_db
         .db
-        .get_candles(&btc_market.id, start_time, end_time)
+        .get_candles(&btc_market.id, "1m", start_time, end_time)
         .await
         .expect("Failed to get BTC candles");
 
     let eth_candles = test_db
         .db
-        .get_candles(&eth_market.id, start_time, end_time)
+        .get_candles(&eth_market.id, "1m", start_time, end_time)
         .await
         .expect("Failed to get ETH candles");
 

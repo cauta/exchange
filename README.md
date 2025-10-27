@@ -51,12 +51,23 @@ missing production
 - metrics / alerting
 - backups / disaster recovery
 - scaling / k8s
+- vip mm channel
 
-### process
+# process
 
-culmination of my frontend skills and new backend learning. made this as clean as possible while keeping scope tight.
+### process framework
 
-decide on structure, schema, and write e2e tests fast so iterate fast. stub out models just enough of the different ones to test.
+- culmination of my frontend skills and new backend learning. made this as clean as possible while keeping scope tight.
+- decide on structure, schema, and write e2e tests fast so iterate fast. stub out models just enough of the different ones to test.
+- when starting from scratch, important to: decide structure. decide data shape. decide data flow. fill in rest of details. edge cases and optimization require more thinking
+
+### main learnings
+
+- setting up databases. using sqlx.
+- designing domain/api/db models.
+- using channels for engine input and websocket broadcast.
+
+### log
 
 - want to build exchange
 - reference previous code
@@ -101,7 +112,12 @@ decide on structure, schema, and write e2e tests fast so iterate fast. stub out 
 - add tick/lot validation to engine and api
 - hookup engine to db
 - exchange e2e from api to engine to db
+- fill out missing api endpoints and db functions
+- address executor and orderbook consistency with db using transactions
+
 - add trading signatures
+- add benchmarks
+- add cancel priority
 
 ### frontend dev
 

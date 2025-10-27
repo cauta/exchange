@@ -14,6 +14,116 @@ use backend::engine::MatchingEngine;
 use backend::AppState;
 use tower_http::cors::CorsLayer;
 
+#[allow(dead_code)]
+pub struct TestServer {
+    pub address: String,
+    pub test_db: TestDb,
+    pub test_engine: TestEngine,
+    shutdown_tx: tokio::sync::oneshot::Sender<()>,
+}
+
+#[allow(dead_code)]
+impl TestServer {
+    /// Start a test HTTP server on a random available port
+    /// Uses TestEngine internally for matching engine setup
+    pub async fn start() -> anyhow::Result<Self> {
+        // Setup database
+        let test_db = TestDb::setup().await?;
+
+        // Setup matching engine using TestEngine (without creating users)
+        // Integration tests will create their own users
+        let test_engine = TestEngine::new_with_users(&test_db, false).await;
+
+        // Create REST and WebSocket routes
+        let rest = rest::create_rest();
+        let ws = ws::create_ws();
+        let state = AppState {
+            db: test_engine.db.clone(),
+            engine_tx: test_engine.engine_tx.clone(),
+            event_tx: test_engine.event_tx(),
+        };
+        let app = Router::new()
+            .merge(rest)
+            .merge(ws)
+            .with_state(state)
+            .layer(CorsLayer::permissive());
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to bind test server: {}", e))?;
+
+        let addr = listener
+            .local_addr()
+            .map_err(|e| anyhow::anyhow!("Failed to get local address: {}", e))?;
+
+        let address = format!("http://{}", addr);
+
+        // Create shutdown channel
+        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+
+        // Spawn server in background
+        // in main.rs we spawn on main thread instead
+        // here is because we need main thread to run tests
+        tokio::spawn(async move {
+            axum::serve(listener, app)
+                .with_graceful_shutdown(async {
+                    shutdown_rx.await.ok();
+                })
+                .await
+                .expect("Server failed to start");
+        });
+
+        // Give server a moment to start
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        Ok(Self {
+            address,
+            test_db,
+            test_engine,
+            shutdown_tx,
+        })
+    }
+
+    // ============================================================================
+    // URL Builders - Use these with raw reqwest/tokio-tungstenite in tests
+    // ============================================================================
+
+    /// Build full HTTP URL for a path
+    ///
+    /// # Example
+    /// ```
+    /// let url = server.url("/api/health");
+    /// let response = reqwest::get(&url).await?;
+    /// ```
+    pub fn url(&self, path: &str) -> String {
+        format!("{}{}", self.address, path)
+    }
+
+    /// Build WebSocket URL for a path
+    ///
+    /// # Example
+    /// ```
+    /// let ws_url = server.ws_url("/ws");
+    /// let (ws, _) = tokio_tungstenite::connect_async(&ws_url).await?;
+    /// ```
+    pub fn ws_url(&self, path: &str) -> String {
+        format!("{}{}", self.address.replace("http://", "ws://"), path)
+    }
+
+    // ============================================================================
+    // Database Access
+    // ============================================================================
+
+    /// Get reference to database connection for direct DB operations in tests
+    pub fn db(&self) -> &Db {
+        &self.test_db.db
+    }
+
+    /// Get reference to test engine for engine operations in tests
+    pub fn engine(&self) -> &TestEngine {
+        &self.test_engine
+    }
+}
+
 /// Test database container setup
 #[allow(dead_code)]
 pub struct TestDb {
@@ -100,7 +210,7 @@ impl TestDb {
         })
     }
 
-    /// Set up ClickHouse schema for testing using schema.sql file
+    /// Set up ClickHouse schema for testing
     async fn setup_clickhouse_schema(client: &Client) -> anyhow::Result<()> {
         // Create database first
         client
@@ -109,17 +219,22 @@ impl TestDb {
             .await
             .map_err(|e| anyhow::anyhow!("Failed to create ClickHouse database: {}", e))?;
 
-        // Read and execute schema from schema.sql file
-        let schema_path = std::path::Path::new("src/db/ch/schema.sql");
-        let schema_sql = std::fs::read_to_string(schema_path)
-            .map_err(|e| anyhow::anyhow!("Failed to read ClickHouse schema file: {}", e))?;
-
-        // Execute the schema SQL
+        // Create trades table for tick data
         client
-            .query(&schema_sql)
+            .query("CREATE TABLE IF NOT EXISTS exchange.trades (id UUID, market_id String, buyer_address String, seller_address String, buyer_order_id UUID, seller_order_id UUID, price UInt128, size UInt128, timestamp DateTime) ENGINE = MergeTree() ORDER BY (market_id, timestamp) PRIMARY KEY (market_id, timestamp)")
             .execute()
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to execute ClickHouse schema: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to create trades table: {}", e))?;
+
+        // Create candles table for aggregated OHLCV data
+        client
+            .query("CREATE TABLE IF NOT EXISTS exchange.candles (market_id String, timestamp DateTime, interval String, open UInt128, high UInt128, low UInt128, close UInt128, volume UInt128) ENGINE = MergeTree() ORDER BY (market_id, interval, timestamp) PRIMARY KEY (market_id, interval, timestamp)")
+            .execute()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to create candles table: {}", e))?;
+
+        // Note: Materialized views for candles can be added later if needed
+        // For now, candles can be inserted manually or computed on-the-fly from trades
 
         Ok(())
     }
@@ -185,6 +300,25 @@ impl TestDb {
         // Then create the market
         self.create_test_market(base_ticker, quote_ticker).await
     }
+
+    /// Helper function to create test candle
+    pub async fn create_test_candle(
+        self: &TestDb,
+        market_id: &str,
+        timestamp: chrono::DateTime<chrono::Utc>,
+        interval: &str,                        // '1m', '5m', '15m', '1h', '1d'
+        ohlcv: (u128, u128, u128, u128, u128), // (open, high, low, close, volume)
+    ) -> anyhow::Result<()> {
+        self.db
+            .insert_candle(
+                market_id.to_string(),
+                timestamp,
+                interval.to_string(),
+                ohlcv,
+            )
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to create test candle: {}", e))
+    }
 }
 
 /// Helper for matching engine testing
@@ -193,33 +327,41 @@ pub struct TestEngine {
     pub db: Db,
     pub engine_tx: mpsc::Sender<EngineRequest>,
     pub event_rx: broadcast::Receiver<EngineEvent>,
+    event_tx: broadcast::Sender<EngineEvent>,
 }
 
 #[allow(dead_code)]
 impl TestEngine {
     pub async fn new(test_db: &TestDb) -> Self {
-        // Create common test users
-        let _ = test_db.create_test_user("buyer").await;
-        let _ = test_db.create_test_user("seller").await;
-        let _ = test_db.create_test_user("seller1").await;
-        let _ = test_db.create_test_user("seller2").await;
-        let _ = test_db.create_test_user("seller3").await;
-        let _ = test_db.create_test_user("buyer1").await;
-        let _ = test_db.create_test_user("buyer2").await;
-        let _ = test_db.create_test_user("buyer3").await;
-        let _ = test_db.create_test_user("alice").await;
-        let _ = test_db.create_test_user("bob").await;
-        let _ = test_db.create_test_user("charlie").await;
-        let _ = test_db.create_test_user("dave").await;
-        let _ = test_db.create_test_user("user1").await;
-        let _ = test_db.create_test_user("user2").await;
-        let _ = test_db.create_test_user("attacker").await;
-        let _ = test_db.create_test_user("big_buyer").await;
+        Self::new_with_users(test_db, true).await
+    }
+
+    /// Create a new TestEngine, optionally creating common test users
+    pub async fn new_with_users(test_db: &TestDb, create_users: bool) -> Self {
+        // Create common test users for engine tests only
+        if create_users {
+            let _ = test_db.create_test_user("buyer").await;
+            let _ = test_db.create_test_user("seller").await;
+            let _ = test_db.create_test_user("seller1").await;
+            let _ = test_db.create_test_user("seller2").await;
+            let _ = test_db.create_test_user("seller3").await;
+            let _ = test_db.create_test_user("buyer1").await;
+            let _ = test_db.create_test_user("buyer2").await;
+            let _ = test_db.create_test_user("buyer3").await;
+            let _ = test_db.create_test_user("alice").await;
+            let _ = test_db.create_test_user("bob").await;
+            let _ = test_db.create_test_user("charlie").await;
+            let _ = test_db.create_test_user("dave").await;
+            let _ = test_db.create_test_user("user1").await;
+            let _ = test_db.create_test_user("user2").await;
+            let _ = test_db.create_test_user("attacker").await;
+            let _ = test_db.create_test_user("big_buyer").await;
+        }
 
         let (engine_tx, engine_rx) = mpsc::channel::<EngineRequest>(100);
         let (event_tx, event_rx) = broadcast::channel::<EngineEvent>(1000);
 
-        let engine = MatchingEngine::new(test_db.db.clone(), engine_rx, event_tx);
+        let engine = MatchingEngine::new(test_db.db.clone(), engine_rx, event_tx.clone());
 
         // Spawn engine in background
         tokio::spawn(async move {
@@ -230,7 +372,13 @@ impl TestEngine {
             db: test_db.db.clone(),
             engine_tx,
             event_rx,
+            event_tx,
         }
+    }
+
+    /// Get a clone of the event sender for HTTP server state
+    pub fn event_tx(&self) -> broadcast::Sender<EngineEvent> {
+        self.event_tx.clone()
     }
 
     /// Helper to place an order and get the response
@@ -296,128 +444,5 @@ impl TestEngine {
             created_at: Utc::now(),
             updated_at: Utc::now(),
         }
-    }
-}
-
-#[allow(dead_code)]
-impl TestDb {
-    /// Helper function to create test candle
-    pub async fn create_test_candle(
-        self: &TestDb,
-        market_id: &str,
-        timestamp: chrono::DateTime<chrono::Utc>,
-        ohlcv: (u128, u128, u128, u128, u128), // (open, high, low, close, volume)
-    ) -> anyhow::Result<()> {
-        self.db
-            .insert_candle(market_id.to_string(), timestamp, ohlcv)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to create test candle: {}", e))
-    }
-}
-
-#[allow(dead_code)]
-pub struct TestServer {
-    pub address: String,
-    pub test_db: TestDb,
-    shutdown_tx: tokio::sync::oneshot::Sender<()>,
-}
-
-#[allow(dead_code)]
-impl TestServer {
-    /// Start a test HTTP server on a random available port
-    pub async fn start() -> anyhow::Result<Self> {
-        // main.rs that needs to get the url and connect to db
-        // instead, we can acess db handles directly! noice!
-        let test_db = TestDb::setup().await?;
-
-        // setup matching engine & api
-        // exact same logic as main.rs
-        let (engine_tx, engine_rx) = mpsc::channel::<EngineRequest>(100);
-        let (event_tx, _) = broadcast::channel::<EngineEvent>(1000);
-        let engine = MatchingEngine::new(test_db.db.clone(), engine_rx, event_tx.clone());
-        tokio::spawn(async move {
-            engine.run().await;
-        });
-
-        let rest = rest::create_rest();
-        let ws = ws::create_ws();
-        let state = AppState {
-            db: test_db.db.clone(),
-            engine_tx,
-            event_tx,
-        };
-        let app = Router::new()
-            .merge(rest)
-            .merge(ws)
-            .with_state(state)
-            .layer(CorsLayer::permissive());
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to bind test server: {}", e))?;
-
-        let addr = listener
-            .local_addr()
-            .map_err(|e| anyhow::anyhow!("Failed to get local address: {}", e))?;
-
-        let address = format!("http://{}", addr);
-
-        // Create shutdown channel
-        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
-
-        // Spawn server in background
-        // in main.rs we spawn on main thread instead
-        // here is because we need main thread to run tests
-        tokio::spawn(async move {
-            axum::serve(listener, app)
-                .with_graceful_shutdown(async {
-                    shutdown_rx.await.ok();
-                })
-                .await
-                .expect("Server failed to start");
-        });
-
-        // Give server a moment to start
-        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
-        Ok(Self {
-            address,
-            test_db,
-            shutdown_tx,
-        })
-    }
-
-    // ============================================================================
-    // URL Builders - Use these with raw reqwest/tokio-tungstenite in tests
-    // ============================================================================
-
-    /// Build full HTTP URL for a path
-    ///
-    /// # Example
-    /// ```
-    /// let url = server.url("/api/health");
-    /// let response = reqwest::get(&url).await?;
-    /// ```
-    pub fn url(&self, path: &str) -> String {
-        format!("{}{}", self.address, path)
-    }
-
-    /// Build WebSocket URL for a path
-    ///
-    /// # Example
-    /// ```
-    /// let ws_url = server.ws_url("/ws");
-    /// let (ws, _) = tokio_tungstenite::connect_async(&ws_url).await?;
-    /// ```
-    pub fn ws_url(&self, path: &str) -> String {
-        format!("{}{}", self.address.replace("http://", "ws://"), path)
-    }
-
-    // ============================================================================
-    // Database Access
-    // ============================================================================
-
-    /// Get reference to database connection for direct DB operations in tests
-    pub fn db(&self) -> &Db {
-        &self.test_db.db
     }
 }

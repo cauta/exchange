@@ -72,10 +72,25 @@ pub struct BalanceRow {
     pub updated_at: DateTime<Utc>,
 }
 
+// ClickHouse-specific row types (for tick data and candles)
+#[derive(Debug, Clone, Row, Serialize, Deserialize)]
+pub struct ClickHouseTradeRow {
+    pub id: Uuid,
+    pub market_id: String,
+    pub buyer_address: String,
+    pub seller_address: String,
+    pub buyer_order_id: Uuid,
+    pub seller_order_id: Uuid,
+    pub price: u128,
+    pub size: u128,
+    pub timestamp: u32, // Unix timestamp
+}
+
 #[derive(Debug, Clone, Row, Serialize, Deserialize)]
 pub struct CandleRow {
     pub market_id: String,
-    pub timestamp: u32, // ClickHouse DateTime is stored as Unix timestamp (u32)
+    pub timestamp: u32,   // ClickHouse DateTime is stored as Unix timestamp (u32)
+    pub interval: String, // '1m', '5m', '15m', '1h', '1d'
     pub open: u128,
     pub high: u128,
     pub low: u128,

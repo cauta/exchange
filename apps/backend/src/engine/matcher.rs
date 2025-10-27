@@ -42,8 +42,7 @@ impl Matcher {
                 let match_size = remaining_size.min(maker_remaining);
 
                 matches.push(Match {
-                    maker_order_id: maker_order.id,
-                    taker_order_id: taker_order.id,
+                    maker_order: maker_order.clone(),
                     price: *price, // Match at maker's price (price-time priority)
                     size: match_size,
                 });

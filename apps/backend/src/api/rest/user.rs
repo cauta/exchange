@@ -26,34 +26,65 @@ pub async fn user(
             status,
             limit,
         } => {
-            // TODO: Implement get user orders
-            // Example: state.db.get_user_orders(&user_address, market_id.as_deref(), status.as_deref(), limit).await
-            todo!(
-                "Implement get user orders for address: {}, market: {:?}, status: {:?}, limit: {:?}",
-                user_address,
-                market_id,
-                status,
-                limit
-            )
+            // Parse status string to OrderStatus enum if provided
+            use crate::models::domain::OrderStatus;
+            let status_enum = status.as_ref().and_then(|s| match s.as_str() {
+                "pending" => Some(OrderStatus::Pending),
+                "partially_filled" => Some(OrderStatus::PartiallyFilled),
+                "filled" => Some(OrderStatus::Filled),
+                "cancelled" => Some(OrderStatus::Cancelled),
+                _ => None,
+            });
+
+            let orders = state
+                .db
+                .get_user_orders(
+                    &user_address,
+                    market_id.as_deref(),
+                    status_enum,
+                    limit.unwrap_or(100),
+                )
+                .await
+                .map_err(|e| {
+                    Json(UserErrorResponse {
+                        error: format!("Failed to get user orders: {}", e),
+                        code: "GET_ORDERS_ERROR".to_string(),
+                    })
+                })?;
+
+            Ok(Json(UserResponse::Orders { orders }))
         }
         UserRequest::Balances { user_address } => {
-            // TODO: Implement get user balances
-            // Example: state.db.get_user_balances(&user_address).await
-            todo!("Implement get user balances for address: {}", user_address)
+            let balances = state
+                .db
+                .list_balances_by_user(&user_address)
+                .await
+                .map_err(|e| {
+                    Json(UserErrorResponse {
+                        error: format!("Failed to get user balances: {}", e),
+                        code: "GET_BALANCES_ERROR".to_string(),
+                    })
+                })?;
+
+            Ok(Json(UserResponse::Balances { balances }))
         }
         UserRequest::Trades {
             user_address,
             market_id,
             limit,
         } => {
-            // TODO: Implement get user trades
-            // Example: state.db.get_user_trades(&user_address, market_id.as_deref(), limit).await
-            todo!(
-                "Implement get user trades for address: {}, market: {:?}, limit: {:?}",
-                user_address,
-                market_id,
-                limit
-            )
+            let trades = state
+                .db
+                .get_user_trades(&user_address, market_id.as_deref(), limit.unwrap_or(100))
+                .await
+                .map_err(|e| {
+                    Json(UserErrorResponse {
+                        error: format!("Failed to get user trades: {}", e),
+                        code: "GET_TRADES_ERROR".to_string(),
+                    })
+                })?;
+
+            Ok(Json(UserResponse::Trades { trades }))
         }
     }
 }
