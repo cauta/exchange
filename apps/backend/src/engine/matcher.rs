@@ -59,10 +59,12 @@ impl Matcher {
     fn can_match_price(taker: &Order, maker_price: u128) -> bool {
         match (taker.side, taker.order_type) {
             // Buy limit: can match if willing to pay >= maker's asking price
+            // considered a taker order if above lowest ask
             (Side::Buy, OrderType::Limit) => taker.price >= maker_price,
             // Buy market: match at any price
             (Side::Buy, OrderType::Market) => true,
             // Sell limit: can match if willing to accept <= maker's bid price
+            // considered a taker order if below highest bid
             (Side::Sell, OrderType::Limit) => taker.price <= maker_price,
             // Sell market: match at any price
             (Side::Sell, OrderType::Market) => true,

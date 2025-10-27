@@ -1,6 +1,10 @@
 use axum::{extract::State, response::Json};
+use chrono::Utc;
+use uuid::Uuid;
 
 use crate::models::api::{TradeErrorResponse, TradeRequest, TradeResponse};
+use crate::models::domain::{EngineRequest, Market, Order, OrderStatus};
+use tokio::sync::oneshot;
 
 /// Execute trades (place/cancel orders)
 #[utoipa::path(
@@ -28,41 +32,176 @@ pub async fn trade(
             order_type,
             price,
             size,
-            signature,
+            signature: _,
         } => {
-            // TODO: Implement place order
-            // Steps:
-            // 1. Verify signature
-            // 2. Parse price and size from strings to u128
-            // 3. Create Order struct
-            // 4. Send to matching engine via state.engine_tx
-            // 5. Return order and any immediate trades
-            todo!(
-                "Implement place order: user={}, market={}, side={:?}, type={:?}, price={}, size={}",
+            // TODO: Verify signature
+
+            // Parse price and size from strings to u128
+            let price_value = price.parse::<u128>().map_err(|_| {
+                Json(TradeErrorResponse {
+                    error: "Invalid price format".to_string(),
+                    code: "INVALID_PRICE".to_string(),
+                })
+            })?;
+
+            let size_value = size.parse::<u128>().map_err(|_| {
+                Json(TradeErrorResponse {
+                    error: "Invalid size format".to_string(),
+                    code: "INVALID_SIZE".to_string(),
+                })
+            })?;
+
+            // Get market config for validation
+            let market = state.db.get_market(&market_id).await.map_err(|e| {
+                Json(TradeErrorResponse {
+                    error: format!("Market not found: {}", e),
+                    code: "MARKET_NOT_FOUND".to_string(),
+                })
+            })?;
+
+            // Validate order parameters
+            validate_order_params(price_value, size_value, &market)?;
+
+            // Create order
+            let order = Order {
+                id: Uuid::new_v4(),
                 user_address,
                 market_id,
                 side,
                 order_type,
-                price,
-                size
-            )
+                price: price_value,
+                size: size_value,
+                filled_size: 0,
+                status: OrderStatus::Pending,
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            };
+
+            // Send to matching engine
+            let (response_tx, response_rx) = oneshot::channel();
+            state
+                .engine_tx
+                .send(EngineRequest::PlaceOrder { order, response_tx })
+                .await
+                .map_err(|_| {
+                    Json(TradeErrorResponse {
+                        error: "Failed to send order to engine".to_string(),
+                        code: "ENGINE_ERROR".to_string(),
+                    })
+                })?;
+
+            // Wait for response
+            let result = response_rx.await.map_err(|_| {
+                Json(TradeErrorResponse {
+                    error: "Failed to receive response from engine".to_string(),
+                    code: "ENGINE_ERROR".to_string(),
+                })
+            })?;
+
+            let placed = result.map_err(|e| {
+                Json(TradeErrorResponse {
+                    error: e.to_string(),
+                    code: "PLACE_ORDER_ERROR".to_string(),
+                })
+            })?;
+
+            Ok(Json(TradeResponse::PlaceOrder {
+                order: placed.order,
+                trades: placed.trades,
+            }))
         }
         TradeRequest::CancelOrder {
             user_address,
             order_id,
-            signature,
+            signature: _,
         } => {
-            // TODO: Implement cancel order
-            // Steps:
-            // 1. Verify signature
-            // 2. Parse order_id from string to Uuid
-            // 3. Send cancel request to matching engine
-            // 4. Return cancelled order_id
-            todo!(
-                "Implement cancel order: user={}, order_id={}",
-                user_address,
-                order_id
-            )
+            // TODO: Verify signature
+
+            // Parse order_id
+            let order_uuid = Uuid::parse_str(&order_id).map_err(|_| {
+                Json(TradeErrorResponse {
+                    error: "Invalid order ID format".to_string(),
+                    code: "INVALID_ORDER_ID".to_string(),
+                })
+            })?;
+
+            // Send to matching engine
+            let (response_tx, response_rx) = oneshot::channel();
+            state
+                .engine_tx
+                .send(EngineRequest::CancelOrder {
+                    order_id: order_uuid,
+                    user_address,
+                    response_tx,
+                })
+                .await
+                .map_err(|_| {
+                    Json(TradeErrorResponse {
+                        error: "Failed to send cancel request to engine".to_string(),
+                        code: "ENGINE_ERROR".to_string(),
+                    })
+                })?;
+
+            // Wait for response
+            let result = response_rx.await.map_err(|_| {
+                Json(TradeErrorResponse {
+                    error: "Failed to receive response from engine".to_string(),
+                    code: "ENGINE_ERROR".to_string(),
+                })
+            })?;
+
+            let cancelled = result.map_err(|e| {
+                Json(TradeErrorResponse {
+                    error: e.to_string(),
+                    code: "CANCEL_ORDER_ERROR".to_string(),
+                })
+            })?;
+
+            Ok(Json(TradeResponse::CancelOrder {
+                order_id: cancelled.order_id,
+            }))
         }
     }
+}
+
+/// Validate order parameters against market configuration
+fn validate_order_params(
+    price: u128,
+    size: u128,
+    market: &Market,
+) -> Result<(), Json<TradeErrorResponse>> {
+    // Validate tick size (price must be multiple of tick_size)
+    if price % market.tick_size != 0 {
+        return Err(Json(TradeErrorResponse {
+            error: format!(
+                "Price {} is not a multiple of tick size {}",
+                price, market.tick_size
+            ),
+            code: "INVALID_TICK_SIZE".to_string(),
+        }));
+    }
+
+    // Validate lot size (size must be multiple of lot_size)
+    if size % market.lot_size != 0 {
+        return Err(Json(TradeErrorResponse {
+            error: format!(
+                "Size {} is not a multiple of lot size {}",
+                size, market.lot_size
+            ),
+            code: "INVALID_LOT_SIZE".to_string(),
+        }));
+    }
+
+    // Validate minimum order size
+    if size < market.min_size {
+        return Err(Json(TradeErrorResponse {
+            error: format!(
+                "Size {} is below minimum order size {}",
+                size, market.min_size
+            ),
+            code: "BELOW_MIN_SIZE".to_string(),
+        }));
+    }
+
+    Ok(())
 }

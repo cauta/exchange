@@ -71,6 +71,10 @@ impl MatchingEngine {
         &mut self,
         mut order: crate::models::domain::Order,
     ) -> Result<OrderPlaced, ExchangeError> {
+        // Validate order against market config
+        let market = self.db.get_market(&order.market_id).await?;
+        Self::validate_order(&order, &market)?;
+
         // 1. Get matches from matcher and apply them
         let (matches, trades) = {
             let mut orderbooks = self.orderbooks.write().await;
@@ -87,8 +91,8 @@ impl MatchingEngine {
                 vec![]
             };
 
-            // Update orderbook with matches
-            orderbook.apply_matches(&order, &matches);
+            // Update orderbook with matches (handles min_size check internally)
+            orderbook.apply_matches(&order, &matches, &market);
 
             (matches, trades)
         };
@@ -170,5 +174,43 @@ impl MatchingEngine {
                 }
             }
         })
+    }
+
+    /// Validate order against market configuration
+    fn validate_order(
+        order: &crate::models::domain::Order,
+        market: &crate::models::domain::Market,
+    ) -> Result<(), ExchangeError> {
+        // Validate tick size (price must be multiple of tick_size)
+        if order.price % market.tick_size != 0 {
+            return Err(ExchangeError::InvalidParameter {
+                message: format!(
+                    "Price {} is not a multiple of tick size {}",
+                    order.price, market.tick_size
+                ),
+            });
+        }
+
+        // Validate lot size (size must be multiple of lot_size)
+        if order.size % market.lot_size != 0 {
+            return Err(ExchangeError::InvalidParameter {
+                message: format!(
+                    "Size {} is not a multiple of lot size {}",
+                    order.size, market.lot_size
+                ),
+            });
+        }
+
+        // Validate minimum order size
+        if order.size < market.min_size {
+            return Err(ExchangeError::InvalidParameter {
+                message: format!(
+                    "Size {} is below minimum order size {}",
+                    order.size, market.min_size
+                ),
+            });
+        }
+
+        Ok(())
     }
 }

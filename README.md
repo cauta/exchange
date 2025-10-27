@@ -98,6 +98,7 @@ decide on structure, schema, and write e2e tests fast so iterate fast. stub out 
 - add ws integration tests and improve utils
 - consider orderbook snapshot emission from engine task
 - implement engine. concurrency limitation for multiple markets since all pass through same engine.
+- add tick/lot validation to engine and api
 
 ### frontend dev
 
