@@ -1,15 +1,17 @@
 use backend::db::Db;
+use backend::models::domain::{EngineEvent, EngineRequest, Order, OrderStatus, OrderType, Side};
+use chrono::Utc;
 use clickhouse::Client;
 use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::{clickhouse::ClickHouse, postgres::Postgres};
+use tokio::sync::{broadcast, mpsc, oneshot};
+use uuid::Uuid;
 
 use axum::Router;
 use backend::api::rest;
 use backend::api::ws;
 use backend::engine::MatchingEngine;
-use backend::models::domain::{EngineEvent, EngineRequest};
 use backend::AppState;
-use tokio::sync::{broadcast, mpsc};
 use tower_http::cors::CorsLayer;
 
 /// Test database container setup
@@ -183,7 +185,122 @@ impl TestDb {
         // Then create the market
         self.create_test_market(base_ticker, quote_ticker).await
     }
+}
 
+/// Helper for matching engine testing
+#[allow(dead_code)]
+pub struct TestEngine {
+    pub db: Db,
+    pub engine_tx: mpsc::Sender<EngineRequest>,
+    pub event_rx: broadcast::Receiver<EngineEvent>,
+}
+
+#[allow(dead_code)]
+impl TestEngine {
+    pub async fn new(test_db: &TestDb) -> Self {
+        // Create common test users
+        let _ = test_db.create_test_user("buyer").await;
+        let _ = test_db.create_test_user("seller").await;
+        let _ = test_db.create_test_user("seller1").await;
+        let _ = test_db.create_test_user("seller2").await;
+        let _ = test_db.create_test_user("seller3").await;
+        let _ = test_db.create_test_user("buyer1").await;
+        let _ = test_db.create_test_user("buyer2").await;
+        let _ = test_db.create_test_user("buyer3").await;
+        let _ = test_db.create_test_user("alice").await;
+        let _ = test_db.create_test_user("bob").await;
+        let _ = test_db.create_test_user("charlie").await;
+        let _ = test_db.create_test_user("dave").await;
+        let _ = test_db.create_test_user("user1").await;
+        let _ = test_db.create_test_user("user2").await;
+        let _ = test_db.create_test_user("attacker").await;
+        let _ = test_db.create_test_user("big_buyer").await;
+
+        let (engine_tx, engine_rx) = mpsc::channel::<EngineRequest>(100);
+        let (event_tx, event_rx) = broadcast::channel::<EngineEvent>(1000);
+
+        let engine = MatchingEngine::new(test_db.db.clone(), engine_rx, event_tx);
+
+        // Spawn engine in background
+        tokio::spawn(async move {
+            engine.run().await;
+        });
+
+        Self {
+            db: test_db.db.clone(),
+            engine_tx,
+            event_rx,
+        }
+    }
+
+    /// Helper to place an order and get the response
+    pub async fn place_order(
+        &self,
+        order: Order,
+    ) -> Result<backend::models::api::OrderPlaced, String> {
+        let (response_tx, response_rx) = oneshot::channel();
+
+        self.engine_tx
+            .send(EngineRequest::PlaceOrder { order, response_tx })
+            .await
+            .map_err(|e| format!("Failed to send order: {}", e))?;
+
+        response_rx
+            .await
+            .map_err(|e| format!("Failed to receive response: {}", e))?
+            .map_err(|e| format!("Order placement failed: {}", e))
+    }
+
+    /// Helper to cancel an order
+    pub async fn cancel_order(
+        &self,
+        order_id: Uuid,
+        user_address: String,
+    ) -> Result<backend::models::api::OrderCancelled, String> {
+        let (response_tx, response_rx) = oneshot::channel();
+
+        self.engine_tx
+            .send(EngineRequest::CancelOrder {
+                order_id,
+                user_address,
+                response_tx,
+            })
+            .await
+            .map_err(|e| format!("Failed to send cancel request: {}", e))?;
+
+        response_rx
+            .await
+            .map_err(|e| format!("Failed to receive response: {}", e))?
+            .map_err(|e| format!("Order cancellation failed: {}", e))
+    }
+
+    /// Helper to create a test order
+    pub fn create_order(
+        user_address: &str,
+        market_id: &str,
+        side: Side,
+        order_type: OrderType,
+        price: u128,
+        size: u128,
+    ) -> Order {
+        Order {
+            id: Uuid::new_v4(),
+            user_address: user_address.to_string(),
+            market_id: market_id.to_string(),
+            price,
+            size,
+            side,
+            order_type,
+            status: OrderStatus::Pending,
+            filled_size: 0,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+}
+
+#[allow(dead_code)]
+impl TestDb {
     /// Helper function to create test candle
     pub async fn create_test_candle(
         self: &TestDb,

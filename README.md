@@ -99,6 +99,9 @@ decide on structure, schema, and write e2e tests fast so iterate fast. stub out 
 - consider orderbook snapshot emission from engine task
 - implement engine. concurrency limitation for multiple markets since all pass through same engine.
 - add tick/lot validation to engine and api
+- hookup engine to db
+- exchange e2e from api to engine to db
+- add trading signatures
 
 ### frontend dev
 

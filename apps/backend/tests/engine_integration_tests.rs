@@ -1,103 +1,7 @@
-use backend::db::Db;
-use backend::engine::MatchingEngine;
-use backend::models::domain::{EngineEvent, EngineRequest, Order, OrderStatus, OrderType, Side};
-use chrono::Utc;
-use tokio::sync::{broadcast, mpsc, oneshot};
-use uuid::Uuid;
+use backend::models::domain::{OrderStatus, OrderType, Side};
 
 mod utils;
-use utils::TestDb;
-
-/// Helper to create a matching engine with channels for testing
-struct TestEngine {
-    #[allow(dead_code)]
-    db: Db,
-    engine_tx: mpsc::Sender<EngineRequest>,
-    #[allow(dead_code)]
-    event_rx: broadcast::Receiver<EngineEvent>,
-}
-
-impl TestEngine {
-    async fn new(test_db: &TestDb) -> Self {
-        let (engine_tx, engine_rx) = mpsc::channel::<EngineRequest>(100);
-        let (event_tx, event_rx) = broadcast::channel::<EngineEvent>(1000);
-
-        let engine = MatchingEngine::new(test_db.db.clone(), engine_rx, event_tx);
-
-        // Spawn engine in background
-        tokio::spawn(async move {
-            engine.run().await;
-        });
-
-        Self {
-            db: test_db.db.clone(),
-            engine_tx,
-            event_rx,
-        }
-    }
-
-    /// Helper to place an order and get the response
-    async fn place_order(&self, order: Order) -> Result<backend::models::api::OrderPlaced, String> {
-        let (response_tx, response_rx) = oneshot::channel();
-
-        self.engine_tx
-            .send(EngineRequest::PlaceOrder { order, response_tx })
-            .await
-            .map_err(|e| format!("Failed to send order: {}", e))?;
-
-        response_rx
-            .await
-            .map_err(|e| format!("Failed to receive response: {}", e))?
-            .map_err(|e| format!("Order placement failed: {}", e))
-    }
-
-    /// Helper to cancel an order
-    async fn cancel_order(
-        &self,
-        order_id: Uuid,
-        user_address: String,
-    ) -> Result<backend::models::api::OrderCancelled, String> {
-        let (response_tx, response_rx) = oneshot::channel();
-
-        self.engine_tx
-            .send(EngineRequest::CancelOrder {
-                order_id,
-                user_address,
-                response_tx,
-            })
-            .await
-            .map_err(|e| format!("Failed to send cancel request: {}", e))?;
-
-        response_rx
-            .await
-            .map_err(|e| format!("Failed to receive response: {}", e))?
-            .map_err(|e| format!("Order cancellation failed: {}", e))
-    }
-
-    /// Helper to create a test order
-    fn create_order(
-        user_address: &str,
-        market_id: &str,
-        side: Side,
-        order_type: OrderType,
-        price: u128,
-        size: u128,
-    ) -> Order {
-        Order {
-            id: Uuid::new_v4(),
-            user_address: user_address.to_string(),
-            market_id: market_id.to_string(),
-            price,
-            size,
-            side,
-            order_type,
-            status: OrderStatus::Pending,
-            filled_size: 0,
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
-        }
-    }
-}
+use utils::{TestDb, TestEngine};
 
 // ============================================================================
 // TESTS
@@ -373,7 +277,7 @@ async fn test_market_order_execution() {
     );
 
     let result = engine.place_order(market_buy).await;
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "Failed to place market buy: {:?}", result);
     let placed = result.unwrap();
 
     // Should match with both orders

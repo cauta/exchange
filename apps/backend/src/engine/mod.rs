@@ -75,7 +75,10 @@ impl MatchingEngine {
         let market = self.db.get_market(&order.market_id).await?;
         Self::validate_order(&order, &market)?;
 
-        // 1. Get matches from matcher and apply them
+        // Persist initial order to database
+        self.db.create_order(&order).await?;
+
+        // Get matches from matcher and apply them
         let (matches, trades) = {
             let mut orderbooks = self.orderbooks.write().await;
             let orderbook = orderbooks.get_or_create(&order.market_id);
@@ -83,7 +86,7 @@ impl MatchingEngine {
             // Match order against orderbook
             let matches = Matcher::match_order(&order, orderbook);
 
-            // Execute trades if we have matches
+            // Execute trades if we have matches (also updates order status in DB)
             let trades = if !matches.is_empty() {
                 let maker_orders = orderbook.get_maker_orders(&matches);
                 Executor::execute(self.db.clone(), matches.clone(), &order, &maker_orders).await?
@@ -97,7 +100,7 @@ impl MatchingEngine {
             (matches, trades)
         };
 
-        // 6. Broadcast events
+        // Broadcast events
         for trade in &trades {
             let _ = self.event_tx.send(EngineEvent::TradeExecuted {
                 trade: trade.clone(),
@@ -113,7 +116,7 @@ impl MatchingEngine {
             order.status = OrderStatus::PartiallyFilled;
         }
 
-        // Only broadcast if order is still on the book
+        // Broadcast if order is still on the book
         if order.filled_size < order.size {
             let _ = self.event_tx.send(EngineEvent::OrderPlaced {
                 order: order.clone(),
@@ -135,8 +138,14 @@ impl MatchingEngine {
             orderbooks.cancel_order(order_id, &user_address)?
         };
 
-        // TODO: Release locked funds in database
-        // self.db.release_order_funds(&cancelled_order).await?;
+        // Update order status in database
+        self.db
+            .update_order_fill(
+                order_id,
+                _cancelled_order.filled_size,
+                OrderStatus::Cancelled,
+            )
+            .await?;
 
         // Broadcast cancellation event
         let _ = self.event_tx.send(EngineEvent::OrderCancelled {
@@ -181,14 +190,16 @@ impl MatchingEngine {
         order: &crate::models::domain::Order,
         market: &crate::models::domain::Market,
     ) -> Result<(), ExchangeError> {
-        // Validate tick size (price must be multiple of tick_size)
-        if order.price % market.tick_size != 0 {
-            return Err(ExchangeError::InvalidParameter {
-                message: format!(
-                    "Price {} is not a multiple of tick size {}",
-                    order.price, market.tick_size
-                ),
-            });
+        // Validate tick size for limit orders only (price matters for limit orders)
+        if order.order_type == crate::models::domain::OrderType::Limit {
+            if order.price % market.tick_size != 0 {
+                return Err(ExchangeError::InvalidParameter {
+                    message: format!(
+                        "Price {} is not a multiple of tick size {}",
+                        order.price, market.tick_size
+                    ),
+                });
+            }
         }
 
         // Validate lot size (size must be multiple of lot_size)

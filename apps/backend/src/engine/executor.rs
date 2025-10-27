@@ -2,7 +2,7 @@
 
 use crate::db::Db;
 use crate::errors::Result;
-use crate::models::domain::{Match, Order, Side, Trade};
+use crate::models::domain::{Match, Order, OrderStatus, Side, Trade};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -11,9 +11,8 @@ pub struct Executor;
 impl Executor {
     /// Execute a vector of matches
     /// - Creates trade records
-    /// - Updates order fill status (TODO)
-    /// - Transfers balances (TODO)
-    /// - Persists everything in a transaction (TODO)
+    /// - Updates order fill status
+    /// - Persists everything to database
     /// Returns the executed trades
     pub async fn execute(
         db: Db,
@@ -25,15 +24,10 @@ impl Executor {
             return Ok(vec![]);
         }
 
-        // TODO: Start transaction
-        // let mut tx = self.db.postgres.begin().await?;
-
         let mut trades = Vec::new();
 
-        // Get market info for fee calculation (will be used for settle_trade)
-        let _market = db.get_market(&taker_order.market_id).await?;
-
-        for m in matches {
+        // Process each match
+        for m in &matches {
             // Find the maker order
             let maker_order = maker_orders
                 .iter()
@@ -70,66 +64,35 @@ impl Executor {
                 timestamp: Utc::now(),
             };
 
-            // TODO: Update orders in database
-            // self.update_order_fill(&mut tx, m.maker_order_id, m.size).await?;
-            // self.update_order_fill(&mut tx, m.taker_order_id, m.size).await?;
+            // Update maker order fill status
+            let maker_new_filled = maker_order.filled_size + m.size;
+            let maker_status = if maker_new_filled >= maker_order.size {
+                OrderStatus::Filled
+            } else {
+                OrderStatus::PartiallyFilled
+            };
+            db.update_order_fill(m.maker_order_id, maker_new_filled, maker_status)
+                .await?;
 
-            // TODO: Settle trade (transfer balances with fees)
-            // self.settle_trade(&mut tx, &trade, &market).await?;
-
-            // TODO: Insert trade into database
-            // self.insert_trade(&mut tx, &trade).await?;
+            // Insert trade into database
+            db.create_trade(&trade).await?;
 
             trades.push(trade);
         }
 
-        // TODO: Commit transaction
-        // tx.commit().await?;
+        // Update taker order fill status
+        let taker_total_filled: u128 = matches.iter().map(|m| m.size).sum();
+        let taker_new_filled = taker_order.filled_size + taker_total_filled;
+        let taker_status = if taker_new_filled >= taker_order.size {
+            OrderStatus::Filled
+        } else if taker_new_filled > 0 {
+            OrderStatus::PartiallyFilled
+        } else {
+            OrderStatus::Pending
+        };
+        db.update_order_fill(taker_order.id, taker_new_filled, taker_status)
+            .await?;
 
         Ok(trades)
     }
-
-    // TODO: Implement these helper methods once DB methods are available
-
-    // async fn update_order_fill(
-    //     &self,
-    //     tx: &mut Transaction<'_, Postgres>,
-    //     order_id: Uuid,
-    //     fill_size: u128,
-    // ) -> Result<()> {
-    //     // Update order.filled_size
-    //     // Update order.status if fully filled
-    //     // Update order.updated_at
-    //     Ok(())
-    // }
-
-    // async fn settle_trade(
-    //     &self,
-    //     tx: &mut Transaction<'_, Postgres>,
-    //     trade: &Trade,
-    //     market: &Market,
-    // ) -> Result<()> {
-    //     // Calculate amounts
-    //     let base_amount = trade.size;
-    //     let quote_amount = trade.size * trade.price; // TODO: Handle decimals properly
-    //
-    //     // Calculate fees
-    //     let maker_fee = (quote_amount * market.maker_fee_bps as u128) / 10_000;
-    //     let taker_fee = (quote_amount * market.taker_fee_bps as u128) / 10_000;
-    //
-    //     // Transfer base token: seller -> buyer
-    //     // Transfer quote token: buyer -> seller (minus fees)
-    //     // Collect fees to fee account
-    //
-    //     Ok(())
-    // }
-
-    // async fn insert_trade(
-    //     &self,
-    //     tx: &mut Transaction<'_, Postgres>,
-    //     trade: &Trade,
-    // ) -> Result<()> {
-    //     // Insert trade into database
-    //     Ok(())
-    // }
 }
