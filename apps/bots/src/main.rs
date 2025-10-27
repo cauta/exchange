@@ -9,3 +9,5 @@
 // binance mode has the copy bots.
 
 // another bot for ai trading. similar to nof1 or krafer nueral net trading.
+
+// another bot pair that listens to new markets and just does random maker and taker activity.

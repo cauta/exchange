@@ -1,6 +1,9 @@
 # exchange
 
 - for learning purposes
+- to backend/infra learning.
+- for clob, mm and ai understanding.
+- easy for anyone to deploy and use.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/U5i6Da?referralCode=trevor)
 
