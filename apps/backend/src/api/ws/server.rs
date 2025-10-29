@@ -83,7 +83,19 @@ pub(super) async fn handle_server_messages(
 /// Convert an EngineEvent to a ServerMessage for WebSocket transmission
 fn engine_event_to_message(event: EngineEvent) -> ServerMessage {
     match event {
-        EngineEvent::TradeExecuted { trade } => ServerMessage::TradeExecuted { trade },
+        EngineEvent::TradeExecuted { trade } => ServerMessage::TradeExecuted {
+            trade: crate::models::api::TradeData {
+                id: trade.id.to_string(),
+                market_id: trade.market_id,
+                buyer_address: trade.buyer_address,
+                seller_address: trade.seller_address,
+                buyer_order_id: trade.buyer_order_id.to_string(),
+                seller_order_id: trade.seller_order_id.to_string(),
+                price: trade.price.to_string(),
+                size: trade.size.to_string(),
+                timestamp: trade.timestamp.timestamp(),
+            },
+        },
         EngineEvent::OrderPlaced { order } => ServerMessage::OrderUpdate {
             order_id: order.id.to_string(),
             status: format!("{:?}", order.status).to_lowercase(),

@@ -286,7 +286,7 @@ pub enum ServerMessage {
         timestamp: i64,
     },
     TradeExecuted {
-        trade: super::domain::Trade,
+        trade: TradeData,
     },
     OrderbookSnapshot {
         orderbook: OrderbookData,
@@ -329,4 +329,18 @@ pub struct OrderbookData {
     pub market_id: String,
     pub bids: Vec<PriceLevel>,
     pub asks: Vec<PriceLevel>,
+}
+
+/// Trade data for WebSocket messages (API layer with String fields)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TradeData {
+    pub id: String, // UUID as string
+    pub market_id: String,
+    pub buyer_address: String,
+    pub seller_address: String,
+    pub buyer_order_id: String, // UUID as string
+    pub seller_order_id: String, // UUID as string
+    pub price: String, // u128 as string
+    pub size: String, // u128 as string
+    pub timestamp: i64, // Unix timestamp for WebSocket compatibility
 }

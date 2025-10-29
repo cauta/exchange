@@ -55,20 +55,8 @@ pub struct Market {
     pub id: String, // Generated as "base_ticker/quote_ticker"
     pub base_ticker: String,
     pub quote_ticker: String,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub tick_size: u128, // Minimum price increment in quote atoms
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub lot_size: u128, // Minimum size increment in base atoms
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub min_size: u128, // Minimum order size in base atoms
     pub maker_fee_bps: i32, // Maker fee in basis points (0-10000)
     pub taker_fee_bps: i32, // Taker fee in basis points (0-10000)
@@ -79,23 +67,11 @@ pub struct Order {
     pub id: Uuid,
     pub user_address: String,
     pub market_id: String, // Generated as "base_ticker/quote_ticker"
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub price: u128,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub size: u128,
     pub side: Side,
     pub order_type: OrderType,
     pub status: OrderStatus,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub filled_size: u128,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -109,15 +85,7 @@ pub struct Trade {
     pub seller_address: String,
     pub buyer_order_id: Uuid,
     pub seller_order_id: Uuid,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub price: u128,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub size: u128,
     pub timestamp: DateTime<Utc>,
 }
@@ -126,15 +94,7 @@ pub struct Trade {
 pub struct Balance {
     pub user_address: String,
     pub token_ticker: String,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub amount: u128,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub open_interest: u128,
     pub updated_at: DateTime<Utc>,
 }
@@ -143,47 +103,11 @@ pub struct Balance {
 pub struct Candle {
     pub market_id: String,
     pub timestamp: DateTime<Utc>,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub open: u128,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub high: u128,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub low: u128,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub close: u128,
-    #[serde(
-        serialize_with = "serialize_u128_as_string",
-        deserialize_with = "deserialize_u128_from_string"
-    )]
     pub volume: u128,
-}
-
-// Helper functions for serializing u128 as strings (JSON doesn't support u128)
-fn serialize_u128_as_string<S>(value: &u128, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    serializer.serialize_str(&value.to_string())
-}
-
-fn deserialize_u128_from_string<'de, D>(deserializer: D) -> Result<u128, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    s.parse().map_err(serde::de::Error::custom)
 }
 
 // ============================================================================
