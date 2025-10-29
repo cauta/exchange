@@ -88,7 +88,7 @@ impl MatchingEngine {
 
             // Execute trades if we have matches (also updates order status in DB)
             let trades = if !matches.is_empty() {
-                Executor::execute(self.db.clone(), matches.clone(), &order).await?
+                Executor::execute(self.db.clone(), matches.clone(), &order, &market).await?
             } else {
                 vec![]
             };
@@ -132,16 +132,47 @@ impl MatchingEngine {
         user_address: String,
     ) -> Result<OrderCancelled, ExchangeError> {
         // Cancel order using orderbooks method (handles search and ownership verification)
-        let _cancelled_order = {
+        let cancelled_order = {
             let mut orderbooks = self.orderbooks.write().await;
             orderbooks.cancel_order(order_id, &user_address)?
         };
+
+        // Get market config to determine which token to unlock
+        let market = self.db.get_market(&cancelled_order.market_id).await?;
+
+        // Calculate unfilled amount that needs to be unlocked
+        let unfilled_size = cancelled_order.size - cancelled_order.filled_size;
+
+        if unfilled_size > 0 {
+            // Determine which token and amount to unlock based on order side
+            let (token_to_unlock, amount_to_unlock) = match cancelled_order.side {
+                crate::models::domain::Side::Buy => {
+                    // Buy order: unlock quote tokens (price * unfilled_size)
+                    let quote_amount = cancelled_order
+                        .price
+                        .checked_mul(unfilled_size)
+                        .ok_or_else(|| ExchangeError::InvalidParameter {
+                            message: "Unlock amount overflow".to_string(),
+                        })?;
+                    (market.quote_ticker, quote_amount)
+                }
+                crate::models::domain::Side::Sell => {
+                    // Sell order: unlock base tokens (unfilled_size)
+                    (market.base_ticker, unfilled_size)
+                }
+            };
+
+            // Unlock the balance
+            self.db
+                .unlock_balance(&user_address, &token_to_unlock, amount_to_unlock)
+                .await?;
+        }
 
         // Update order status in database
         self.db
             .update_order_fill(
                 order_id,
-                _cancelled_order.filled_size,
+                cancelled_order.filled_size,
                 OrderStatus::Cancelled,
             )
             .await?;

@@ -71,6 +71,37 @@ async fn cancel_order_via_api(
         .expect("Failed to parse JSON response")
 }
 
+/// Helper to drip tokens to a user via REST API (faucet)
+async fn drip_tokens_via_api(
+    server_url: &str,
+    user_address: &str,
+    token_ticker: &str,
+    amount: &str,
+) -> serde_json::Value {
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&format!("{}/api/drip", server_url))
+        .json(&json!({
+            "type": "faucet",
+            "user_address": user_address,
+            "token_ticker": token_ticker,
+            "amount": amount,
+            "signature": "test_signature"
+        }))
+        .send()
+        .await
+        .expect("Failed to send drip request");
+
+    let status = response.status();
+    let body = response.text().await.expect("Failed to read response");
+
+    if !status.is_success() {
+        panic!("Drip request failed with status {}: {}", status, body);
+    }
+
+    serde_json::from_str(&body).expect("Failed to parse JSON response")
+}
+
 #[tokio::test]
 async fn test_full_e2e_order_matching_via_api() {
     // Start test server
@@ -83,17 +114,10 @@ async fn test_full_e2e_order_matching_via_api() {
         .await
         .expect("Failed to create market");
 
-    // Create users
-    server
-        .test_db
-        .create_test_user("seller")
-        .await
-        .expect("Failed to create seller");
-    server
-        .test_db
-        .create_test_user("buyer")
-        .await
-        .expect("Failed to create buyer");
+    // Drip tokens to users (this also creates users if they don't exist)
+    // Seller needs BTC to sell, buyer needs USDC to buy
+    drip_tokens_via_api(&server.address, "seller", "BTC", "1000000").await;
+    drip_tokens_via_api(&server.address, "buyer", "USDC", "50000000000000000").await;
 
     // Connect to WebSocket
     let ws_url = server.ws_url("/ws");
@@ -206,11 +230,8 @@ async fn test_e2e_order_cancellation_via_api() {
         .await
         .expect("Failed to create market");
 
-    server
-        .test_db
-        .create_test_user("trader")
-        .await
-        .expect("Failed to create user");
+    // Drip tokens to trader (trader selling ETH)
+    drip_tokens_via_api(&server.address, "trader", "ETH", "5000000").await;
 
     // Place an order via API
     let place_response = place_order_via_api(
@@ -244,16 +265,9 @@ async fn test_e2e_partial_fill_via_api() {
         .await
         .expect("Failed to create market");
 
-    server
-        .test_db
-        .create_test_user("seller")
-        .await
-        .expect("Failed to create seller");
-    server
-        .test_db
-        .create_test_user("buyer")
-        .await
-        .expect("Failed to create buyer");
+    // Drip tokens to users
+    drip_tokens_via_api(&server.address, "seller", "SOL", "10000000").await;
+    drip_tokens_via_api(&server.address, "buyer", "USDC", "1000000000000000").await;
 
     // Place sell order for 10 SOL
     let sell_response = place_order_via_api(
@@ -301,16 +315,9 @@ async fn test_e2e_market_order_via_api() {
         .await
         .expect("Failed to create market");
 
-    server
-        .test_db
-        .create_test_user("seller")
-        .await
-        .expect("Failed to create seller");
-    server
-        .test_db
-        .create_test_user("buyer")
-        .await
-        .expect("Failed to create buyer");
+    // Drip tokens to users
+    drip_tokens_via_api(&server.address, "seller", "AVAX", "10000000").await;
+    drip_tokens_via_api(&server.address, "buyer", "USDC", "200000000000000").await;
 
     // Place limit sell orders at different prices
     place_order_via_api(
@@ -371,11 +378,8 @@ async fn test_e2e_orderbook_snapshots_via_websocket() {
         .await
         .expect("Failed to create market");
 
-    server
-        .test_db
-        .create_test_user("seller")
-        .await
-        .expect("Failed to create seller");
+    // Drip tokens to seller
+    drip_tokens_via_api(&server.address, "seller", "ADA", "10000000").await;
 
     // Connect to WebSocket
     let ws_url = server.ws_url("/ws");
@@ -464,21 +468,10 @@ async fn test_e2e_price_time_priority_via_api() {
         .await
         .expect("Failed to create market");
 
-    server
-        .test_db
-        .create_test_user("seller1")
-        .await
-        .expect("Failed to create seller1");
-    server
-        .test_db
-        .create_test_user("seller2")
-        .await
-        .expect("Failed to create seller2");
-    server
-        .test_db
-        .create_test_user("buyer")
-        .await
-        .expect("Failed to create buyer");
+    // Drip tokens to users
+    drip_tokens_via_api(&server.address, "seller1", "DOT", "5000000").await;
+    drip_tokens_via_api(&server.address, "seller2", "DOT", "3000000").await;
+    drip_tokens_via_api(&server.address, "buyer", "USDC", "64000000000000").await;
 
     // Place two sell orders at different prices
     place_order_via_api(

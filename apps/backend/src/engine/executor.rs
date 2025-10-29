@@ -2,7 +2,7 @@
 
 use crate::db::Db;
 use crate::errors::Result;
-use crate::models::domain::{Match, Order, OrderStatus, Side, Trade};
+use crate::models::domain::{Market, Match, Order, OrderStatus, Side, Trade};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -12,9 +12,16 @@ impl Executor {
     /// Execute a vector of matches
     /// - Creates trade records
     /// - Updates order fill status
+    /// - Calculates and applies fees
+    /// - Unlocks and transfers balances
     /// - Persists everything to database atomically
     /// Returns the executed trades
-    pub async fn execute(db: Db, matches: Vec<Match>, taker_order: &Order) -> Result<Vec<Trade>> {
+    pub async fn execute(
+        db: Db,
+        matches: Vec<Match>,
+        taker_order: &Order,
+        market: &Market,
+    ) -> Result<Vec<Trade>> {
         if matches.is_empty() {
             return Ok(vec![]);
         }
@@ -56,6 +63,63 @@ impl Executor {
                 size: m.size,
                 timestamp: Utc::now(),
             };
+
+            // Calculate trade value in quote tokens
+            let quote_amount = m
+                .price
+                .checked_mul(m.size)
+                .ok_or_else(|| crate::errors::ExchangeError::InvalidParameter {
+                    message: "Trade value overflow".to_string(),
+                })?;
+
+            // Calculate fees (charged on what each party receives)
+            // Buyer receives base tokens (size), pays taker fee if taker, maker fee if maker
+            // Seller receives quote tokens (price * size), pays maker fee if maker, taker fee if taker
+            let (buyer_fee_bps, seller_fee_bps) = match taker_order.side {
+                Side::Buy => {
+                    // Buyer is taker, seller is maker
+                    (market.taker_fee_bps, market.maker_fee_bps)
+                }
+                Side::Sell => {
+                    // Seller is taker, buyer is maker
+                    (market.maker_fee_bps, market.taker_fee_bps)
+                }
+            };
+
+            // Fee on base tokens (for buyer)
+            let buyer_fee = (m.size as i128 * buyer_fee_bps as i128 / 10000) as u128;
+            // Fee on quote tokens (for seller)
+            let seller_fee = (quote_amount as i128 * seller_fee_bps as i128 / 10000) as u128;
+
+            // Calculate amounts to unlock (what was locked when orders were placed)
+            // Buyer locked quote_amount, seller locked size
+            let buyer_unlock_amount = quote_amount;
+            let seller_unlock_amount = m.size;
+
+            // Unlock the locked amounts for both parties
+            db.unlock_balance_tx(&mut tx, &buyer_address, &market.quote_ticker, buyer_unlock_amount)
+                .await?;
+            db.unlock_balance_tx(&mut tx, &seller_address, &market.base_ticker, seller_unlock_amount)
+                .await?;
+
+            // Transfer base tokens: seller -> buyer (minus buyer's fee)
+            db.subtract_balance_tx(&mut tx, &seller_address, &market.base_ticker, m.size)
+                .await?;
+            let buyer_receives_base = m.size - buyer_fee;
+            db.add_balance_tx(&mut tx, &buyer_address, &market.base_ticker, buyer_receives_base)
+                .await?;
+
+            // Transfer quote tokens: buyer -> seller (minus seller's fee)
+            db.subtract_balance_tx(&mut tx, &buyer_address, &market.quote_ticker, quote_amount)
+                .await?;
+            let seller_receives_quote = quote_amount - seller_fee;
+            db.add_balance_tx(
+                &mut tx,
+                &seller_address,
+                &market.quote_ticker,
+                seller_receives_quote,
+            )
+            .await?;
 
             // Update maker order fill status (in transaction)
             let maker_new_filled = maker_order.filled_size + m.size;

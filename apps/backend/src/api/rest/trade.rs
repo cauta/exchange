@@ -71,11 +71,51 @@ pub async fn trade(
             // Validate order parameters
             validate_order_params(price_value, size_value, &market)?;
 
+            // Lock balance based on order side
+            // BUY orders: lock quote token (price * size)
+            // SELL orders: lock base token (size)
+            let (token_to_lock, amount_to_lock) = match side {
+                crate::models::domain::Side::Buy => {
+                    // For buy orders, need to lock quote token amount
+                    let quote_amount = price_value
+                        .checked_mul(size_value)
+                        .ok_or_else(|| {
+                            (
+                                StatusCode::BAD_REQUEST,
+                                Json(TradeErrorResponse {
+                                    error: "Order value overflow".to_string(),
+                                    code: "ORDER_VALUE_OVERFLOW".to_string(),
+                                }),
+                            )
+                        })?;
+                    (market.quote_ticker.clone(), quote_amount)
+                }
+                crate::models::domain::Side::Sell => {
+                    // For sell orders, need to lock base token amount
+                    (market.base_ticker.clone(), size_value)
+                }
+            };
+
+            // Lock the required balance (this will fail if insufficient balance)
+            state
+                .db
+                .lock_balance(&user_address, &token_to_lock, amount_to_lock)
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(TradeErrorResponse {
+                            error: e.to_string(),
+                            code: "INSUFFICIENT_BALANCE".to_string(),
+                        }),
+                    )
+                })?;
+
             // Create order
             let order = Order {
                 id: Uuid::new_v4(),
-                user_address,
-                market_id,
+                user_address: user_address.clone(),
+                market_id: market_id.clone(),
                 side,
                 order_type,
                 price: price_value,
@@ -114,6 +154,14 @@ pub async fn trade(
             })?;
 
             let placed = result.map_err(|e| {
+                // If order placement failed, unlock the balance
+                let db_clone = state.db.clone();
+                let user_addr = user_address.clone();
+                let token = token_to_lock.clone();
+                tokio::spawn(async move {
+                    let _ = db_clone.unlock_balance(&user_addr, &token, amount_to_lock).await;
+                });
+
                 (
                     StatusCode::BAD_REQUEST,
                     Json(TradeErrorResponse {

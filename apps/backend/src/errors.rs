@@ -19,8 +19,12 @@ pub enum ExchangeError {
     #[error("Invalid parameter: {message}")]
     InvalidParameter { message: String },
 
-    #[error("Insufficient balance")]
-    InsufficientBalance,
+    #[error("Insufficient balance for user '{user_address}' token '{token_ticker}': required {required}")]
+    InsufficientBalance {
+        user_address: String,
+        token_ticker: String,
+        required: u128,
+    },
 
     #[error("Order not found")]
     OrderNotFound,
@@ -46,7 +50,7 @@ impl IntoResponse for ExchangeError {
             ExchangeError::MarketNotFound { .. } => (StatusCode::NOT_FOUND, self.to_string()),
             ExchangeError::MarketAlreadyExists { .. } => (StatusCode::CONFLICT, self.to_string()),
             ExchangeError::InvalidParameter { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
-            ExchangeError::InsufficientBalance => (StatusCode::BAD_REQUEST, self.to_string()),
+            ExchangeError::InsufficientBalance { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
             ExchangeError::OrderNotFound => (StatusCode::NOT_FOUND, self.to_string()),
             ExchangeError::UserNotFound { .. } => (StatusCode::NOT_FOUND, self.to_string()),
 

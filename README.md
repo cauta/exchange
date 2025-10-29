@@ -119,10 +119,10 @@ missing production
 - exchange e2e from api to engine to db
 - fill out missing api endpoints and db functions
 - address executor and orderbook consistency with db using transactions
+- add open interest check and fees
 
 - add trading signatures
 - add benchmarks
-- add cancel priority
 
 ### frontend dev
 
