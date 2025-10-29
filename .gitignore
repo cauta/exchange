@@ -13,6 +13,8 @@
 
 # packages
 /packages/sdk-rust/target/
+/packages/sdk-python/.venv/
+/packages/sdk-python/exchange_sdk/__pycache__/
 /packages/test-utils/target/
 
 # misc
