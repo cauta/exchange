@@ -134,6 +134,25 @@ impl ExchangeClient {
 
     // ===== Trade Endpoints =====
 
+    /// Round a size to the nearest multiple of lot_size (rounds down)
+    pub fn round_size_to_lot(size: u128, lot_size: u128) -> u128 {
+        if lot_size == 0 {
+            return size;
+        }
+        (size / lot_size) * lot_size
+    }
+
+    /// Round a size string to the nearest multiple of lot_size (rounds down)
+    pub fn round_size_to_lot_str(size: &str, lot_size: &str) -> SdkResult<String> {
+        let size_val = size.parse::<u128>()
+            .map_err(|e| SdkError::InvalidResponse(format!("Invalid size: {}", e)))?;
+        let lot_size_val = lot_size.parse::<u128>()
+            .map_err(|e| SdkError::InvalidResponse(format!("Invalid lot_size: {}", e)))?;
+
+        let rounded = Self::round_size_to_lot(size_val, lot_size_val);
+        Ok(rounded.to_string())
+    }
+
     /// Place an order
     pub async fn place_order(
         &self,
@@ -160,6 +179,46 @@ impl ExchangeClient {
             TradeResponse::PlaceOrder { order, trades } => Ok(OrderPlaced { order, trades }),
             _ => Err(SdkError::InvalidResponse("Expected PlaceOrder".to_string())),
         }
+    }
+
+    /// Place an order with automatic size rounding to lot_size
+    pub async fn place_order_with_rounding(
+        &self,
+        user_address: String,
+        market_id: String,
+        side: Side,
+        order_type: OrderType,
+        price: String,
+        size: String,
+        signature: String,
+    ) -> SdkResult<OrderPlaced> {
+        // Get market details to find lot_size
+        let market = self.get_market(&market_id).await?;
+
+        // Parse size
+        let size_val = size.parse::<u128>()
+            .map_err(|e| SdkError::InvalidResponse(format!("Invalid size: {}", e)))?;
+
+        // Round size to lot_size
+        let rounded_size = Self::round_size_to_lot(size_val, market.lot_size);
+
+        // Skip if rounded size is 0
+        if rounded_size == 0 {
+            return Err(SdkError::InvalidResponse(
+                format!("Size {} is too small for lot_size {} (rounded to 0)", size, market.lot_size)
+            ));
+        }
+
+        // Place order with rounded size
+        self.place_order(
+            user_address,
+            market_id,
+            side,
+            order_type,
+            price,
+            rounded_size.to_string(),
+            signature,
+        ).await
     }
 
     /// Cancel an order

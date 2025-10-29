@@ -119,6 +119,7 @@ missing production
 - refactor e2e tests
 - add mm bot. copy entire orderbook. other taker on trade.
 - add frontend api layer (ws and rest), zustand
+- fix bots. try to run backend + bots + frontend.
 
 - add trading signatures
 - add benchmarks

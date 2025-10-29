@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useExchangeStore } from "@/lib/store";
 import { useMarkets } from "@/lib/hooks";
 import { Orderbook } from "@/components/Orderbook";
-import { PriceChart } from "@/components/PriceChart";
+import { TradingViewChart } from "@/components/TradingViewChart";
 import { TradeHistory } from "@/components/TradeHistory";
 
 export default function Home() {
@@ -55,11 +55,13 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Chart - takes 2 columns */}
           <div className="lg:col-span-2">
-            <PriceChart />
+            <TradingViewChart />
           </div>
 
           {/* Orderbook */}
-          <div>{/* <Orderbook /> */}</div>
+          <div>
+            <Orderbook />
+          </div>
 
           {/* Trade History - full width below */}
           <div className="lg:col-span-3">

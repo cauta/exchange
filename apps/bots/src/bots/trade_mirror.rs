@@ -101,7 +101,7 @@ impl TradeMirrorBot {
         // Place market order to execute the trade
         match self
             .exchange_client
-            .place_order(
+            .place_order_with_rounding(
                 self.config.user_address.clone(),
                 self.config.market_id.clone(),
                 side,

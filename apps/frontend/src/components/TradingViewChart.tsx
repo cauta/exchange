@@ -1,0 +1,80 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
+import { useExchangeStore } from '@/lib/store';
+import { ExchangeDatafeed } from '@/lib/tradingview-datafeed';
+
+// @ts-ignore - TradingView types
+import type {
+  IChartingLibraryWidget,
+  ChartingLibraryWidgetOptions,
+  ResolutionString,
+} from '../../public/vendor/trading-view/charting_library';
+
+export function TradingViewChart() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const widgetRef = useRef<IChartingLibraryWidget | null>(null);
+  const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
+
+  useEffect(() => {
+    if (!containerRef.current || !selectedMarketId) return;
+
+    // Dynamically import TradingView library (client-side only)
+    import('../../public/vendor/trading-view/charting_library').then(
+      (TradingView) => {
+        if (!containerRef.current) return;
+
+        const widgetOptions: ChartingLibraryWidgetOptions = {
+          symbol: selectedMarketId,
+          datafeed: new ExchangeDatafeed(),
+          interval: '1' as ResolutionString, // 1 minute
+          container: containerRef.current,
+          library_path: '/vendor/trading-view/',
+          locale: 'en',
+          disabled_features: [
+            'use_localstorage_for_settings',
+            'volume_force_overlay',
+          ],
+          enabled_features: ['study_templates'],
+          fullscreen: false,
+          autosize: true,
+          theme: 'dark',
+          custom_css_url: undefined,
+          overrides: {
+            'paneProperties.background': '#000000',
+            'paneProperties.backgroundType': 'solid',
+          },
+        };
+
+        const widget = new TradingView.widget(widgetOptions);
+        widgetRef.current = widget;
+
+        widget.onChartReady(() => {
+          console.log('TradingView chart is ready');
+        });
+      }
+    );
+
+    // Cleanup
+    return () => {
+      if (widgetRef.current) {
+        widgetRef.current.remove();
+        widgetRef.current = null;
+      }
+    };
+  }, [selectedMarketId]);
+
+  if (!selectedMarketId) {
+    return (
+      <div className="p-4 border rounded flex items-center justify-center h-96">
+        <p className="text-gray-500">Select a market to view chart</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border rounded overflow-hidden" style={{ height: '500px' }}>
+      <div ref={containerRef} className="h-full" />
+    </div>
+  );
+}
