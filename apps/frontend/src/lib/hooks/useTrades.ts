@@ -5,7 +5,7 @@
 import { useEffect } from "react";
 import { useExchangeStore, selectRecentTrades } from "../store";
 import { getWebSocketManager } from "../websocket";
-import type { TradeMessage } from "../types/websocket";
+import type { TradeMessage, ServerMessage } from "../types/websocket";
 
 export function useTrades(marketId: string | null) {
   const addTrade = useExchangeStore((state) => state.addTrade);
@@ -34,14 +34,14 @@ export function useTrades(marketId: string | null) {
     };
 
     // Register handler
-    ws.on("trade", handleTrade as any);
+    ws.on("trade", handleTrade as (message: ServerMessage) => void);
 
     // Subscribe to trades
     ws.subscribe("Trades", marketId);
 
     // Cleanup
     return () => {
-      ws.off("trade", handleTrade as any);
+      ws.off("trade", handleTrade as (message: ServerMessage) => void);
       ws.unsubscribe("Trades", marketId);
     };
   }, [marketId, addTrade]);

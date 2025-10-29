@@ -138,7 +138,7 @@ export class ExchangeDatafeed implements IBasicDataFeed {
     onResult: HistoryCallback,
     onError: ErrorCallback,
   ): void {
-    const { from, to, firstDataRequest } = periodParams;
+    const { from, to } = periodParams;
     const interval = resolutionMap[resolution] || "1m";
 
     // Fetch candles from our API
@@ -183,9 +183,9 @@ export class ExchangeDatafeed implements IBasicDataFeed {
   subscribeBars(
     symbolInfo: LibrarySymbolInfo,
     resolution: ResolutionString,
-    onTick: SubscribeBarsCallback,
+    _onTick: SubscribeBarsCallback,
     listenerGuid: string,
-    onResetCacheNeededCallback: () => void,
+    _onResetCacheNeededCallback: () => void,
   ): void {
     // For now, we'll use the trades WebSocket to update bars in real-time
     // This would be implemented by subscribing to trade updates and aggregating them

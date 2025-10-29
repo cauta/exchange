@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { useExchangeStore, selectOrderbookBids, selectOrderbookAsks } from "../store";
 import { getWebSocketManager } from "../websocket";
 import type { OrderbookSnapshotMessage, OrderbookUpdateMessage } from "../types/websocket";
+import type { ServerMessage } from "../types/websocket";
 
 export function useOrderbook(marketId: string | null) {
   const updateOrderbook = useExchangeStore((state) => state.updateOrderbook);
@@ -33,16 +34,16 @@ export function useOrderbook(marketId: string | null) {
     };
 
     // Register handlers
-    ws.on("orderbook_snapshot", handleOrderbookSnapshot as any);
-    ws.on("orderbook_update", handleOrderbookUpdate as any);
+    ws.on("orderbook_snapshot", handleOrderbookSnapshot as (message: ServerMessage) => void);
+    ws.on("orderbook_update", handleOrderbookUpdate as (message: ServerMessage) => void);
 
     // Subscribe to orderbook
     ws.subscribe("Orderbook", marketId);
 
     // Cleanup
     return () => {
-      ws.off("orderbook_snapshot", handleOrderbookSnapshot as any);
-      ws.off("orderbook_update", handleOrderbookUpdate as any);
+      ws.off("orderbook_snapshot", handleOrderbookSnapshot as (message: ServerMessage) => void);
+      ws.off("orderbook_update", handleOrderbookUpdate as (message: ServerMessage) => void);
       ws.unsubscribe("Orderbook", marketId);
     };
   }, [marketId, updateOrderbook, setOrderbookLoading]);

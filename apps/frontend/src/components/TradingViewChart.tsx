@@ -4,12 +4,22 @@ import { useEffect, useRef } from "react";
 import { useExchangeStore } from "@/lib/store";
 import { ExchangeDatafeed } from "@/lib/tradingview-datafeed";
 
-// @ts-expect-error - TradingView types
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - TradingView types
 import type {
   IChartingLibraryWidget,
   ChartingLibraryWidgetOptions,
   ResolutionString,
 } from "../../public/vendor/trading-view/charting_library";
+
+// Extend window to include TradingView
+declare global {
+  interface Window {
+    TradingView?: {
+      widget: new (options: ChartingLibraryWidgetOptions) => IChartingLibraryWidget;
+    };
+  }
+}
 
 export function TradingViewChart() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -20,12 +30,12 @@ export function TradingViewChart() {
     if (!containerRef.current || !selectedMarketId) return;
 
     // Check if TradingView library is loaded
-    if (typeof window === "undefined" || !("TradingView" in window)) {
+    if (typeof window === "undefined" || !window.TradingView) {
       console.error("TradingView library not loaded");
       return;
     }
 
-    const TradingView = (window as { TradingView: { widget: (options: ChartingLibraryWidgetOptions) => IChartingLibraryWidget } }).TradingView;
+    const TradingView = window.TradingView;
 
     const widgetOptions: ChartingLibraryWidgetOptions = {
       symbol: selectedMarketId,
