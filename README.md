@@ -44,7 +44,7 @@ missing production
 
 - helllaaa latency
 - write ahead log lmao
-- design for concurrency
+- design for concurrency across multiple markets
 - metrics / alerting
 - backups / disaster recovery
 - scaling / k8s
@@ -65,6 +65,7 @@ missing production
 - setting up databases. using sqlx.
 - designing domain/api/db models.
 - using channels for engine input and websocket broadcast.
+- after general structure, most anoying is types. finagiling different systems to work together. refactoring types , ensuring things lined up correctly when testing, etc. claude is great helping with this.
 
 ### log
 
@@ -120,6 +121,7 @@ missing production
 - add mm bot. copy entire orderbook. other taker on trade.
 - add frontend api layer (ws and rest), zustand
 - fix bots. try to run backend + bots + frontend.
+-
 
 - add trading signatures
 - add benchmarks
