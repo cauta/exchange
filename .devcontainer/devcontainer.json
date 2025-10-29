@@ -1,12 +1,102 @@
 {
-  "name": "exchange",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
-  "remoteUser": "root",
+  "name": "Cryptocurrency Exchange",
+  "dockerComposeFile": [
+    "../docker-compose.yaml",
+    "docker-compose.devcontainer.yml"
+  ],
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
-  "privileged": true
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "tamasfe.even-better-toml",
+        "serayuzgur.crates",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "skellock.just"
+      ],
+      "settings": {
+        "rust-analyzer.checkOnSave.command": "clippy",
+        "rust-analyzer.cargo.features": "all",
+        "rust-analyzer.inlayHints.chainingHints.enable": true,
+        "rust-analyzer.inlayHints.parameterHints.enable": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[rust]": {
+          "editor.defaultFormatter": "rust-lang.rust-analyzer",
+          "editor.formatOnSave": true
+        },
+        "[toml]": {
+          "editor.defaultFormatter": "tamasfe.even-better-toml"
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "sqltools.connections": [
+          {
+            "name": "Exchange PostgreSQL",
+            "driver": "PostgreSQL",
+            "server": "postgres",
+            "port": 5432,
+            "database": "exchange",
+            "username": "postgres",
+            "password": "password"
+          }
+        ]
+      }
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "remoteEnv": {
+    "DATABASE_URL": "postgresql://postgres:password@postgres:5432/exchange",
+    "CLICKHOUSE_URL": "http://clickhouse:8123",
+    "CLICKHOUSE_USER": "default",
+    "CLICKHOUSE_PASSWORD": "password"
+  },
+
+  "forwardPorts": [3000, 8888, 5432, 8123, 9000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend",
+      "onAutoForward": "notify"
+    },
+    "8888": {
+      "label": "Backend API",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL"
+    },
+    "8123": {
+      "label": "ClickHouse HTTP"
+    },
+    "9000": {
+      "label": "ClickHouse Native"
+    }
+  },
+
+  "remoteUser": "vscode"
 }
