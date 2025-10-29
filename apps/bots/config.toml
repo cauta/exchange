@@ -1,7 +1,7 @@
 # Exchange Bots Configuration
 
 [exchange]
-url = "http://localhost:8001"
+url = "http://localhost:8888"
 
 [hyperliquid]
 coin = "BTC"  # Coin to mirror from Hyperliquid
