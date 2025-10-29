@@ -34,12 +34,20 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS exchange.candles_1m_mv
 TO exchange.candles
 AS SELECT
     market_id,
-    toStartOfMinute(timestamp) as timestamp,
+    minute_bucket as timestamp,
     '1m' as interval,
-    argMin(price, timestamp) as open,
+    argMin(price, trade_time) as open,
     max(price) as high,
     min(price) as low,
-    argMax(price, timestamp) as close,
+    argMax(price, trade_time) as close,
     sum(size) as volume
-FROM exchange.trades
-GROUP BY market_id, toStartOfMinute(timestamp);
+FROM (
+    SELECT
+        market_id,
+        price,
+        size,
+        timestamp as trade_time,
+        toStartOfMinute(timestamp) as minute_bucket
+    FROM exchange.trades
+)
+GROUP BY market_id, minute_bucket;

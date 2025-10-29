@@ -121,7 +121,8 @@ missing production
 - address executor and orderbook consistency with db using transactions
 - add open interest check and fees
 - add benchmarks
-- add sdk with backend as source of truth
+- add rust and python sdk with backend as source of truth
+- refactor e2e tests
 
 - add trading signatures
 - add benchmarks

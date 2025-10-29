@@ -1,0 +1,15 @@
+[package]
+name = "exchange-test-utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+backend = { path = "../../apps/backend" }
+anyhow = "1.0"
+axum = { version = "0.8", features = ["ws"] }
+clickhouse = { version = "0.14", features = ["rustls-tls"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls", "postgres", "chrono", "uuid", "migrate", "bigdecimal"] }
+testcontainers = "0.25.0"
+testcontainers-modules = { version = "0.13.0", features = ["clickhouse", "postgres"] }
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["cors"] }

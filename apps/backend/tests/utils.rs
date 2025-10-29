@@ -1,9 +1,7 @@
 use backend::db::Db;
 use backend::models::domain::{EngineEvent, EngineRequest, Order, OrderStatus, OrderType, Side};
 use chrono::Utc;
-use clickhouse::Client;
-use testcontainers::runners::AsyncRunner;
-use testcontainers_modules::{clickhouse::ClickHouse, postgres::Postgres};
+use exchange_test_utils::TestContainers;
 use tokio::sync::{broadcast, mpsc, oneshot};
 use uuid::Uuid;
 
@@ -110,7 +108,7 @@ impl TestServer {
     }
 
     // ============================================================================
-    // Database Access
+    // Database Access - Backend tests can access internals
     // ============================================================================
 
     /// Get reference to database connection for direct DB operations in tests
@@ -125,118 +123,26 @@ impl TestServer {
 }
 
 /// Test database container setup
+///
+/// This wraps the shared TestContainers but exposes the internal Db
+/// for backend tests that need to verify internal state.
 #[allow(dead_code)]
 pub struct TestDb {
     pub db: Db,
-    postgres_container: testcontainers::ContainerAsync<Postgres>,
-    clickhouse_container: testcontainers::ContainerAsync<ClickHouse>,
+    _containers: TestContainers,
 }
 
 #[allow(dead_code)]
 impl TestDb {
     /// Set up test databases with containers
     pub async fn setup() -> anyhow::Result<Self> {
-        // ================================ Start containers ================================
-        let postgres_container = Postgres::default()
-            .start()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to start PostgreSQL container: {}", e))?;
-
-        let clickhouse_container = ClickHouse::default()
-            .start()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to start ClickHouse container: {}", e))?;
-
-        let postgres_port = postgres_container
-            .get_host_port_ipv4(5432)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to get PostgreSQL port: {}", e))?;
-
-        let clickhouse_port = clickhouse_container
-            .get_host_port_ipv4(8123)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to get ClickHouse port: {}", e))?;
-
-        // ================================ Create database connections ================================
-        let postgres_url = format!(
-            "postgres://postgres:postgres@{}:{}/postgres",
-            postgres_container.get_host().await.unwrap(),
-            postgres_port
-        );
-
-        let clickhouse_url = format!(
-            "http://{}:{}",
-            clickhouse_container.get_host().await.unwrap(),
-            clickhouse_port
-        );
-
-        let postgres = sqlx::postgres::PgPoolOptions::new()
-            .max_connections(10)
-            .acquire_timeout(std::time::Duration::from_secs(30))
-            .connect(&postgres_url)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to connect to PostgreSQL: {}", e))?;
-
-        // Create ClickHouse client without database first
-        let clickhouse_temp = Client::default()
-            .with_url(&clickhouse_url)
-            .with_user("default");
-
-        // ================================ Run migrations ================================
-        sqlx::migrate!("./src/db/pg/migrations")
-            .run(&postgres)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to run PostgreSQL migrations: {}", e))?;
-
-        // Initialize ClickHouse schema (creates database)
-        Self::setup_clickhouse_schema(&clickhouse_temp).await?;
-
-        // Now create client with the database set
-        let clickhouse = Client::default()
-            .with_url(&clickhouse_url)
-            .with_user("default")
-            .with_database("exchange");
-
-        // ================================ Return database connections ================================
-        let db = Db {
-            postgres,
-            clickhouse,
-        };
+        let containers = TestContainers::setup().await?;
+        let db = containers.db_clone();
 
         Ok(TestDb {
             db,
-            postgres_container,
-            clickhouse_container,
+            _containers: containers,
         })
-    }
-
-    /// Set up ClickHouse schema for testing
-    async fn setup_clickhouse_schema(client: &Client) -> anyhow::Result<()> {
-        // Create database first
-        client
-            .query("CREATE DATABASE IF NOT EXISTS exchange")
-            .execute()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to create ClickHouse database: {}", e))?;
-
-        // Create trades table for tick data
-        client
-            .query("CREATE TABLE IF NOT EXISTS exchange.trades (id UUID, market_id String, buyer_address String, seller_address String, buyer_order_id UUID, seller_order_id UUID, price UInt128, size UInt128, timestamp DateTime) ENGINE = MergeTree() ORDER BY (market_id, timestamp) PRIMARY KEY (market_id, timestamp)")
-            .execute()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to create trades table: {}", e))?;
-
-        // Create candles table for aggregated OHLCV data
-        client
-            .query("CREATE TABLE IF NOT EXISTS exchange.candles (market_id String, timestamp DateTime, interval String, open UInt128, high UInt128, low UInt128, close UInt128, volume UInt128) ENGINE = MergeTree() ORDER BY (market_id, interval, timestamp) PRIMARY KEY (market_id, interval, timestamp)")
-            .execute()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to create candles table: {}", e))?;
-
-        // Note: Materialized views for candles can be added later if needed
-        // For now, candles can be inserted manually or computed on-the-fly from trades
-
-        Ok(())
     }
 
     /// Helper function to create test user
@@ -322,6 +228,9 @@ impl TestDb {
 }
 
 /// Helper for matching engine testing
+///
+/// This exposes internal engine channels and domain types
+/// for backend tests that need to test matching logic directly.
 #[allow(dead_code)]
 pub struct TestEngine {
     pub db: Db,

@@ -32,6 +32,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 
 [dev-dependencies]
 criterion = { version = "0.7", features = ["html_reports", "async_tokio"] }
+exchange-test-utils = { path = "../../packages/test-utils" }
 futures = "0.3"
 reqwest = { version = "0.12", features = ["json"] }
 testcontainers = "0.25.0"
