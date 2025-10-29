@@ -212,7 +212,7 @@ async fn test_websocket_user_events() {
 
     alice_ws
         .subscribe(
-            SubscriptionChannel::UserUpdates,
+            SubscriptionChannel::User,
             None,
             Some("alice".to_string()),
         )
@@ -335,7 +335,7 @@ async fn test_websocket_multiple_subscriptions() {
 
     ws_handle
         .subscribe(
-            SubscriptionChannel::UserUpdates,
+            SubscriptionChannel::User,
             None,
             Some("trader".to_string()),
         )

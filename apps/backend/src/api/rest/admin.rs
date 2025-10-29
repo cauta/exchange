@@ -52,14 +52,36 @@ pub async fn admin_handler(
             maker_fee_bps,
             taker_fee_bps,
         } => {
+            // Parse string values to u128
+            let tick_size_u128 = tick_size.parse::<u128>().map_err(|e| {
+                Json(AdminErrorResponse {
+                    error: format!("Invalid tick_size: {}", e),
+                    code: "INVALID_TICK_SIZE".to_string(),
+                })
+            })?;
+
+            let lot_size_u128 = lot_size.parse::<u128>().map_err(|e| {
+                Json(AdminErrorResponse {
+                    error: format!("Invalid lot_size: {}", e),
+                    code: "INVALID_LOT_SIZE".to_string(),
+                })
+            })?;
+
+            let min_size_u128 = min_size.parse::<u128>().map_err(|e| {
+                Json(AdminErrorResponse {
+                    error: format!("Invalid min_size: {}", e),
+                    code: "INVALID_MIN_SIZE".to_string(),
+                })
+            })?;
+
             let market = state
                 .db
                 .create_market(
                     base_ticker,
                     quote_ticker,
-                    tick_size,
-                    lot_size,
-                    min_size,
+                    tick_size_u128,
+                    lot_size_u128,
+                    min_size_u128,
                     maker_fee_bps,
                     taker_fee_bps,
                 )

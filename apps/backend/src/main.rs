@@ -12,8 +12,8 @@ use tower_http::cors::CorsLayer;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Load environment variables
-    dotenvy::from_filename(".env.defaults").context("Failed to load .env.defaults")?;
-    dotenvy::dotenv().context("Failed to load .env")?;
+    let _ = dotenvy::from_path(".env.defaults");
+    let _ = dotenvy::from_path_override(".env");
 
     env_logger::init();
 

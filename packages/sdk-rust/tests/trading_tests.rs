@@ -6,7 +6,6 @@
 mod helpers;
 
 use backend::models::domain::{OrderType, Side};
-use exchange_sdk::{ExchangeClient, SubscriptionChannel, WebSocketClient};
 use helpers::TestFixture;
 
 // ============================================================================

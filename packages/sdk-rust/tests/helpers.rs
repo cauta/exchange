@@ -5,6 +5,7 @@ use exchange_sdk::ExchangeClient;
 use exchange_test_utils::TestServer;
 
 /// Test fixture that provides a server with a pre-configured market
+#[allow(dead_code)]
 pub struct TestFixture {
     pub server: TestServer,
     pub client: ExchangeClient,
@@ -87,6 +88,7 @@ impl TestFixture {
 }
 
 /// Helper to wait for a condition with timeout
+#[allow(dead_code)]
 pub async fn wait_for<F, Fut>(mut condition: F, timeout_ms: u64) -> anyhow::Result<()>
 where
     F: FnMut() -> Fut,

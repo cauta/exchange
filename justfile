@@ -35,9 +35,12 @@ db-prepare:
 install:
   cd apps/frontend && bun install
   cd apps/backend && cargo build
+  cd packages/sdk-rust && cargo build
+  cd packages/sdk-python && uv sync
 
 test:
   cd apps/backend && cargo test
+  cd packages/sdk-rust && cargo test
 
 bench:
   cd apps/backend && cargo bench

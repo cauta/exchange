@@ -232,9 +232,9 @@ impl ExchangeClient {
         let request = backend::models::api::AdminRequest::CreateMarket {
             base_ticker,
             quote_ticker,
-            tick_size,
-            lot_size,
-            min_size,
+            tick_size: tick_size.to_string(),
+            lot_size: lot_size.to_string(),
+            min_size: min_size.to_string(),
             maker_fee_bps,
             taker_fee_bps,
         };

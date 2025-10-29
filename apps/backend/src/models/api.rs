@@ -183,9 +183,9 @@ pub enum AdminRequest {
     CreateMarket {
         base_ticker: String,
         quote_ticker: String,
-        tick_size: u128,
-        lot_size: u128,
-        min_size: u128,
+        tick_size: String,  // u128 as string
+        lot_size: String,   // u128 as string
+        min_size: String,   // u128 as string
         maker_fee_bps: i32,
         taker_fee_bps: i32,
     },
