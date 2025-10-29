@@ -50,7 +50,7 @@ pub struct Token {
     pub name: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Market {
     pub id: String, // Generated as "base_ticker/quote_ticker"
     pub base_ticker: String,
@@ -62,7 +62,7 @@ pub struct Market {
     pub taker_fee_bps: i32, // Taker fee in basis points (0-10000)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Order {
     pub id: Uuid,
     pub user_address: String,
@@ -77,7 +77,7 @@ pub struct Order {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Trade {
     pub id: Uuid,
     pub market_id: String,
@@ -90,7 +90,7 @@ pub struct Trade {
     pub timestamp: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Balance {
     pub user_address: String,
     pub token_ticker: String,
@@ -99,7 +99,7 @@ pub struct Balance {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Candle {
     pub market_id: String,
     pub timestamp: DateTime<Utc>,

@@ -59,7 +59,8 @@ impl ExchangeClient {
         let response = self.post_info(request).await?;
 
         match response {
-            InfoResponse::MarketDetails { market } => Ok(market),
+            InfoResponse::MarketDetails { market } => market.try_into()
+                .map_err(|e| SdkError::InvalidResponse(format!("Failed to parse market: {}", e))),
             _ => Err(SdkError::InvalidResponse("Expected MarketDetails".to_string())),
         }
     }
@@ -70,7 +71,12 @@ impl ExchangeClient {
         let response = self.post_info(request).await?;
 
         match response {
-            InfoResponse::AllMarkets { markets } => Ok(markets),
+            InfoResponse::AllMarkets { markets } => {
+                markets.into_iter()
+                    .map(|m| m.try_into())
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| SdkError::InvalidResponse(format!("Failed to parse markets: {}", e)))
+            },
             _ => Err(SdkError::InvalidResponse("Expected AllMarkets".to_string())),
         }
     }
@@ -99,7 +105,12 @@ impl ExchangeClient {
         let response = self.post_user(request).await?;
 
         match response {
-            UserResponse::Orders { orders } => Ok(orders),
+            UserResponse::Orders { orders } => {
+                orders.into_iter()
+                    .map(|o| o.try_into())
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| SdkError::InvalidResponse(format!("Failed to parse orders: {}", e)))
+            },
             _ => Err(SdkError::InvalidResponse("Expected Orders".to_string())),
         }
     }
@@ -112,7 +123,12 @@ impl ExchangeClient {
         let response = self.post_user(request).await?;
 
         match response {
-            UserResponse::Balances { balances } => Ok(balances),
+            UserResponse::Balances { balances } => {
+                balances.into_iter()
+                    .map(|b| b.try_into())
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| SdkError::InvalidResponse(format!("Failed to parse balances: {}", e)))
+            },
             _ => Err(SdkError::InvalidResponse("Expected Balances".to_string())),
         }
     }
@@ -127,7 +143,12 @@ impl ExchangeClient {
         let response = self.post_user(request).await?;
 
         match response {
-            UserResponse::Trades { trades } => Ok(trades),
+            UserResponse::Trades { trades } => {
+                trades.into_iter()
+                    .map(|t| t.try_into())
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| SdkError::InvalidResponse(format!("Failed to parse trades: {}", e)))
+            },
             _ => Err(SdkError::InvalidResponse("Expected Trades".to_string())),
         }
     }
@@ -163,7 +184,7 @@ impl ExchangeClient {
         price: String,
         size: String,
         signature: String,
-    ) -> SdkResult<OrderPlaced> {
+    ) -> SdkResult<crate::OrderPlaced> {
         let request = TradeRequest::PlaceOrder {
             user_address,
             market_id,
@@ -176,7 +197,16 @@ impl ExchangeClient {
         let response = self.post_trade(request).await?;
 
         match response {
-            TradeResponse::PlaceOrder { order, trades } => Ok(OrderPlaced { order, trades }),
+            TradeResponse::PlaceOrder { order, trades } => {
+                Ok(crate::OrderPlaced {
+                    order: order.try_into()
+                        .map_err(|e| SdkError::InvalidResponse(format!("Failed to parse order: {}", e)))?,
+                    trades: trades.into_iter()
+                        .map(|t| t.try_into())
+                        .collect::<Result<Vec<_>, _>>()
+                        .map_err(|e| SdkError::InvalidResponse(format!("Failed to parse trades: {}", e)))?,
+                })
+            },
             _ => Err(SdkError::InvalidResponse("Expected PlaceOrder".to_string())),
         }
     }
@@ -191,7 +221,7 @@ impl ExchangeClient {
         price: String,
         size: String,
         signature: String,
-    ) -> SdkResult<OrderPlaced> {
+    ) -> SdkResult<crate::OrderPlaced> {
         // Get market details to find lot_size
         let market = self.get_market(&market_id).await?;
 
@@ -300,7 +330,8 @@ impl ExchangeClient {
         let response = self.post_admin(request).await?;
 
         match response {
-            backend::models::api::AdminResponse::CreateMarket { market } => Ok(market),
+            backend::models::api::AdminResponse::CreateMarket { market } => market.try_into()
+                .map_err(|e| SdkError::InvalidResponse(format!("Failed to parse market: {}", e))),
             _ => Err(SdkError::InvalidResponse("Expected CreateMarket".to_string())),
         }
     }

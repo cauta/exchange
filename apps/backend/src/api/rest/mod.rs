@@ -57,12 +57,13 @@ pub mod user;
             // Candles types
             candles::Candle,
             candles::CandlesResponse,
-            // Domain types
+            // API types (only expose API layer in OpenAPI, not domain)
             crate::models::domain::Token,
-            crate::models::domain::Market,
-            crate::models::domain::Order,
-            crate::models::domain::Trade,
-            crate::models::domain::Balance,
+            crate::models::api::ApiMarket,
+            crate::models::api::ApiOrder,
+            crate::models::api::ApiTrade,
+            crate::models::api::ApiBalance,
+            // Enums are shared between API and domain
             crate::models::domain::Side,
             crate::models::domain::OrderType,
             crate::models::domain::OrderStatus,

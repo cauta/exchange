@@ -36,7 +36,7 @@ pub async fn info(
                     code: "MARKET_NOT_FOUND".to_string(),
                 })
             })?;
-            Ok(Json(InfoResponse::MarketDetails { market }))
+            Ok(Json(InfoResponse::MarketDetails { market: market.into() }))
         }
         InfoRequest::AllMarkets => {
             let markets = _state.db.list_markets().await.map_err(|e| {
@@ -45,7 +45,7 @@ pub async fn info(
                     code: "LIST_MARKETS_ERROR".to_string(),
                 })
             })?;
-            Ok(Json(InfoResponse::AllMarkets { markets }))
+            Ok(Json(InfoResponse::AllMarkets { markets: markets.into_iter().map(|m| m.into()).collect() }))
         }
         InfoRequest::AllTokens => {
             let tokens = _state.db.list_tokens().await.map_err(|e| {

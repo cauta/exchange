@@ -1,24 +1,19 @@
+# node
+**/node_modules
+**/.next/
+**/out/
+**/build/
+**/dist/
+**/*.tsbuildinfo
+**/vercel
+**/next-env.d.ts
 
-# frontend
-/apps/frontend/node_modules
-/apps/frontend/.next/
-/apps/frontend/out/
-/apps/frontend/build/
-/apps/frontend/.vercel
-/apps/frontend/*.tsbuildinfo
-/apps/frontend/next-env.d.ts
+# python
+**/.venv/
+**/__pycache__/
 
-# backend
-/apps/backend/target/
-
-# bots
-/apps/bots/target/
-
-# packages
-/packages/sdk-rust/target/
-/packages/sdk-python/.venv/
-/packages/sdk-python/exchange_sdk/__pycache__/
-/packages/test-utils/target/
+# rust
+**/target/
 
 # misc
 .DS_Store

@@ -49,15 +49,15 @@ async fn test_basic_limit_order_matching() {
 
     // Should be fully filled
     assert_eq!(placed.order.status, OrderStatus::Filled);
-    assert_eq!(placed.order.filled_size, 1_000_000);
+    assert_eq!(placed.order.filled_size, "1000000");
     assert_eq!(placed.trades.len(), 1);
 
     // Verify trade details
     let trade = &placed.trades[0];
     assert_eq!(trade.buyer_address, "buyer");
     assert_eq!(trade.seller_address, "seller");
-    assert_eq!(trade.price, 50_000_000_000); // Match at maker's price
-    assert_eq!(trade.size, 1_000_000);
+    assert_eq!(trade.price, "50000000000"); // Match at maker's price
+    assert_eq!(trade.size, "1000000");
 }
 
 #[tokio::test]
@@ -99,11 +99,11 @@ async fn test_partial_fill() {
 
     // Buyer's order should be fully filled
     assert_eq!(placed.order.status, OrderStatus::Filled);
-    assert_eq!(placed.order.filled_size, 3_000_000);
+    assert_eq!(placed.order.filled_size, "3000000");
     assert_eq!(placed.trades.len(), 1);
 
     // Trade should be for 3 ETH
-    assert_eq!(placed.trades[0].size, 3_000_000);
+    assert_eq!(placed.trades[0].size, "3000000");
 }
 
 #[tokio::test]
@@ -160,14 +160,14 @@ async fn test_price_time_priority() {
 
     // Should match with better price first (sell2 at $95)
     assert_eq!(placed.trades.len(), 2);
-    assert_eq!(placed.trades[0].price, 95_000_000); // Best price first
-    assert_eq!(placed.trades[0].size, 3_000_000);
-    assert_eq!(placed.trades[1].price, 100_000_000); // Then second best
-    assert_eq!(placed.trades[1].size, 5_000_000);
+    assert_eq!(placed.trades[0].price, "95000000"); // Best price first
+    assert_eq!(placed.trades[0].size, "3000000");
+    assert_eq!(placed.trades[1].price, "100000000"); // Then second best
+    assert_eq!(placed.trades[1].size, "5000000");
 
     // Buyer should be fully filled
     assert_eq!(placed.order.status, OrderStatus::Filled);
-    assert_eq!(placed.order.filled_size, 8_000_000);
+    assert_eq!(placed.order.filled_size, "8000000");
 }
 
 #[tokio::test]
@@ -225,7 +225,7 @@ async fn test_fifo_time_priority_at_same_price() {
     // Should only match with first order (FIFO)
     assert_eq!(placed.trades.len(), 1);
     assert_eq!(placed.trades[0].seller_address, "seller1"); // First in, first matched
-    assert_eq!(placed.trades[0].size, 2_000_000);
+    assert_eq!(placed.trades[0].size, "2000000");
 }
 
 #[tokio::test]
@@ -282,14 +282,14 @@ async fn test_market_order_execution() {
 
     // Should match with both orders
     assert_eq!(placed.trades.len(), 2);
-    assert_eq!(placed.trades[0].price, 1_000_000); // Best price first
-    assert_eq!(placed.trades[0].size, 10_000_000);
-    assert_eq!(placed.trades[1].price, 1_100_000); // Then worse price
-    assert_eq!(placed.trades[1].size, 5_000_000);
+    assert_eq!(placed.trades[0].price, "1000000"); // Best price first
+    assert_eq!(placed.trades[0].size, "10000000");
+    assert_eq!(placed.trades[1].price, "1100000"); // Then worse price
+    assert_eq!(placed.trades[1].size, "5000000");
 
     // Buyer should be fully filled
     assert_eq!(placed.order.status, OrderStatus::Filled);
-    assert_eq!(placed.order.filled_size, 15_000_000);
+    assert_eq!(placed.order.filled_size, "15000000");
 }
 
 #[tokio::test]
@@ -570,14 +570,14 @@ async fn test_multiple_orders_complex_matching() {
     assert_eq!(placed.trades.len(), 3);
 
     // Check prices are in correct order (best price first)
-    assert_eq!(placed.trades[0].price, 500_000);
-    assert_eq!(placed.trades[0].size, 150_000_000);
-    assert_eq!(placed.trades[1].price, 520_000);
-    assert_eq!(placed.trades[1].size, 200_000_000);
-    assert_eq!(placed.trades[2].price, 550_000);
-    assert_eq!(placed.trades[2].size, 50_000_000); // Only 50 ADA from third order
+    assert_eq!(placed.trades[0].price, "500000");
+    assert_eq!(placed.trades[0].size, "150000000");
+    assert_eq!(placed.trades[1].price, "520000");
+    assert_eq!(placed.trades[1].size, "200000000");
+    assert_eq!(placed.trades[2].price, "550000");
+    assert_eq!(placed.trades[2].size, "50000000"); // Only 50 ADA from third order
 
     // Buyer should be fully filled (400 ADA total)
     assert_eq!(placed.order.status, OrderStatus::Filled);
-    assert_eq!(placed.order.filled_size, 400_000_000);
+    assert_eq!(placed.order.filled_size, "400000000");
 }

@@ -1,7 +1,9 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
-use super::domain::{Balance, Market, Order, OrderType, Side, Token, Trade};
+use super::domain::{OrderStatus, OrderType, Side, Token};
 
 // ============================================================================
 // REST API TYPES
@@ -16,8 +18,8 @@ pub struct ApiResponse {
 /// Response after successfully placing an order
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct OrderPlaced {
-    pub order: Order,
-    pub trades: Vec<Trade>,
+    pub order: ApiOrder,
+    pub trades: Vec<ApiTrade>,
 }
 
 /// Response after successfully cancelling an order
@@ -45,8 +47,8 @@ pub enum InfoRequest {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum InfoResponse {
     TokenDetails { token: Token },
-    MarketDetails { market: Market },
-    AllMarkets { markets: Vec<Market> },
+    MarketDetails { market: ApiMarket },
+    AllMarkets { markets: Vec<ApiMarket> },
     AllTokens { tokens: Vec<Token> },
 }
 
@@ -84,9 +86,9 @@ pub enum UserRequest {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum UserResponse {
-    Orders { orders: Vec<Order> },
-    Balances { balances: Vec<Balance> },
-    Trades { trades: Vec<Trade> },
+    Orders { orders: Vec<ApiOrder> },
+    Balances { balances: Vec<ApiBalance> },
+    Trades { trades: Vec<ApiTrade> },
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -123,7 +125,7 @@ pub enum TradeRequest {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum TradeResponse {
-    PlaceOrder { order: Order, trades: Vec<Trade> },
+    PlaceOrder { order: ApiOrder, trades: Vec<ApiTrade> },
     CancelOrder { order_id: String },
 }
 
@@ -205,7 +207,7 @@ pub enum AdminResponse {
         token: Token,
     },
     CreateMarket {
-        market: Market,
+        market: ApiMarket,
     },
     Faucet {
         user_address: String,
@@ -343,4 +345,193 @@ pub struct TradeData {
     pub price: String, // u128 as string
     pub size: String, // u128 as string
     pub timestamp: i64, // Unix timestamp for WebSocket compatibility
+}
+
+// ============================================================================
+// API DTOs (for HTTP responses)
+// ============================================================================
+
+/// API representation of Market with String fields for JSON compatibility
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ApiMarket {
+    pub id: String,
+    pub base_ticker: String,
+    pub quote_ticker: String,
+    pub tick_size: String, // u128 as string
+    pub lot_size: String, // u128 as string
+    pub min_size: String, // u128 as string
+    pub maker_fee_bps: i32,
+    pub taker_fee_bps: i32,
+}
+
+/// API representation of Order with String fields for JSON compatibility
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ApiOrder {
+    pub id: String, // UUID as string
+    pub user_address: String,
+    pub market_id: String,
+    pub price: String, // u128 as string
+    pub size: String, // u128 as string
+    pub side: Side,
+    pub order_type: OrderType,
+    pub status: OrderStatus,
+    pub filled_size: String, // u128 as string
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// API representation of Trade with String fields for JSON compatibility
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ApiTrade {
+    pub id: String, // UUID as string
+    pub market_id: String,
+    pub buyer_address: String,
+    pub seller_address: String,
+    pub buyer_order_id: String, // UUID as string
+    pub seller_order_id: String, // UUID as string
+    pub price: String, // u128 as string
+    pub size: String, // u128 as string
+    pub timestamp: DateTime<Utc>,
+}
+
+/// API representation of Balance with String fields for JSON compatibility
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ApiBalance {
+    pub user_address: String,
+    pub token_ticker: String,
+    pub amount: String, // u128 as string
+    pub open_interest: String, // u128 as string
+    pub updated_at: DateTime<Utc>,
+}
+
+// Conversion implementations from domain to API types
+impl From<super::domain::Market> for ApiMarket {
+    fn from(m: super::domain::Market) -> Self {
+        Self {
+            id: m.id,
+            base_ticker: m.base_ticker,
+            quote_ticker: m.quote_ticker,
+            tick_size: m.tick_size.to_string(),
+            lot_size: m.lot_size.to_string(),
+            min_size: m.min_size.to_string(),
+            maker_fee_bps: m.maker_fee_bps,
+            taker_fee_bps: m.taker_fee_bps,
+        }
+    }
+}
+
+impl From<super::domain::Order> for ApiOrder {
+    fn from(o: super::domain::Order) -> Self {
+        Self {
+            id: o.id.to_string(),
+            user_address: o.user_address,
+            market_id: o.market_id,
+            price: o.price.to_string(),
+            size: o.size.to_string(),
+            side: o.side,
+            order_type: o.order_type,
+            status: o.status,
+            filled_size: o.filled_size.to_string(),
+            created_at: o.created_at,
+            updated_at: o.updated_at,
+        }
+    }
+}
+
+impl From<super::domain::Trade> for ApiTrade {
+    fn from(t: super::domain::Trade) -> Self {
+        Self {
+            id: t.id.to_string(),
+            market_id: t.market_id,
+            buyer_address: t.buyer_address,
+            seller_address: t.seller_address,
+            buyer_order_id: t.buyer_order_id.to_string(),
+            seller_order_id: t.seller_order_id.to_string(),
+            price: t.price.to_string(),
+            size: t.size.to_string(),
+            timestamp: t.timestamp,
+        }
+    }
+}
+
+impl From<super::domain::Balance> for ApiBalance {
+    fn from(b: super::domain::Balance) -> Self {
+        Self {
+            user_address: b.user_address,
+            token_ticker: b.token_ticker,
+            amount: b.amount.to_string(),
+            open_interest: b.open_interest.to_string(),
+            updated_at: b.updated_at,
+        }
+    }
+}
+
+// Reverse conversions from API to domain types (for SDK)
+impl TryFrom<ApiMarket> for super::domain::Market {
+    type Error = std::num::ParseIntError;
+
+    fn try_from(m: ApiMarket) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: m.id,
+            base_ticker: m.base_ticker,
+            quote_ticker: m.quote_ticker,
+            tick_size: m.tick_size.parse()?,
+            lot_size: m.lot_size.parse()?,
+            min_size: m.min_size.parse()?,
+            maker_fee_bps: m.maker_fee_bps,
+            taker_fee_bps: m.taker_fee_bps,
+        })
+    }
+}
+
+impl TryFrom<ApiOrder> for super::domain::Order {
+    type Error = Box<dyn std::error::Error>;
+
+    fn try_from(o: ApiOrder) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: Uuid::parse_str(&o.id)?,
+            user_address: o.user_address,
+            market_id: o.market_id,
+            price: o.price.parse()?,
+            size: o.size.parse()?,
+            side: o.side,
+            order_type: o.order_type,
+            status: o.status,
+            filled_size: o.filled_size.parse()?,
+            created_at: o.created_at,
+            updated_at: o.updated_at,
+        })
+    }
+}
+
+impl TryFrom<ApiTrade> for super::domain::Trade {
+    type Error = Box<dyn std::error::Error>;
+
+    fn try_from(t: ApiTrade) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: Uuid::parse_str(&t.id)?,
+            market_id: t.market_id,
+            buyer_address: t.buyer_address,
+            seller_address: t.seller_address,
+            buyer_order_id: Uuid::parse_str(&t.buyer_order_id)?,
+            seller_order_id: Uuid::parse_str(&t.seller_order_id)?,
+            price: t.price.parse()?,
+            size: t.size.parse()?,
+            timestamp: t.timestamp,
+        })
+    }
+}
+
+impl TryFrom<ApiBalance> for super::domain::Balance {
+    type Error = std::num::ParseIntError;
+
+    fn try_from(b: ApiBalance) -> Result<Self, Self::Error> {
+        Ok(Self {
+            user_address: b.user_address,
+            token_ticker: b.token_ticker,
+            amount: b.amount.parse()?,
+            open_interest: b.open_interest.parse()?,
+            updated_at: b.updated_at,
+        })
+    }
 }

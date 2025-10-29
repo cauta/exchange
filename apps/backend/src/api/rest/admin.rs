@@ -93,7 +93,7 @@ pub async fn admin_handler(
                     })
                 })?;
 
-            Ok(Json(AdminResponse::CreateMarket { market }))
+            Ok(Json(AdminResponse::CreateMarket { market: market.into() }))
         }
 
         AdminRequest::Faucet {

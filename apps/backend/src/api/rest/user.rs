@@ -52,7 +52,7 @@ pub async fn user(
                     })
                 })?;
 
-            Ok(Json(UserResponse::Orders { orders }))
+            Ok(Json(UserResponse::Orders { orders: orders.into_iter().map(|o| o.into()).collect() }))
         }
         UserRequest::Balances { user_address } => {
             let balances = state
@@ -66,7 +66,7 @@ pub async fn user(
                     })
                 })?;
 
-            Ok(Json(UserResponse::Balances { balances }))
+            Ok(Json(UserResponse::Balances { balances: balances.into_iter().map(|b| b.into()).collect() }))
         }
         UserRequest::Trades {
             user_address,
@@ -84,7 +84,7 @@ pub async fn user(
                     })
                 })?;
 
-            Ok(Json(UserResponse::Trades { trades }))
+            Ok(Json(UserResponse::Trades { trades: trades.into_iter().map(|t| t.into()).collect() }))
         }
     }
 }

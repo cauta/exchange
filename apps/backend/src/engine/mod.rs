@@ -122,7 +122,10 @@ impl MatchingEngine {
             });
         }
 
-        Ok(OrderPlaced { order, trades })
+        Ok(OrderPlaced {
+            order: order.into(),
+            trades: trades.into_iter().map(|t| t.into()).collect()
+        })
     }
 
     /// Handle cancelling an order

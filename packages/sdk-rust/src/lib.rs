@@ -30,6 +30,13 @@ pub use websocket::{WebSocketClient, WebSocketHandle};
 
 // Re-export backend types for convenience
 pub use backend::models::api::{
-    ClientMessage, SubscriptionChannel, OrderPlaced, OrderCancelled,
+    ClientMessage, SubscriptionChannel, OrderCancelled,
 };
 pub use backend::models::domain::*;
+
+/// SDK-specific OrderPlaced with domain types (pure u128)
+#[derive(Debug, Clone)]
+pub struct OrderPlaced {
+    pub order: Order,
+    pub trades: Vec<Trade>,
+}

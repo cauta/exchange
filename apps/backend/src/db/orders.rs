@@ -1,6 +1,8 @@
 use crate::db::Db;
 use crate::errors::Result;
 use crate::models::domain::{Order, OrderStatus, OrderType, Side};
+use crate::utils::BigDecimalExt;
+use bigdecimal::BigDecimal;
 use chrono::Utc;
 use sqlx::Row;
 use uuid::Uuid;
@@ -127,7 +129,7 @@ impl Db {
     pub async fn get_order(&self, order_id: &Uuid) -> Result<Order> {
         let row = sqlx::query(
             r#"
-            SELECT id, user_address, market_id, price, size, side, type, status, filled_size, created_at, updated_at
+            SELECT id, user_address, market_id, price, size, side::TEXT as side, type::TEXT as type, status::TEXT as status, filled_size, created_at, updated_at
             FROM orders
             WHERE id = $1
             "#
@@ -136,9 +138,9 @@ impl Db {
         .fetch_one(&self.postgres)
         .await?;
 
-        let price_str: String = row.get("price");
-        let size_str: String = row.get("size");
-        let filled_size_str: String = row.get("filled_size");
+        let price: BigDecimal = row.get("price");
+        let size: BigDecimal = row.get("size");
+        let filled_size: BigDecimal = row.get("filled_size");
         let side_str: String = row.get("side");
         let type_str: String = row.get("type");
         let status_str: String = row.get("status");
@@ -147,8 +149,8 @@ impl Db {
             id: row.get("id"),
             user_address: row.get("user_address"),
             market_id: row.get("market_id"),
-            price: price_str.parse().unwrap_or(0),
-            size: size_str.parse().unwrap_or(0),
+            price: price.to_u128(),
+            size: size.to_u128(),
             side: match side_str.as_str() {
                 "buy" => Side::Buy,
                 "sell" => Side::Sell,
@@ -166,7 +168,7 @@ impl Db {
                 "cancelled" => OrderStatus::Cancelled,
                 _ => OrderStatus::Pending,
             },
-            filled_size: filled_size_str.parse().unwrap_or(0),
+            filled_size: filled_size.to_u128(),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
         })
@@ -191,7 +193,7 @@ impl Db {
         let query = if let (Some(market), Some(stat)) = (market_id, status_str) {
             sqlx::query(
                 r#"
-                SELECT id, user_address, market_id, price, size, side, type, status, filled_size, created_at, updated_at
+                SELECT id, user_address, market_id, price, size, side::TEXT as side, type::TEXT as type, status::TEXT as status, filled_size, created_at, updated_at
                 FROM orders
                 WHERE user_address = $1 AND market_id = $2 AND status = $3::order_status
                 ORDER BY created_at DESC
@@ -205,7 +207,7 @@ impl Db {
         } else if let Some(market) = market_id {
             sqlx::query(
                 r#"
-                SELECT id, user_address, market_id, price, size, side, type, status, filled_size, created_at, updated_at
+                SELECT id, user_address, market_id, price, size, side::TEXT as side, type::TEXT as type, status::TEXT as status, filled_size, created_at, updated_at
                 FROM orders
                 WHERE user_address = $1 AND market_id = $2
                 ORDER BY created_at DESC
@@ -218,7 +220,7 @@ impl Db {
         } else if let Some(stat) = status_str {
             sqlx::query(
                 r#"
-                SELECT id, user_address, market_id, price, size, side, type, status, filled_size, created_at, updated_at
+                SELECT id, user_address, market_id, price, size, side::TEXT as side, type::TEXT as type, status::TEXT as status, filled_size, created_at, updated_at
                 FROM orders
                 WHERE user_address = $1 AND status = $2::order_status
                 ORDER BY created_at DESC
@@ -231,7 +233,7 @@ impl Db {
         } else {
             sqlx::query(
                 r#"
-                SELECT id, user_address, market_id, price, size, side, type, status, filled_size, created_at, updated_at
+                SELECT id, user_address, market_id, price, size, side::TEXT as side, type::TEXT as type, status::TEXT as status, filled_size, created_at, updated_at
                 FROM orders
                 WHERE user_address = $1
                 ORDER BY created_at DESC
@@ -247,9 +249,9 @@ impl Db {
         let orders = rows
             .iter()
             .map(|row| {
-                let price_str: String = row.get("price");
-                let size_str: String = row.get("size");
-                let filled_size_str: String = row.get("filled_size");
+                let price: BigDecimal = row.get("price");
+                let size: BigDecimal = row.get("size");
+                let filled_size: BigDecimal = row.get("filled_size");
                 let side_str: String = row.get("side");
                 let type_str: String = row.get("type");
                 let status_str: String = row.get("status");
@@ -258,8 +260,8 @@ impl Db {
                     id: row.get("id"),
                     user_address: row.get("user_address"),
                     market_id: row.get("market_id"),
-                    price: price_str.parse().unwrap_or(0),
-                    size: size_str.parse().unwrap_or(0),
+                    price: price.to_u128(),
+                    size: size.to_u128(),
                     side: match side_str.as_str() {
                         "buy" => Side::Buy,
                         "sell" => Side::Sell,
@@ -277,7 +279,7 @@ impl Db {
                         "cancelled" => OrderStatus::Cancelled,
                         _ => OrderStatus::Pending,
                     },
-                    filled_size: filled_size_str.parse().unwrap_or(0),
+                    filled_size: filled_size.to_u128(),
                     created_at: row.get("created_at"),
                     updated_at: row.get("updated_at"),
                 }
