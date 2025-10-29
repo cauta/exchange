@@ -2,7 +2,7 @@ use backend::engine::matcher::Matcher;
 use backend::engine::orderbook::Orderbook;
 use backend::models::domain::{Market, Order, OrderStatus, OrderType, Side};
 use chrono::Utc;
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -19,13 +19,7 @@ fn create_test_market() -> Market {
     }
 }
 
-fn create_order(
-    user: &str,
-    market_id: &str,
-    side: Side,
-    price: u128,
-    size: u128,
-) -> Order {
+fn create_order(user: &str, market_id: &str, side: Side, price: u128, size: u128) -> Order {
     Order {
         id: Uuid::new_v4(),
         user_address: user.to_string(),
@@ -62,13 +56,7 @@ fn bench_order_matching_latency(c: &mut Criterion) {
 
     group.bench_function("match_taker_buy", |b| {
         b.iter(|| {
-            let buy_order = create_order(
-                "buyer",
-                "BTC/USDC",
-                Side::Buy,
-                50_010_000_000,
-                5_000_000,
-            );
+            let buy_order = create_order("buyer", "BTC/USDC", Side::Buy, 50_010_000_000, 5_000_000);
             let matches = Matcher::match_order(black_box(&buy_order), black_box(&mut orderbook));
             black_box(matches);
         });
@@ -88,23 +76,11 @@ fn bench_critical_path_latency(c: &mut Criterion) {
             let mut orderbook = Orderbook::new("BTC/USDC".to_string());
 
             // Place maker order
-            let maker = create_order(
-                "seller",
-                "BTC/USDC",
-                Side::Sell,
-                50_000_000_000,
-                10_000_000,
-            );
+            let maker = create_order("seller", "BTC/USDC", Side::Sell, 50_000_000_000, 10_000_000);
             orderbook.add_order(maker);
 
             // Place taker order that matches
-            let taker = create_order(
-                "buyer",
-                "BTC/USDC",
-                Side::Buy,
-                50_000_000_000,
-                10_000_000,
-            );
+            let taker = create_order("buyer", "BTC/USDC", Side::Buy, 50_000_000_000, 10_000_000);
 
             let matches = Matcher::match_order(black_box(&taker), black_box(&mut orderbook));
             black_box(matches);
@@ -275,7 +251,8 @@ fn bench_worst_case_latency(c: &mut Criterion) {
                     updated_at: Utc::now(),
                 };
 
-                let matches = Matcher::match_order(black_box(&market_order), black_box(&mut orderbook));
+                let matches =
+                    Matcher::match_order(black_box(&market_order), black_box(&mut orderbook));
                 black_box(matches);
             },
             criterion::BatchSize::SmallInput,
@@ -294,25 +271,16 @@ fn bench_best_case_latency(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let mut orderbook = Orderbook::new("BTC/USDC".to_string());
-                let sell_order = create_order(
-                    "seller",
-                    "BTC/USDC",
-                    Side::Sell,
-                    50_000_000_000,
-                    10_000_000,
-                );
+                let sell_order =
+                    create_order("seller", "BTC/USDC", Side::Sell, 50_000_000_000, 10_000_000);
                 orderbook.add_order(sell_order);
                 orderbook
             },
             |mut orderbook| {
-                let buy_order = create_order(
-                    "buyer",
-                    "BTC/USDC",
-                    Side::Buy,
-                    50_000_000_000,
-                    5_000_000,
-                );
-                let matches = Matcher::match_order(black_box(&buy_order), black_box(&mut orderbook));
+                let buy_order =
+                    create_order("buyer", "BTC/USDC", Side::Buy, 50_000_000_000, 5_000_000);
+                let matches =
+                    Matcher::match_order(black_box(&buy_order), black_box(&mut orderbook));
                 black_box(matches);
             },
             criterion::BatchSize::SmallInput,

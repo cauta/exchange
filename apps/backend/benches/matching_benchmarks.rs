@@ -18,13 +18,7 @@ fn create_test_market() -> Market {
     }
 }
 
-fn create_order(
-    user: &str,
-    market_id: &str,
-    side: Side,
-    price: u128,
-    size: u128,
-) -> Order {
+fn create_order(user: &str, market_id: &str, side: Side, price: u128, size: u128) -> Order {
     Order {
         id: Uuid::new_v4(),
         user_address: user.to_string(),
@@ -90,7 +84,8 @@ fn bench_match_order_against_book_sizes(c: &mut Criterion) {
                         (size as u128) * 1_000_000,
                     );
 
-                    let matches = Matcher::match_order(black_box(&buy_order), black_box(&mut orderbook));
+                    let matches =
+                        Matcher::match_order(black_box(&buy_order), black_box(&mut orderbook));
                     black_box(matches);
                 });
             },
@@ -120,13 +115,7 @@ fn bench_partial_fill_matching(c: &mut Criterion) {
             }
 
             // Match with smaller buy order (only fills 3)
-            let buy_order = create_order(
-                "buyer",
-                "BTC/USDC",
-                Side::Buy,
-                50_050_000_000,
-                3_000_000,
-            );
+            let buy_order = create_order("buyer", "BTC/USDC", Side::Buy, 50_050_000_000, 3_000_000);
 
             let matches = Matcher::match_order(black_box(&buy_order), black_box(&mut orderbook));
             black_box(matches);
@@ -199,13 +188,7 @@ fn bench_price_time_priority(c: &mut Criterion) {
             }
 
             // Match buy order
-            let buy_order = create_order(
-                "buyer",
-                "BTC/USDC",
-                Side::Buy,
-                price,
-                10_000_000,
-            );
+            let buy_order = create_order("buyer", "BTC/USDC", Side::Buy, price, 10_000_000);
 
             let matches = Matcher::match_order(black_box(&buy_order), black_box(&mut orderbook));
             black_box(matches);

@@ -9,6 +9,44 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/admin": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin endpoint for test/dev operations",
+        "description": "POST /api/admin\n\nHandles administrative operations like creating tokens, markets, and funding accounts.\nIn production, this endpoint should be protected or disabled.",
+        "operationId": "admin_handler",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Admin operation successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/api/drip": {
       "post": {
         "tags": [
@@ -296,6 +334,202 @@
   },
   "components": {
     "schemas": {
+      "AdminErrorResponse": {
+        "type": "object",
+        "required": [
+          "error",
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "ticker",
+              "decimals",
+              "name",
+              "type"
+            ],
+            "properties": {
+              "decimals": {
+                "type": "integer",
+                "format": "int32",
+                "minimum": 0
+              },
+              "name": {
+                "type": "string"
+              },
+              "ticker": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "create_token"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "base_ticker",
+              "quote_ticker",
+              "tick_size",
+              "lot_size",
+              "min_size",
+              "maker_fee_bps",
+              "taker_fee_bps",
+              "type"
+            ],
+            "properties": {
+              "base_ticker": {
+                "type": "string"
+              },
+              "lot_size": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "maker_fee_bps": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "min_size": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "quote_ticker": {
+                "type": "string"
+              },
+              "taker_fee_bps": {
+                "type": "integer",
+                "format": "int32"
+              },
+              "tick_size": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "create_market"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "user_address",
+              "token_ticker",
+              "amount",
+              "signature",
+              "type"
+            ],
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "signature": {
+                "type": "string"
+              },
+              "token_ticker": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "faucet"
+                ]
+              },
+              "user_address": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "description": "Admin request with type discriminator"
+      },
+      "AdminResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "token",
+              "type"
+            ],
+            "properties": {
+              "token": {
+                "$ref": "#/components/schemas/Token"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "create_token"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "market",
+              "type"
+            ],
+            "properties": {
+              "market": {
+                "$ref": "#/components/schemas/Market"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "create_market"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "user_address",
+              "token_ticker",
+              "amount",
+              "new_balance",
+              "type"
+            ],
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "new_balance": {
+                "type": "string"
+              },
+              "token_ticker": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "faucet"
+                ]
+              },
+              "user_address": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "description": "Admin response with type discriminator"
+      },
       "ApiResponse": {
         "type": "object",
         "required": [
@@ -1123,6 +1357,10 @@
     {
       "name": "drip",
       "description": "Get free money"
+    },
+    {
+      "name": "admin",
+      "description": "Admin operations (test/dev only)"
     }
   ]
 }

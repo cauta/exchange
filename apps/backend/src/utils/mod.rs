@@ -1,5 +1,5 @@
-use bigdecimal::{BigDecimal, ToPrimitive};
 use bigdecimal::num_bigint::ToBigInt;
+use bigdecimal::{BigDecimal, ToPrimitive};
 
 pub trait BigDecimalExt {
     fn to_u128(self) -> u128;
@@ -14,8 +14,6 @@ impl BigDecimalExt for BigDecimal {
             .expect("BUG: BigDecimal has fractional part - all values should be in atoms");
 
         // Convert BigInt to u128
-        bigint
-            .to_u128()
-            .expect("BUG: Value out of u128 range")
+        bigint.to_u128().expect("BUG: Value out of u128 range")
     }
 }

@@ -4,6 +4,29 @@
  */
 
 export interface paths {
+  "/api/admin": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Admin endpoint for test/dev operations
+     * @description POST /api/admin
+     *
+     *     Handles administrative operations like creating tokens, markets, and funding accounts.
+     *     In production, this endpoint should be protected or disabled.
+     */
+    post: operations["admin_handler"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/drip": {
     parameters: {
       query?: never;
@@ -92,6 +115,61 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    AdminErrorResponse: {
+      code: string;
+      error: string;
+    };
+    /** @description Admin request with type discriminator */
+    AdminRequest:
+      | {
+          /** Format: int32 */
+          decimals: number;
+          name: string;
+          ticker: string;
+          /** @enum {string} */
+          type: "create_token";
+        }
+      | {
+          base_ticker: string;
+          lot_size: number;
+          /** Format: int32 */
+          maker_fee_bps: number;
+          min_size: number;
+          quote_ticker: string;
+          /** Format: int32 */
+          taker_fee_bps: number;
+          tick_size: number;
+          /** @enum {string} */
+          type: "create_market";
+        }
+      | {
+          amount: string;
+          signature: string;
+          token_ticker: string;
+          /** @enum {string} */
+          type: "faucet";
+          user_address: string;
+        };
+    /** @description Admin response with type discriminator */
+    AdminResponse:
+      | {
+          token: components["schemas"]["Token"];
+          /** @enum {string} */
+          type: "create_token";
+        }
+      | {
+          market: components["schemas"]["Market"];
+          /** @enum {string} */
+          type: "create_market";
+        }
+      | {
+          amount: string;
+          new_balance: string;
+          token_ticker: string;
+          /** @enum {string} */
+          type: "faucet";
+          user_address: string;
+        };
     ApiResponse: {
       message: string;
       /** Format: int64 */
@@ -319,6 +397,44 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  admin_handler: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AdminRequest"];
+      };
+    };
+    responses: {
+      /** @description Admin operation successful */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminResponse"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Internal server error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   drip: {
     parameters: {
       query?: never;

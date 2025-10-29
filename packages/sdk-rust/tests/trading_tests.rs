@@ -327,7 +327,7 @@ async fn test_multiple_concurrent_orders() {
                     market_id,
                     Side::Sell,
                     OrderType::Limit,
-                    format!("{}", 50_000_000_000 + (i * 1_000_000_000)),
+                    format!("{}", 50_000_000_000u64 + (i * 1_000_000_000)),
                     "500000".to_string(), // 0.5 BTC each
                     "test_sig".to_string(),
                 )

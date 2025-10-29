@@ -50,7 +50,9 @@ impl IntoResponse for ExchangeError {
             ExchangeError::MarketNotFound { .. } => (StatusCode::NOT_FOUND, self.to_string()),
             ExchangeError::MarketAlreadyExists { .. } => (StatusCode::CONFLICT, self.to_string()),
             ExchangeError::InvalidParameter { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
-            ExchangeError::InsufficientBalance { .. } => (StatusCode::BAD_REQUEST, self.to_string()),
+            ExchangeError::InsufficientBalance { .. } => {
+                (StatusCode::BAD_REQUEST, self.to_string())
+            }
             ExchangeError::OrderNotFound => (StatusCode::NOT_FOUND, self.to_string()),
             ExchangeError::UserNotFound { .. } => (StatusCode::NOT_FOUND, self.to_string()),
 

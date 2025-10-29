@@ -77,17 +77,15 @@ pub async fn trade(
             let (token_to_lock, amount_to_lock) = match side {
                 crate::models::domain::Side::Buy => {
                     // For buy orders, need to lock quote token amount
-                    let quote_amount = price_value
-                        .checked_mul(size_value)
-                        .ok_or_else(|| {
-                            (
-                                StatusCode::BAD_REQUEST,
-                                Json(TradeErrorResponse {
-                                    error: "Order value overflow".to_string(),
-                                    code: "ORDER_VALUE_OVERFLOW".to_string(),
-                                }),
-                            )
-                        })?;
+                    let quote_amount = price_value.checked_mul(size_value).ok_or_else(|| {
+                        (
+                            StatusCode::BAD_REQUEST,
+                            Json(TradeErrorResponse {
+                                error: "Order value overflow".to_string(),
+                                code: "ORDER_VALUE_OVERFLOW".to_string(),
+                            }),
+                        )
+                    })?;
                     (market.quote_ticker.clone(), quote_amount)
                 }
                 crate::models::domain::Side::Sell => {
@@ -159,7 +157,9 @@ pub async fn trade(
                 let user_addr = user_address.clone();
                 let token = token_to_lock.clone();
                 tokio::spawn(async move {
-                    let _ = db_clone.unlock_balance(&user_addr, &token, amount_to_lock).await;
+                    let _ = db_clone
+                        .unlock_balance(&user_addr, &token, amount_to_lock)
+                        .await;
                 });
 
                 (

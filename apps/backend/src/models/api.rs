@@ -201,8 +201,12 @@ pub enum AdminRequest {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum AdminResponse {
-    CreateToken { token: Token },
-    CreateMarket { market: Market },
+    CreateToken {
+        token: Token,
+    },
+    CreateMarket {
+        market: Market,
+    },
     Faucet {
         user_address: String,
         token_ticker: String,
