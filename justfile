@@ -34,13 +34,11 @@ db-prepare:
 
 install:
   cd apps/frontend && bun install
-  cd apps/backend && cargo build
-  cd packages/sdk-rust && cargo build
+  cargo build --workspace
   cd packages/sdk-python && uv sync
 
 test:
-  cd apps/backend && cargo test
-  cd packages/sdk-rust && cargo test
+  cargo test --workspace
 
 bench:
   cd apps/backend && cargo bench
@@ -54,18 +52,18 @@ openapi:
 
 fmt:
   cd apps/frontend && bun run format
-  cd apps/backend && cargo fmt
+  cargo fmt --all
 
 lint:
   cd apps/frontend && bun run lint
-  cd apps/backend && cargo clippy
+  cargo clippy --workspace --all-targets
 
 typecheck:
   cd apps/frontend && bun run typecheck
 
 clean:
   cd apps/frontend && bun run clean
-  cd apps/backend && cargo clean
+  cargo clean
 
 ci:
   just openapi

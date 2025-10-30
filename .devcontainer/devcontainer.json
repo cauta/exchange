@@ -67,17 +67,6 @@
         "[json]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         }
-        // "sqltools.connections": [
-        //   {
-        //     "name": "Exchange PostgreSQL",
-        //     "driver": "PostgreSQL",
-        //     "server": "postgres",
-        //     "port": 5432,
-        //     "database": "exchange",
-        //     "username": "postgres",
-        //     "password": "password"
-        //   }
-        // ]
       }
     }
   },
