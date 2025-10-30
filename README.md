@@ -124,6 +124,7 @@ missing production
 - streamline backend types
 - cleanup frontend sdk
 - setup devcontainer. docker in docker and memory issues.
+- setup github actions.
 
 - add trading signatures
 - add full-fledged frontend
