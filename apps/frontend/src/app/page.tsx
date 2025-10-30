@@ -6,6 +6,7 @@ import { useMarkets } from "@/lib/hooks";
 import { Orderbook } from "@/components/Orderbook";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { TradeHistory } from "@/components/TradeHistory";
+import Link from "next/link";
 
 export default function Home() {
   const { markets, isLoading } = useMarkets();
@@ -28,13 +29,28 @@ export default function Home() {
     <main className="min-h-screen bg-black text-white p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">Exchange Monitor</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-4xl font-bold">Exchange Monitor</h1>
+            <Link
+              href="/admin"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            >
+              Admin Dashboard →
+            </Link>
+          </div>
 
           {/* Market Selector */}
           <div className="flex items-center gap-4">
             <label className="text-sm text-gray-400">Market:</label>
             {isLoading ? (
               <div className="text-gray-500">Loading markets...</div>
+            ) : markets.length === 0 ? (
+              <div className="text-gray-500">
+                No markets available.{" "}
+                <Link href="/admin" className="text-blue-400 hover:text-blue-300">
+                  Create one in the admin dashboard
+                </Link>
+              </div>
             ) : (
               <select
                 value={selectedMarketId || ""}
