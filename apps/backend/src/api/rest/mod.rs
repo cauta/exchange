@@ -55,6 +55,7 @@ pub mod user;
             crate::models::api::AdminResponse,
             crate::models::api::AdminErrorResponse,
             // Candles types
+            candles::CandlesRequest,
             candles::Candle,
             candles::CandlesResponse,
             // API types (only expose API layer in OpenAPI, not domain)
@@ -89,6 +90,6 @@ pub fn create_rest() -> Router<crate::AppState> {
         .route("/api/trade", post(trade::trade))
         .route("/api/drip", post(drip::drip))
         .route("/api/admin", post(admin::admin_handler))
-        .route("/api/candles", get(candles::get_candles))
+        .route("/api/candles", post(candles::get_candles))
         .merge(SwaggerUi::new("/api/docs").url("/api/openapi.json", ApiDoc::openapi()))
 }

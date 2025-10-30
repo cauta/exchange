@@ -48,53 +48,23 @@
       }
     },
     "/api/candles": {
-      "get": {
+      "post": {
         "tags": [
           "market-data"
         ],
         "summary": "Get OHLCV candles for a market",
-        "description": "GET /api/candles?market_id=BTC/USDC&interval=1m&from=1234567890&to=1234567899",
+        "description": "POST /api/candles",
         "operationId": "get_candles",
-        "parameters": [
-          {
-            "name": "market_id",
-            "in": "query",
-            "description": "Market ID",
-            "required": true,
-            "schema": {
-              "type": "string"
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandlesRequest"
+              }
             }
           },
-          {
-            "name": "interval",
-            "in": "query",
-            "description": "Candle interval: 1m, 5m, 15m, 1h, 1d",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "from",
-            "in": "query",
-            "description": "Start timestamp (Unix seconds)",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "to",
-            "in": "query",
-            "description": "End timestamp (Unix seconds)",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Candles retrieved successfully",
@@ -817,6 +787,31 @@
           "volume": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "CandlesRequest": {
+        "type": "object",
+        "required": [
+          "market_id",
+          "interval",
+          "from",
+          "to"
+        ],
+        "properties": {
+          "from": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "interval": {
+            "type": "string"
+          },
+          "market_id": {
+            "type": "string"
+          },
+          "to": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

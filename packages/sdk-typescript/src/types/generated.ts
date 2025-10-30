@@ -34,13 +34,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        get?: never;
+        put?: never;
         /**
          * Get OHLCV candles for a market
-         * @description GET /api/candles?market_id=BTC/USDC&interval=1m&from=1234567890&to=1234567899
+         * @description POST /api/candles
          */
-        get: operations["get_candles"];
-        put?: never;
-        post?: never;
+        post: operations["get_candles"];
         delete?: never;
         options?: never;
         head?: never;
@@ -249,6 +249,14 @@ export interface components {
             timestamp: number;
             volume: number;
         };
+        CandlesRequest: {
+            /** Format: int64 */
+            from: number;
+            interval: string;
+            market_id: string;
+            /** Format: int64 */
+            to: number;
+        };
         CandlesResponse: {
             candles: components["schemas"]["Candle"][];
         };
@@ -456,21 +464,16 @@ export interface operations {
     };
     get_candles: {
         parameters: {
-            query: {
-                /** @description Market ID */
-                market_id: string;
-                /** @description Candle interval: 1m, 5m, 15m, 1h, 1d */
-                interval: string;
-                /** @description Start timestamp (Unix seconds) */
-                from: number;
-                /** @description End timestamp (Unix seconds) */
-                to: number;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CandlesRequest"];
+            };
+        };
         responses: {
             /** @description Candles retrieved successfully */
             200: {

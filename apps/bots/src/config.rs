@@ -53,10 +53,11 @@ pub struct HyperliquidConfig {
 }
 
 impl Config {
-    /// Load bots configuration from apps/bots/config.toml
+    /// Load bots configuration from config.toml
+    /// Uses CARGO_MANIFEST_DIR so the path is consistent regardless of where the binary is run from
     pub fn load() -> Result<Self, config::ConfigError> {
-        let config_path =
-            std::env::var("BOTS_CONFIG").unwrap_or_else(|_| "apps/bots/config.toml".to_string());
+        let config_path = std::env::var("BOTS_CONFIG")
+            .unwrap_or_else(|_| format!("{}/config.toml", env!("CARGO_MANIFEST_DIR")));
 
         let builder = config::Config::builder()
             .add_source(config::File::with_name(&config_path).required(true))

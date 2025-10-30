@@ -16,6 +16,7 @@ type DripRequest = components['schemas']['DripRequest'];
 type DripResponse = components['schemas']['DripResponse'];
 type AdminRequest = components['schemas']['AdminRequest'];
 type AdminResponse = components['schemas']['AdminResponse'];
+type CandlesRequest = components['schemas']['CandlesRequest'];
 
 // Domain types
 export type Market = components['schemas']['ApiMarket'];
@@ -279,13 +280,13 @@ export class RestClient {
     from: number;
     to: number;
   }): Promise<Candle[]> {
-    const queryParams = new URLSearchParams({
+    const request: CandlesRequest = {
       market_id: params.marketId,
       interval: params.interval,
-      from: params.from.toString(),
-      to: params.to.toString(),
-    });
-    const response = await this.get<CandlesResponse>(`/api/candles?${queryParams}`);
+      from: params.from,
+      to: params.to,
+    };
+    const response = await this.post<CandlesResponse>('/api/candles', request);
     return response.candles;
   }
 

@@ -214,9 +214,8 @@ export class ExchangeDatafeed implements IBasicDataFeed {
 
     // Subscribe to trades for this market if not already subscribed
     const marketId = symbolInfo.name;
-    const isFirstSubscription = Array.from(this.subscriptions.values()).filter(
-      (sub) => sub.symbolInfo.name === marketId,
-    ).length === 1;
+    const isFirstSubscription =
+      Array.from(this.subscriptions.values()).filter((sub) => sub.symbolInfo.name === marketId).length === 1;
 
     if (isFirstSubscription) {
       console.log(`[TradingView] Subscribing to trades for ${marketId}`);

@@ -1,13 +1,10 @@
 use crate::AppState;
-use axum::{
-    extract::{Query, State},
-    Json,
-};
+use axum::{extract::State, Json};
 use clickhouse::Row;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
-pub struct CandlesQuery {
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct CandlesRequest {
     pub market_id: String,
     pub interval: String, // 1m, 5m, 15m, 1h, 1d
     pub from: i64,        // Unix timestamp in seconds
@@ -32,16 +29,11 @@ pub struct CandlesResponse {
 
 /// Get OHLCV candles for a market
 ///
-/// GET /api/candles?market_id=BTC/USDC&interval=1m&from=1234567890&to=1234567899
+/// POST /api/candles
 #[utoipa::path(
-    get,
+    post,
     path = "/api/candles",
-    params(
-        ("market_id" = String, Query, description = "Market ID"),
-        ("interval" = String, Query, description = "Candle interval: 1m, 5m, 15m, 1h, 1d"),
-        ("from" = i64, Query, description = "Start timestamp (Unix seconds)"),
-        ("to" = i64, Query, description = "End timestamp (Unix seconds)")
-    ),
+    request_body = CandlesRequest,
     responses(
         (status = 200, description = "Candles retrieved successfully", body = CandlesResponse),
         (status = 400, description = "Invalid parameters"),
@@ -51,7 +43,7 @@ pub struct CandlesResponse {
 )]
 pub async fn get_candles(
     State(state): State<AppState>,
-    Query(params): Query<CandlesQuery>,
+    Json(params): Json<CandlesRequest>,
 ) -> Result<Json<CandlesResponse>, String> {
     // Validate interval
     if !["1m", "5m", "15m", "1h", "1d"].contains(&params.interval.as_str()) {
