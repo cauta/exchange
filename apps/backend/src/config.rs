@@ -1,17 +1,11 @@
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 /// Backend configuration (from apps/backend/config.toml)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    pub server: ServerConfig,
     pub markets: Vec<MarketConfig>,
     pub tokens: Vec<TokenConfig>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ServerConfig {
-    pub host: String,
-    pub port: u16,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,19 +28,9 @@ pub struct TokenConfig {
 
 impl Config {
     /// Load backend configuration from config.toml
-    pub fn load() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn load() -> Result<Self> {
         let contents = std::fs::read_to_string("config.toml")?;
         let config: Config = toml::from_str(&contents)?;
         Ok(config)
-    }
-
-    /// Get server address
-    pub fn server_addr(&self) -> String {
-        format!("{}:{}", self.server.host, self.server.port)
-    }
-
-    /// Get exchange URL for clients
-    pub fn exchange_url(&self) -> String {
-        format!("http://{}:{}", self.server.host, self.server.port)
     }
 }

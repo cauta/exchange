@@ -25,3 +25,5 @@ tracing-subscriber.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+exchange-test-utils.workspace = true
+testcontainers.workspace = true

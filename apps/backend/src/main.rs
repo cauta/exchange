@@ -22,10 +22,11 @@ async fn main() -> anyhow::Result<()> {
     // Load configuration
     // ===============================
     let config = Config::load().context("Failed to load configuration")?;
-    let addr = config.server_addr();
+    let host = std::env::var("HOST").unwrap_or_else(|_| "localhost".to_string());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8888".to_string());
+    let addr = format!("{}:{}", host, port);
 
     log::info!("Starting exchange with configuration:");
-    log::info!("  Server: {}", addr);
     log::info!("  Markets: {}", config.markets.len());
     log::info!("  Tokens: {}", config.tokens.len());
 
