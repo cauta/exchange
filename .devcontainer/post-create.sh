@@ -2,23 +2,45 @@
 
 echo "🚀 Setting up development environment..."
 
-# Install frontend dependencies
-echo "📦 Installing frontend dependencies..."
-cd /workspace/apps/frontend && bun install
+# Wait for docker daemon to be ready
+echo "⏳ Waiting for Docker daemon..."
+max_attempts=30
+attempt=0
+until docker info > /dev/null 2>&1 || [ $attempt -eq $max_attempts ]; do
+  echo "Waiting for Docker daemon to start..."
+  sleep 2
+  attempt=$((attempt + 1))
+done
+
+if [ $attempt -eq $max_attempts ]; then
+  echo "❌ Docker daemon failed to start"
+  exit 1
+fi
+
+echo "✅ Docker daemon is ready!"
+
+# Start databases using docker compose
+echo "🗄️  Starting databases (PostgreSQL and ClickHouse)..."
+cd /workspace
+just db-run
 
 # Wait for databases to be ready
 echo "⏳ Waiting for databases to be ready..."
-until pg_isready -h postgres -p 5432 -U postgres; do
+until pg_isready -h localhost -p 5432 -U postgres; do
   echo "Waiting for PostgreSQL..."
   sleep 2
 done
 
-until clickhouse-client --host clickhouse --query "SELECT 1" > /dev/null 2>&1; do
+until docker exec exchange-clickhouse clickhouse-client --query "SELECT 1" > /dev/null 2>&1; do
   echo "Waiting for ClickHouse..."
   sleep 2
 done
 
 echo "✅ Databases are ready!"
+
+# Install frontend dependencies
+echo "📦 Installing frontend dependencies..."
+cd /workspace/apps/frontend && bun install
 
 # Run database migrations
 echo "🗄️  Running database migrations..."
@@ -39,4 +61,8 @@ echo "  just db-setup  - Set up databases"
 echo "  just db-reset  - Reset databases"
 echo "  just test      - Run tests"
 echo "  just openapi   - Generate OpenAPI schema"
+echo ""
+echo "💡 Databases are running via Docker-in-Docker:"
+echo "  docker compose ps    - Check database status"
+echo "  docker compose logs  - View database logs"
 echo ""
