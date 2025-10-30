@@ -6,8 +6,9 @@
 import type { components } from './generated';
 
 // Re-export domain types from generated
-export type Trade = components['schemas']['Trade'];
-export type Order = components['schemas']['Order'];
+export type Trade = components['schemas']['ApiTrade'];
+export type Order = components['schemas']['ApiOrder'];
+export type Balance = components['schemas']['ApiBalance'];
 
 // Subscription channels
 export type SubscriptionChannel = 'Trades' | 'Orderbook' | 'User';
@@ -66,8 +67,16 @@ export type ServerMessage =
       order: Order;
     }
   | {
+      type: 'order_update';
+      order: Order;
+    }
+  | {
       type: 'order_cancelled';
       order_id: string;
+    }
+  | {
+      type: 'balance_update';
+      balance: Balance;
     }
   | {
       type: 'pong';

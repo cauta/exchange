@@ -126,6 +126,7 @@ missing production
 - setup devcontainer. docker in docker and memory issues.
 - setup github actions.
 - cargo cleanup. use root cargo.toml. sort. machete.
+- tried mprocs but wanted to be clean.
 
 - add trading signatures
 - add full-fledged frontend

@@ -23,9 +23,10 @@
  */
 
 import { RestClient } from './rest';
-import type { RestClientConfig } from './rest';
+import type { RestClientConfig, Trade, Order, Balance } from './rest';
 import { WebSocketClient } from './websocket';
 import type { WebSocketClientConfig } from './websocket';
+import type { OrderbookLevel } from './types/websocket';
 
 export { RestClient } from './rest';
 export type { RestClientConfig } from './rest';
@@ -158,8 +159,8 @@ export class ExchangeClient {
   placeOrder(params: {
     userAddress: string;
     marketId: string;
-    side: 'Buy' | 'Sell';
-    orderType: 'Limit' | 'Market';
+    side: 'buy' | 'sell';
+    orderType: 'limit' | 'market';
     price: string;
     size: string;
     signature: string;
@@ -200,12 +201,12 @@ export class ExchangeClient {
    * Stream orderbook updates for a market
    * @returns Unsubscribe function
    */
-  onOrderbook(marketId: string, handler: (update: { levels: OrderbookLevel[] }) => void): () => void {
+  onOrderbook(marketId: string, handler: (update: { bids: OrderbookLevel[], asks: OrderbookLevel[] }) => void): () => void {
     this.ws.connect();
     this.ws.subscribe('Orderbook', { marketId });
     return this.ws.on('orderbook_update', (msg) => {
       if (msg.type === 'orderbook_update') {
-        handler({ levels: msg.levels });
+        handler({ bids: msg.bids, asks: msg.asks });
       }
     });
   }

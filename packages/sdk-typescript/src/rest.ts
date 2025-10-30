@@ -18,11 +18,11 @@ type AdminRequest = components['schemas']['AdminRequest'];
 type AdminResponse = components['schemas']['AdminResponse'];
 
 // Domain types
-export type Market = components['schemas']['Market'];
+export type Market = components['schemas']['ApiMarket'];
 export type Token = components['schemas']['Token'];
-export type Order = components['schemas']['Order'];
-export type Trade = components['schemas']['Trade'];
-export type Balance = components['schemas']['Balance'];
+export type Order = components['schemas']['ApiOrder'];
+export type Trade = components['schemas']['ApiTrade'];
+export type Balance = components['schemas']['ApiBalance'];
 export type Side = components['schemas']['Side'];
 export type OrderType = components['schemas']['OrderType'];
 export type OrderStatus = components['schemas']['OrderStatus'];
@@ -37,6 +37,9 @@ export class RestClient {
   private timeout: number;
 
   constructor(config: RestClientConfig) {
+    if (!config.baseUrl) {
+      throw new Error('RestClient: baseUrl is required');
+    }
     this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.timeout = config.timeout ?? 30000;
   }
