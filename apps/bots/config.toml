@@ -18,8 +18,8 @@ usdc_amount = "10000000000000"  # 10,000,000 USDC (6 decimals)
 enabled = true
 coin = "BTC"                    # Hyperliquid PERP (perpetual futures) - just use coin symbol
 market_id = "BTC/USDC"          # Your exchange market to mirror to
-depth_levels = 5                # Number of price levels to mirror
-update_interval_ms = 1000       # Update frequency
+depth_levels = 10                # Number of price levels to mirror
+update_interval_ms = 1000       # THROTTLING: Only sync orders every 1000ms (Hyperliquid sends ~100 updates/sec!)
 size_multiplier = "0.1"         # Scale orders to 10% of Hyperliquid size
 
 # Trade mirror bot - executes trades based on Hyperliquid

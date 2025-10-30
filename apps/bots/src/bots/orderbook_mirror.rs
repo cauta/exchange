@@ -6,6 +6,7 @@ use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use std::collections::HashMap;
 use std::str::FromStr;
+use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -46,25 +47,37 @@ impl OrderbookMirrorBot {
             "Starting orderbook mirror bot for {} PERP -> {} market",
             self.config.coin, self.config.market_id
         );
+        info!(
+            "Update interval: {}ms (throttling to prevent spam)",
+            self.config.update_interval_ms
+        );
 
         // Connect to Hyperliquid (perps by default)
         let hl_client = HyperliquidClient::new(self.config.coin.clone());
 
         let (mut rx, _handle) = hl_client.start().await?;
 
+        // Throttling: track last update time
+        let mut last_sync = Instant::now();
+        let update_interval = Duration::from_millis(self.config.update_interval_ms);
+
         // Process messages
         while let Some(msg) = rx.recv().await {
             match msg {
                 HlMessage::L2Book(book_data) => {
-                    // Update orderbook from Hyperliquid L2 data
+                    // Update local orderbook snapshot (fast, in-memory)
                     if book_data.levels.len() >= 2 {
                         let bids = book_data.levels[0].clone();
                         let asks = book_data.levels[1].clone();
                         self.orderbook.update_from_l2(bids, asks);
 
-                        // Sync orders with exchange
-                        if let Err(e) = self.sync_orderbook().await {
-                            error!("Failed to sync orderbook: {}", e);
+                        // Only sync with exchange if enough time has passed (throttling)
+                        let now = Instant::now();
+                        if now.duration_since(last_sync) >= update_interval {
+                            if let Err(e) = self.sync_orderbook().await {
+                                error!("Failed to sync orderbook: {}", e);
+                            }
+                            last_sync = now;
                         }
                     }
                 }
