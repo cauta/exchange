@@ -134,7 +134,9 @@ export function AuthButton() {
       }
     } catch (err) {
       console.error("Passkey auth error:", err);
-      setError(err instanceof Error ? err.message : "Passkey authentication failed. Try creating an account with email first.");
+      setError(
+        err instanceof Error ? err.message : "Passkey authentication failed. Try creating an account with email first.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -166,7 +168,7 @@ export function AuthButton() {
         <Button
           size="sm"
           variant="default"
-          className="backdrop-blur-md bg-primary/80 hover:bg-primary/90 border-b-[3px] border-b-primary shadow-[0_2px_1px_0px_rgba(180,150,255,0.6),0_1px_2px_0px_rgba(255,255,255,0.5)] cursor-pointer"
+          className="backdrop-blur-md bg-primary/80 hover:bg-primary/90 border-b-[3px] border-b-primary shadow-[0_3px_2px_0px_rgba(180,150,255,0.6),0_1px_1px_0px_rgba(255,255,255,0.5)] cursor-pointer"
         >
           Connect Wallet
         </Button>
@@ -174,9 +176,7 @@ export function AuthButton() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Connect Your Wallet</DialogTitle>
-          <DialogDescription>
-            Sign in with email or passkey to create or access your embedded wallet
-          </DialogDescription>
+          <DialogDescription>Sign in with email or passkey to create or access your embedded wallet</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -199,9 +199,7 @@ export function AuthButton() {
                 {isLoading ? "Sending..." : "Continue"}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              We'll send a magic link to your email
-            </p>
+            <p className="text-xs text-muted-foreground">We'll send a magic link to your email</p>
           </div>
 
           <div className="relative">
@@ -214,30 +212,19 @@ export function AuthButton() {
           </div>
 
           {/* Passkey Authentication */}
-          <Button
-            onClick={handlePasskeyAuth}
-            disabled={isLoading}
-            variant="outline"
-            className="w-full"
-          >
+          <Button onClick={handlePasskeyAuth} disabled={isLoading} variant="outline" className="w-full">
             Sign in with Passkey
           </Button>
           <p className="text-xs text-muted-foreground text-center">
             Passkeys use your device's biometrics for secure authentication
           </p>
 
-          {error && (
-            <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
+          {error && <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">{error}</div>}
 
           {!turnkey && (
             <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 text-sm text-yellow-600 dark:text-yellow-500 rounded-md">
               <p className="font-semibold mb-1">Configuration Required</p>
-              <p className="text-xs">
-                Add your Turnkey organization ID to .env.local to enable authentication
-              </p>
+              <p className="text-xs">Add your Turnkey organization ID to .env.local to enable authentication</p>
             </div>
           )}
         </div>
