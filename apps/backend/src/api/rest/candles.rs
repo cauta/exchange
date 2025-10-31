@@ -27,13 +27,14 @@ pub async fn get_candles(
 
     // Query ClickHouse for candles
     // Materialized views create one row per trade, so aggregate with GROUP BY
+    // Use trade_time to determine first (open) and last (close) trades
     let mut query = format!(
         "SELECT
             toUnixTimestamp(timestamp) as timestamp,
-            argMin(open, timestamp) as open,
+            argMin(open, trade_time) as open,
             max(high) as high,
             min(low) as low,
-            argMax(close, timestamp) as close,
+            argMax(close, trade_time) as close,
             sum(volume) as volume
         FROM exchange.candles
         WHERE market_id = '{}'

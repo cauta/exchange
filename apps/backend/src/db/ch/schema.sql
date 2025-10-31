@@ -21,7 +21,8 @@ PRIMARY KEY (market_id, timestamp);
 -- Materialized views insert one row per trade, queries must GROUP BY to aggregate
 CREATE TABLE IF NOT EXISTS exchange.candles (
     market_id String,
-    timestamp DateTime,
+    timestamp DateTime,      -- Bucket timestamp (start of interval)
+    trade_time DateTime,     -- Original trade timestamp (for ordering)
     interval String,
     open UInt128,
     high UInt128,
@@ -29,121 +30,75 @@ CREATE TABLE IF NOT EXISTS exchange.candles (
     close UInt128,
     volume UInt128
 ) ENGINE = MergeTree()
-ORDER BY (market_id, interval, timestamp)
+ORDER BY (market_id, interval, timestamp, trade_time)
 PRIMARY KEY (market_id, interval, timestamp);
 
--- Materialized view for 1-minute candles from trades
--- This auto-aggregates trades into 1-minute OHLCV bars
 CREATE MATERIALIZED VIEW IF NOT EXISTS exchange.candles_1m_mv
 TO exchange.candles
 AS SELECT
     market_id,
-    minute_bucket as timestamp,
+    toStartOfMinute(t.timestamp) as timestamp,
+    t.timestamp as trade_time,
     '1m' as interval,
-    argMin(price, trade_time) as open,
-    max(price) as high,
-    min(price) as low,
-    argMax(price, trade_time) as close,
-    sum(size) as volume
-FROM (
-    SELECT
-        market_id,
-        price,
-        size,
-        timestamp as trade_time,
-        toStartOfMinute(timestamp) as minute_bucket
-    FROM exchange.trades
-)
-GROUP BY market_id, minute_bucket;
+    t.price as open,
+    t.price as high,
+    t.price as low,
+    t.price as close,
+    t.size as volume
+FROM exchange.trades AS t;
 
--- Materialized view for 5-minute candles from trades
 CREATE MATERIALIZED VIEW IF NOT EXISTS exchange.candles_5m_mv
 TO exchange.candles
 AS SELECT
     market_id,
-    five_minute_bucket as timestamp,
+    toStartOfInterval(t.timestamp, INTERVAL 5 MINUTE) as timestamp,
+    t.timestamp as trade_time,
     '5m' as interval,
-    argMin(price, trade_time) as open,
-    max(price) as high,
-    min(price) as low,
-    argMax(price, trade_time) as close,
-    sum(size) as volume
-FROM (
-    SELECT
-        market_id,
-        price,
-        size,
-        timestamp as trade_time,
-        toStartOfInterval(timestamp, INTERVAL 5 MINUTE) as five_minute_bucket
-    FROM exchange.trades
-)
-GROUP BY market_id, five_minute_bucket;
+    t.price as open,
+    t.price as high,
+    t.price as low,
+    t.price as close,
+    t.size as volume
+FROM exchange.trades AS t;
 
--- Materialized view for 15-minute candles from trades
 CREATE MATERIALIZED VIEW IF NOT EXISTS exchange.candles_15m_mv
 TO exchange.candles
 AS SELECT
     market_id,
-    fifteen_minute_bucket as timestamp,
+    toStartOfInterval(t.timestamp, INTERVAL 15 MINUTE) as timestamp,
+    t.timestamp as trade_time,
     '15m' as interval,
-    argMin(price, trade_time) as open,
-    max(price) as high,
-    min(price) as low,
-    argMax(price, trade_time) as close,
-    sum(size) as volume
-FROM (
-    SELECT
-        market_id,
-        price,
-        size,
-        timestamp as trade_time,
-        toStartOfInterval(timestamp, INTERVAL 15 MINUTE) as fifteen_minute_bucket
-    FROM exchange.trades
-)
-GROUP BY market_id, fifteen_minute_bucket;
+    t.price as open,
+    t.price as high,
+    t.price as low,
+    t.price as close,
+    t.size as volume
+FROM exchange.trades AS t;
 
--- Materialized view for 1-hour candles from trades
 CREATE MATERIALIZED VIEW IF NOT EXISTS exchange.candles_1h_mv
 TO exchange.candles
 AS SELECT
     market_id,
-    hour_bucket as timestamp,
+    toStartOfHour(t.timestamp) as timestamp,
+    t.timestamp as trade_time,
     '1h' as interval,
-    argMin(price, trade_time) as open,
-    max(price) as high,
-    min(price) as low,
-    argMax(price, trade_time) as close,
-    sum(size) as volume
-FROM (
-    SELECT
-        market_id,
-        price,
-        size,
-        timestamp as trade_time,
-        toStartOfHour(timestamp) as hour_bucket
-    FROM exchange.trades
-)
-GROUP BY market_id, hour_bucket;
+    t.price as open,
+    t.price as high,
+    t.price as low,
+    t.price as close,
+    t.size as volume
+FROM exchange.trades AS t;
 
--- Materialized view for 1-day candles from trades
 CREATE MATERIALIZED VIEW IF NOT EXISTS exchange.candles_1d_mv
 TO exchange.candles
 AS SELECT
     market_id,
-    day_bucket as timestamp,
+    toStartOfDay(t.timestamp) as timestamp,
+    t.timestamp as trade_time,
     '1d' as interval,
-    argMin(price, trade_time) as open,
-    max(price) as high,
-    min(price) as low,
-    argMax(price, trade_time) as close,
-    sum(size) as volume
-FROM (
-    SELECT
-        market_id,
-        price,
-        size,
-        timestamp as trade_time,
-        toStartOfDay(timestamp) as day_bucket
-    FROM exchange.trades
-)
-GROUP BY market_id, day_bucket;
+    t.price as open,
+    t.price as high,
+    t.price as low,
+    t.price as close,
+    t.size as volume
+FROM exchange.trades AS t;

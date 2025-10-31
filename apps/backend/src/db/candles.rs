@@ -67,6 +67,7 @@ impl Db {
         end: DateTime<Utc>,
     ) -> Result<Vec<Candle>> {
         // Aggregate candles from multiple trade rows
+        // Use trade_time to determine first (open) and last (close) trades
         let candles = self
             .clickhouse
             .query(
@@ -74,10 +75,10 @@ impl Db {
                 market_id,
                 timestamp,
                 interval,
-                argMin(open, timestamp) as open,
+                argMin(open, trade_time) as open,
                 max(high) as high,
                 min(low) as low,
-                argMax(close, timestamp) as close,
+                argMax(close, trade_time) as close,
                 sum(volume) as volume
             FROM candles
             WHERE market_id = ? AND interval = ? AND timestamp >= ? AND timestamp < ?
