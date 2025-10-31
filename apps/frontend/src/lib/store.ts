@@ -24,6 +24,10 @@ interface ExchangeState {
   recentTrades: Trade[];
   priceHistory: PricePoint[];
 
+  // User authentication
+  userAddress: string | null;
+  isAuthenticated: boolean;
+
   // Loading states
   isLoadingMarkets: boolean;
   isLoadingOrderbook: boolean;
@@ -44,6 +48,10 @@ interface ExchangeState {
   // Actions - Price history
   addPricePoint: (price: number) => void;
 
+  // Actions - User authentication
+  setUser: (address: string) => void;
+  clearUser: () => void;
+
   // Utilities
   reset: () => void;
 }
@@ -59,6 +67,8 @@ const initialState = {
   orderbook: null,
   recentTrades: [],
   priceHistory: [],
+  userAddress: null,
+  isAuthenticated: false,
   isLoadingMarkets: false,
   isLoadingOrderbook: false,
 };
@@ -197,6 +207,19 @@ export const useExchangeStore = create<ExchangeState>()(
           if (state.priceHistory.length > 200) {
             state.priceHistory = state.priceHistory.slice(-200);
           }
+        }),
+
+      // User authentication
+      setUser: (address) =>
+        set((state) => {
+          state.userAddress = address;
+          state.isAuthenticated = true;
+        }),
+
+      clearUser: () =>
+        set((state) => {
+          state.userAddress = null;
+          state.isAuthenticated = false;
         }),
 
       // Reset

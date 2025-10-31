@@ -1,0 +1,88 @@
+/* Custom TradingView theme to match dark purple theme */
+
+/* Toolbar background */
+.chart-page .chart-container,
+.layout__area--top {
+  background-color: #0d0a14 !important;
+}
+
+/* Toolbar buttons and controls */
+.button-QtKYfKGZ,
+.button-merBkM5y,
+.item-Xp1EE8m2 {
+  color: #a295c1 !important;
+}
+
+.button-QtKYfKGZ:hover,
+.button-merBkM5y:hover,
+.item-Xp1EE8m2:hover {
+  background-color: #1f1832 !important;
+  color: #9d7efa !important;
+}
+
+/* Active button state */
+.button-QtKYfKGZ.isActive-QtKYfKGZ,
+.button-merBkM5y.isActive-merBkM5y {
+  color: #9d7efa !important;
+}
+
+/* Dropdown menus */
+.menuWrap-Kq3ruQo8,
+.menu-Kq3ruQo8 {
+  background-color: #0d0a14 !important;
+  border-color: #1f1832 !important;
+}
+
+/* Menu items */
+.item-WJDah4zj {
+  color: #a295c1 !important;
+}
+
+.item-WJDah4zj:hover {
+  background-color: #1f1832 !important;
+  color: #9d7efa !important;
+}
+
+/* Time axis and price axis */
+.price-axis,
+.time-axis {
+  background-color: #0d0a14 !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar-track {
+  background: #0d0a14 !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1f1832 !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9d7efa !important;
+}
+
+/* Context menu */
+.menuBox-biWYdsXC {
+  background-color: #0d0a14 !important;
+  border-color: #1f1832 !important;
+}
+
+/* Separators */
+.separator-Pf4rIzEt {
+  background-color: #1f1832 !important;
+}
+
+/* Input fields */
+input[type="text"],
+input[type="number"] {
+  background-color: #1f1832 !important;
+  color: #a295c1 !important;
+  border-color: #1f1832 !important;
+}
+
+/* Remove any white backgrounds */
+.chart-gui-wrapper,
+.chart-container-border {
+  background-color: #0d0a14 !important;
+}

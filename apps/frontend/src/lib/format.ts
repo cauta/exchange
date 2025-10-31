@@ -104,3 +104,82 @@ export function formatDisplayPrice(price: number, maxDecimals: number = 8): stri
     return price.toFixed(Math.min(6, maxDecimals)); // Small prices: 6 decimals
   }
 }
+
+/**
+ * Convert display value to raw value (multiply by 10^decimals)
+ * @param displayValue User-friendly number
+ * @param decimals Token decimals
+ * @returns Raw value as string
+ */
+export function toRawValue(displayValue: number | string, decimals: number): string {
+  const value = typeof displayValue === 'string' ? parseFloat(displayValue) : displayValue;
+  if (isNaN(value)) return '0';
+
+  // Use BigInt for precision
+  const multiplier = BigInt(10 ** decimals);
+  const wholePart = Math.floor(value);
+  const fractionalPart = value - wholePart;
+
+  const wholeRaw = BigInt(wholePart) * multiplier;
+  const fractionalRaw = BigInt(Math.round(fractionalPart * Number(multiplier)));
+
+  return (wholeRaw + fractionalRaw).toString();
+}
+
+/**
+ * Convert raw value to display value (divide by 10^decimals)
+ * @param rawValue Raw value string
+ * @param decimals Token decimals
+ * @returns Display value as number
+ */
+export function toDisplayValue(rawValue: string, decimals: number): number {
+  const raw = BigInt(rawValue);
+  const divisor = BigInt(10 ** decimals);
+  const wholePart = Number(raw / divisor);
+  const fractionalPart = Number(raw % divisor) / Number(divisor);
+  return wholePart + fractionalPart;
+}
+
+/**
+ * Round a price to the nearest tick size
+ * @param price Display price
+ * @param tickSize Raw tick size from market
+ * @param quoteDecimals Quote token decimals
+ * @returns Rounded display price
+ */
+export function roundToTickSize(price: number, tickSize: string, quoteDecimals: number): number {
+  const tickValue = toDisplayValue(tickSize, quoteDecimals);
+  if (tickValue === 0) return price;
+  return Math.round(price / tickValue) * tickValue;
+}
+
+/**
+ * Round a size to the nearest lot size
+ * @param size Display size
+ * @param lotSize Raw lot size from market
+ * @param baseDecimals Base token decimals
+ * @returns Rounded display size
+ */
+export function roundToLotSize(size: number, lotSize: string, baseDecimals: number): number {
+  const lotValue = toDisplayValue(lotSize, baseDecimals);
+  if (lotValue === 0) return size;
+  return Math.round(size / lotValue) * lotValue;
+}
+
+/**
+ * Get the number of decimal places needed to display a tick/lot size
+ * @param tickOrLotSize Raw tick/lot size
+ * @param decimals Token decimals
+ * @returns Number of decimal places
+ */
+export function getDecimalPlaces(tickOrLotSize: string, decimals: number): number {
+  const displayValue = toDisplayValue(tickOrLotSize, decimals);
+  if (displayValue === 0) return decimals;
+
+  const str = displayValue.toFixed(decimals);
+  const trimmed = str.replace(/\.?0+$/, '');
+  const decimalIndex = trimmed.indexOf('.');
+
+  if (decimalIndex === -1) return 0;
+  return trimmed.length - decimalIndex - 1;
+}

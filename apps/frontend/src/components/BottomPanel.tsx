@@ -8,16 +8,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export function BottomPanel() {
   return (
-    <Card className="py-0">
+    <Card className="py-0 overflow-hidden">
       <Tabs defaultValue="balances">
-        <TabsList className="w-full justify-start rounded-none border-b h-auto p-0 bg-transparent">
-          <TabsTrigger value="balances" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+        <TabsList className="w-full justify-start rounded-none border-b border-border h-auto p-0 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+          <TabsTrigger value="balances" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all duration-200 px-6 py-3">
             Balances
           </TabsTrigger>
-          <TabsTrigger value="orders" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+          <TabsTrigger value="orders" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all duration-200 px-6 py-3">
             Orders
           </TabsTrigger>
-          <TabsTrigger value="trades" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
+          <TabsTrigger value="trades" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all duration-200 px-6 py-3">
             Trades
           </TabsTrigger>
         </TabsList>

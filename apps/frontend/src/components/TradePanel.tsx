@@ -1,30 +1,44 @@
 "use client";
 
-import { useState } from "react";
-import { useExchangeStore, selectSelectedMarket } from "@/lib/store";
+import { useState, useEffect } from "react";
+import { useExchangeStore, selectSelectedMarket, selectOrderbookBids, selectOrderbookAsks } from "@/lib/store";
 import { getExchangeClient } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { Balance } from "@exchange/sdk";
+import {
+  toRawValue,
+  toDisplayValue,
+  roundToTickSize,
+  roundToLotSize,
+  getDecimalPlaces,
+  formatNumberWithCommas,
+} from "@/lib/format";
 
 export function TradePanel() {
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
   const selectedMarket = useExchangeStore(selectSelectedMarket);
   const tokens = useExchangeStore((state) => state.tokens);
+  const userAddress = useExchangeStore((state) => state.userAddress);
+  const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
+  const recentTrades = useExchangeStore((state) => state.recentTrades);
+  const bids = useExchangeStore(selectOrderbookBids);
+  const asks = useExchangeStore(selectOrderbookAsks);
 
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [orderType, setOrderType] = useState<"limit" | "market">("limit");
   const [price, setPrice] = useState("");
   const [size, setSize] = useState("");
-  const [userAddress, setUserAddress] = useState("");
+  const [balances, setBalances] = useState<Balance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   if (!selectedMarketId || !selectedMarket) {
     return (
-      <Card className="h-full">
+      <Card className="h-full min-h-[400px]">
         <CardContent className="flex items-center justify-center h-full">
           <p className="text-muted-foreground text-sm">Select a market to trade</p>
         </CardContent>
@@ -37,7 +51,7 @@ export function TradePanel() {
 
   if (!baseToken || !quoteToken) {
     return (
-      <Card className="h-full">
+      <Card className="h-full min-h-[400px]">
         <CardContent className="flex items-center justify-center h-full">
           <p className="text-muted-foreground text-sm">Loading token information...</p>
         </CardContent>
@@ -52,8 +66,8 @@ export function TradePanel() {
     setLoading(true);
 
     try {
-      if (!userAddress.trim()) {
-        throw new Error("User address is required");
+      if (!isAuthenticated || !userAddress) {
+        throw new Error("Please connect your wallet first");
       }
       if (!price.trim() && orderType === "limit") {
         throw new Error("Price is required for limit orders");
@@ -69,7 +83,7 @@ export function TradePanel() {
       const signature = `${userAddress}:${Date.now()}`;
 
       const result = await client.placeOrder({
-        userAddress: userAddress.trim(),
+        userAddress,
         marketId: selectedMarketId,
         side: side === "buy" ? "buy" : "sell",
         orderType: orderType === "limit" ? "limit" : "market",
@@ -115,15 +129,17 @@ export function TradePanel() {
           <div className="grid grid-cols-2 gap-2">
             <Button
               onClick={() => setOrderType("limit")}
-              variant={orderType === "limit" ? "default" : "outline"}
+              variant="outline"
               size="sm"
+              className={orderType === "limit" ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}
             >
               Limit
             </Button>
             <Button
               onClick={() => setOrderType("market")}
-              variant={orderType === "market" ? "default" : "outline"}
+              variant="outline"
               size="sm"
+              className={orderType === "market" ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}
             >
               Market
             </Button>
@@ -131,16 +147,12 @@ export function TradePanel() {
         </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* User Address */}
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">User Address</Label>
-          <Input
-            type="text"
-            value={userAddress}
-            onChange={(e) => setUserAddress(e.target.value)}
-            placeholder="Enter your address"
-          />
-        </div>
+        {/* Wallet Connection Status */}
+        {!isAuthenticated && (
+          <div className="bg-yellow-500/10 border border-yellow-500/50 p-3 text-yellow-500 text-sm">
+            Connect your wallet to start trading
+          </div>
+        )}
 
         {/* Price - Only for limit orders */}
         {orderType === "limit" && (
@@ -194,14 +206,14 @@ export function TradePanel() {
         {/* Submit Button */}
         <Button
           type="submit"
-          disabled={loading}
+          disabled={loading || !isAuthenticated}
           className={`w-full ${
             side === "buy"
               ? "bg-green-600 hover:bg-green-700 text-white"
               : "bg-red-600 hover:bg-red-700 text-white"
           }`}
         >
-          {loading ? "Placing Order..." : `${side === "buy" ? "Buy" : "Sell"} ${baseToken.ticker}`}
+          {loading ? "Placing Order..." : !isAuthenticated ? "Connect Wallet" : `${side === "buy" ? "Buy" : "Sell"} ${baseToken.ticker}`}
         </Button>
       </form>
       </CardContent>

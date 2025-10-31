@@ -13,10 +13,13 @@
   },
   "dependencies": {
     "@exchange/sdk": "file:../../packages/sdk-typescript",
+    "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.13",
+    "@turnkey/sdk-browser": "^5.12.0",
+    "@turnkey/sdk-react": "^5.4.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "immer": "^10.2.0",

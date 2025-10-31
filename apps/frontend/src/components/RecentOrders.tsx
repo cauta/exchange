@@ -19,16 +19,17 @@ export function RecentOrders() {
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
   const selectedMarket = useExchangeStore(selectSelectedMarket);
   const tokens = useExchangeStore((state) => state.tokens);
+  const userAddress = useExchangeStore((state) => state.userAddress);
+  const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
 
   const [orders, setOrders] = useState<Order[]>([]);
-  const [userAddress, setUserAddress] = useState("");
   const [loading, setLoading] = useState(false);
 
   const baseToken = tokens.find((t) => t.ticker === selectedMarket?.base_ticker);
   const quoteToken = tokens.find((t) => t.ticker === selectedMarket?.quote_ticker);
 
   useEffect(() => {
-    if (!userAddress.trim() || !selectedMarketId) {
+    if (!userAddress || !isAuthenticated || !selectedMarketId) {
       setOrders([]);
       return;
     }
@@ -38,7 +39,7 @@ export function RecentOrders() {
       try {
         const client = getExchangeClient();
         const result = await client.getOrders({
-          userAddress: userAddress.trim(),
+          userAddress,
           marketId: selectedMarketId,
           limit: 50,
         });
@@ -55,7 +56,7 @@ export function RecentOrders() {
     const interval = setInterval(fetchOrders, 2000); // Refresh every 2 seconds
 
     return () => clearInterval(interval);
-  }, [userAddress, selectedMarketId]);
+  }, [userAddress, isAuthenticated, selectedMarketId]);
 
   if (!selectedMarketId || !selectedMarket || !baseToken || !quoteToken) {
     return <p className="text-muted-foreground text-sm">Select a market to view orders</p>;
@@ -63,21 +64,11 @@ export function RecentOrders() {
 
   return (
     <div>
-      <div className="mb-4">
-        <Input
-          type="text"
-          value={userAddress}
-          onChange={(e) => setUserAddress(e.target.value)}
-          placeholder="Enter your address to view orders"
-          className="max-w-md"
-        />
-      </div>
-
       <div className="overflow-auto max-h-80">
         {loading && !orders.length ? (
           <p className="text-muted-foreground text-sm">Loading orders...</p>
-        ) : !userAddress.trim() ? (
-          <p className="text-muted-foreground text-sm">Enter your address to view orders</p>
+        ) : !isAuthenticated || !userAddress ? (
+          <p className="text-muted-foreground text-sm">Connect your wallet to view orders</p>
         ) : orders.length === 0 ? (
           <p className="text-muted-foreground text-sm">No orders found</p>
         ) : (

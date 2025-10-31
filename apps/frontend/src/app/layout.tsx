@@ -2,6 +2,7 @@ import "@/styles/globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "@/components/theme-provider";
+import { TurnkeyProvider } from "@/lib/turnkey/provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           enableSystem={false}
           disableTransitionOnChange
         >
-          {children}
+          <TurnkeyProvider>
+            {children}
+          </TurnkeyProvider>
         </ThemeProvider>
       </body>
     </html>
