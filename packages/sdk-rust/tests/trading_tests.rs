@@ -2,10 +2,8 @@
 ///
 /// These tests verify the SDK through realistic trading scenarios,
 /// using ONLY the public REST and WebSocket APIs (no direct DB access for verification).
-mod helpers;
-
 use backend::models::domain::{OrderType, Side};
-use helpers::TestFixture;
+use exchange_test_utils::TestExchange;
 
 // ============================================================================
 // Basic Trading Workflows
@@ -13,9 +11,9 @@ use helpers::TestFixture;
 
 #[tokio::test]
 async fn test_complete_trading_workflow() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     // Setup: Create two users with balances
     fixture
@@ -140,9 +138,9 @@ async fn test_complete_trading_workflow() {
 
 #[tokio::test]
 async fn test_partial_fill() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("seller", 10_000_000, 0)
@@ -214,9 +212,9 @@ async fn test_partial_fill() {
 
 #[tokio::test]
 async fn test_order_cancellation() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("trader", 10_000_000, 0)
@@ -270,9 +268,9 @@ async fn test_order_cancellation() {
 
 #[tokio::test]
 async fn test_market_info_endpoints() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     // Get all markets
     let markets = fixture
@@ -317,9 +315,9 @@ async fn test_market_info_endpoints() {
 
 #[tokio::test]
 async fn test_multiple_concurrent_orders() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("trader", 10_000_000, 0)

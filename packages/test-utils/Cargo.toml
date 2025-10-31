@@ -11,6 +11,7 @@ anyhow.workspace = true
 axum.workspace = true
 backend.workspace = true
 clickhouse.workspace = true
+exchange-sdk.workspace = true
 reqwest.workspace = true
 sqlx.workspace = true
 testcontainers.workspace = true

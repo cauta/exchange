@@ -1,11 +1,9 @@
 /// Comprehensive SDK WebSocket tests
 ///
 /// These tests verify real-time event streams using only the WebSocket API.
-mod helpers;
-
 use backend::models::domain::{OrderType, Side};
 use exchange_sdk::{SubscriptionChannel, WebSocketClient};
-use helpers::TestFixture;
+use exchange_test_utils::TestExchange;
 
 // ============================================================================
 // WebSocket Subscription Tests
@@ -13,9 +11,9 @@ use helpers::TestFixture;
 
 #[tokio::test]
 async fn test_websocket_trade_events() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     // Setup users
     fixture
@@ -114,9 +112,9 @@ async fn test_websocket_trade_events() {
 
 #[tokio::test]
 async fn test_websocket_orderbook_events() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("trader", 10_000_000, 100_000_000_000_000_000) // 10 BTC + 100M USDC
@@ -181,9 +179,9 @@ async fn test_websocket_orderbook_events() {
 
 #[tokio::test]
 async fn test_websocket_user_events() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("alice", 10_000_000, 0)
@@ -287,9 +285,9 @@ async fn test_websocket_user_events() {
 
 #[tokio::test]
 async fn test_websocket_multiple_subscriptions() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("trader", 10_000_000, 100_000_000_000_000_000) // 10 BTC + 100M USDC
@@ -348,9 +346,9 @@ async fn test_websocket_multiple_subscriptions() {
 
 #[tokio::test]
 async fn test_websocket_unsubscribe() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     let ws_client = WebSocketClient::new(&fixture.server.ws_url);
     let mut ws_handle = ws_client
@@ -398,9 +396,9 @@ async fn test_websocket_unsubscribe() {
 
 #[tokio::test]
 async fn test_websocket_ping_pong() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     let ws_client = WebSocketClient::new(&fixture.server.ws_url);
     let mut ws_handle = ws_client

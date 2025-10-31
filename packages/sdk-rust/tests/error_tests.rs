@@ -1,10 +1,8 @@
 /// SDK error handling and validation tests
 ///
 /// These tests verify that the SDK properly handles errors and edge cases.
-mod helpers;
-
 use backend::models::domain::{OrderType, Side};
-use helpers::TestFixture;
+use exchange_test_utils::TestExchange;
 
 // ============================================================================
 // Error Handling Tests
@@ -12,9 +10,9 @@ use helpers::TestFixture;
 
 #[tokio::test]
 async fn test_order_insufficient_balance() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     // User has NO balance
     fixture
@@ -45,9 +43,9 @@ async fn test_order_insufficient_balance() {
 
 #[tokio::test]
 async fn test_cancel_nonexistent_order() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("user", 10_000_000, 0)
@@ -70,9 +68,9 @@ async fn test_cancel_nonexistent_order() {
 
 #[tokio::test]
 async fn test_cancel_other_users_order() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("alice", 10_000_000, 0)
@@ -125,9 +123,9 @@ async fn test_cancel_other_users_order() {
 
 #[tokio::test]
 async fn test_get_nonexistent_market() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     let result = fixture.client.get_market("FAKE/MARKET").await;
 
@@ -137,9 +135,9 @@ async fn test_get_nonexistent_market() {
 
 #[tokio::test]
 async fn test_get_nonexistent_token() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     let result = fixture.client.get_token("FAKE").await;
 
@@ -149,9 +147,9 @@ async fn test_get_nonexistent_token() {
 
 #[tokio::test]
 async fn test_orders_for_nonexistent_user() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     // Get orders for user that doesn't exist
     let orders = fixture
@@ -165,9 +163,9 @@ async fn test_orders_for_nonexistent_user() {
 
 #[tokio::test]
 async fn test_balances_for_nonexistent_user() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     // Get balances for user that doesn't exist
     let balances = fixture
@@ -181,9 +179,9 @@ async fn test_balances_for_nonexistent_user() {
 
 #[tokio::test]
 async fn test_trades_for_nonexistent_user() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     // Get trades for user that doesn't exist
     let trades = fixture
@@ -201,9 +199,9 @@ async fn test_trades_for_nonexistent_user() {
 
 #[tokio::test]
 async fn test_zero_size_order() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("user", 10_000_000, 0)
@@ -230,9 +228,9 @@ async fn test_zero_size_order() {
 
 #[tokio::test]
 async fn test_negative_price_order() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("user", 10_000_000, 0)
@@ -260,9 +258,9 @@ async fn test_negative_price_order() {
 
 #[tokio::test]
 async fn test_very_large_order() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("whale", u128::MAX, 0)
@@ -289,9 +287,9 @@ async fn test_very_large_order() {
 
 #[tokio::test]
 async fn test_duplicate_order_placement() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("user", 10_000_000, 0)
@@ -345,9 +343,9 @@ async fn test_duplicate_order_placement() {
 
 #[tokio::test]
 async fn test_health_endpoint() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     let health = fixture
         .client
@@ -360,9 +358,9 @@ async fn test_health_endpoint() {
 
 #[tokio::test]
 async fn test_concurrent_balance_queries() {
-    let fixture = TestFixture::new()
+    let fixture = TestExchange::new()
         .await
-        .expect("Failed to create test fixture");
+        .expect("Failed to create test exchange");
 
     fixture
         .create_user_with_balance("user", 10_000_000, 1_000_000_000)

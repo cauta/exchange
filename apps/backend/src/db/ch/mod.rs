@@ -48,8 +48,18 @@ async fn init_schema(client: &Client) -> anyhow::Result<()> {
 
     // Split by statements and execute each
     for statement in schema.split(';') {
-        let trimmed = statement.trim();
-        if !trimmed.is_empty() && !trimmed.starts_with("--") {
+        // Remove comment lines and trim
+        let cleaned: String = statement
+            .lines()
+            .filter(|line| {
+                let trimmed = line.trim();
+                !trimmed.is_empty() && !trimmed.starts_with("--")
+            })
+            .collect::<Vec<&str>>()
+            .join("\n");
+
+        let trimmed = cleaned.trim();
+        if !trimmed.is_empty() {
             client
                 .query(trimmed)
                 .execute()

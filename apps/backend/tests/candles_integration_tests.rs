@@ -72,7 +72,7 @@ async fn test_trades_persisted_to_clickhouse() {
 async fn test_candles_generated_from_trades() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
     let market = test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+        .create_test_market_with_tokens("SOL", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -181,7 +181,7 @@ async fn test_candles_generated_from_trades() {
 async fn test_no_trades_means_no_candles() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
     let market = test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+        .create_test_market_with_tokens("ETH", "USDC")
         .await
         .expect("Failed to create market");
 

@@ -1,12 +1,11 @@
-/// Test helpers for SDK integration tests
-///
-/// Fixture setup uses DB directly, but all test assertions use SDK only.
+use crate::TestServer;
 use exchange_sdk::ExchangeClient;
-use exchange_test_utils::TestServer;
 
-/// Test fixture that provides a server with a pre-configured market
-#[allow(dead_code)]
-pub struct TestFixture {
+/// High-level test fixture for exchange testing
+///
+/// Provides a running test exchange with a pre-configured market and admin client.
+/// Use this for SDK and integration tests that need a complete exchange setup.
+pub struct TestExchange {
     pub server: TestServer,
     pub client: ExchangeClient,
     pub market_id: String,
@@ -14,18 +13,18 @@ pub struct TestFixture {
     pub quote_ticker: String,
 }
 
-impl TestFixture {
-    /// Create a new test fixture with BTC/USDC market
+impl TestExchange {
+    /// Create a new test exchange with BTC/USDC market
     pub async fn new() -> anyhow::Result<Self> {
         Self::with_market("BTC", "USDC").await
     }
 
-    /// Create a test fixture with a custom market
+    /// Create a test exchange with a custom market
     pub async fn with_market(base: &str, quote: &str) -> anyhow::Result<Self> {
         let server = TestServer::start().await?;
         let client = ExchangeClient::new(&server.base_url);
 
-        // Setup fixture data via admin API
+        // Setup tokens via admin API
         client
             .admin_create_token(base.to_string(), 18, format!("{} Token", base))
             .await?;
@@ -33,6 +32,7 @@ impl TestFixture {
             .admin_create_token(quote.to_string(), 18, format!("{} Token", quote))
             .await?;
 
+        // Setup market via admin API
         let market = client
             .admin_create_market(
                 base.to_string(),
@@ -54,7 +54,7 @@ impl TestFixture {
         })
     }
 
-    /// Create a user with starting balance (fixture setup helper)
+    /// Create a user with starting balance
     ///
     /// Uses the admin faucet API to give users tokens, which also creates them if needed.
     pub async fn create_user_with_balance(
@@ -88,7 +88,6 @@ impl TestFixture {
 }
 
 /// Helper to wait for a condition with timeout
-#[allow(dead_code)]
 pub async fn wait_for<F, Fut>(mut condition: F, timeout_ms: u64) -> anyhow::Result<()>
 where
     F: FnMut() -> Fut,

@@ -1207,6 +1207,7 @@ dependencies = [
  "axum",
  "backend",
  "clickhouse",
+ "exchange-sdk",
  "reqwest",
  "sqlx",
  "testcontainers",

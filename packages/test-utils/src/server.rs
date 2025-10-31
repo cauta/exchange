@@ -91,9 +91,13 @@ impl TestServer {
     /// Build full HTTP URL for a path
     ///
     /// # Example
-    /// ```
+    /// ```no_run
+    /// # use exchange_test_utils::TestServer;
+    /// # async fn example(server: &TestServer) -> Result<(), Box<dyn std::error::Error>> {
     /// let url = server.url("/api/health");
     /// let response = reqwest::get(&url).await?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn url(&self, path: &str) -> String {
         format!("{}{}", self.base_url, path)
