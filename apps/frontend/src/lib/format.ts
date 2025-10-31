@@ -30,13 +30,15 @@ export function parseSize(rawSize: string, baseDecimals: number): number {
  * Format a number with commas and remove trailing zeros
  * @param value Number to format
  * @param maxDecimals Maximum number of decimal places
- * @returns Formatted string with commas and no trailing zeros
+ * @param keepTrailingZeros If true, keeps trailing zeros (e.g., for prices)
+ * @returns Formatted string with commas
  */
-export function formatNumberWithCommas(value: number, maxDecimals: number = 8): string {
-  // Format with max decimals, then remove trailing zeros
+export function formatNumberWithCommas(value: number, maxDecimals: number = 8, keepTrailingZeros: boolean = false): string {
+  // Format with max decimals
   const fixed = value.toFixed(maxDecimals);
-  // Remove trailing zeros and unnecessary decimal point
-  const trimmed = fixed.replace(/\.?0+$/, '');
+
+  // If we want to keep trailing zeros, don't trim them
+  const trimmed = keepTrailingZeros ? fixed : fixed.replace(/\.?0+$/, '');
 
   // Split into integer and decimal parts
   const parts = trimmed.split('.');
@@ -58,6 +60,12 @@ export function formatNumberWithCommas(value: number, maxDecimals: number = 8): 
  */
 export function formatPrice(rawPrice: string, quoteDecimals: number): string {
   const price = parsePrice(rawPrice, quoteDecimals);
+
+  // For high-value prices (>= 1000, like BTC), always show 2 decimals
+  if (price >= 1000) {
+    return formatNumberWithCommas(price, 2, true);
+  }
+
   // Use quote_decimals for display precision, but cap at 8 for readability
   const decimals = Math.min(quoteDecimals, 8);
   return formatNumberWithCommas(price, decimals);

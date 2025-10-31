@@ -249,7 +249,27 @@ export function TradePanel() {
   return (
     <Card className="h-full">
       <CardContent className="p-4 space-y-4">
-        {/* Buy/Sell Tabs */}
+        {/* Order Type Tabs */}
+        <div className="flex gap-2 p-1 bg-muted/50 rounded-lg backdrop-blur-sm">
+          <Button
+            onClick={() => setOrderType("limit")}
+            variant="ghost"
+            size="sm"
+            className={`flex-1 ${orderType === "limit" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
+          >
+            Limit
+          </Button>
+          <Button
+            onClick={() => setOrderType("market")}
+            variant="ghost"
+            size="sm"
+            className={`flex-1 ${orderType === "market" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
+          >
+            Market
+          </Button>
+        </div>
+
+        {/* Buy/Sell Buttons */}
         <div className="grid grid-cols-2 gap-2">
           <Button
             onClick={() => setSide("buy")}
@@ -266,26 +286,6 @@ export function TradePanel() {
             size="lg"
           >
             Sell
-          </Button>
-        </div>
-
-        {/* Order Type */}
-        <div className="flex gap-2 p-1 bg-muted rounded-lg">
-          <Button
-            onClick={() => setOrderType("limit")}
-            variant="ghost"
-            size="sm"
-            className={`flex-1 ${orderType === "limit" ? "bg-background shadow-sm" : ""}`}
-          >
-            Limit
-          </Button>
-          <Button
-            onClick={() => setOrderType("market")}
-            variant="ghost"
-            size="sm"
-            className={`flex-1 ${orderType === "market" ? "bg-background shadow-sm" : ""}`}
-          >
-            Market
           </Button>
         </div>
 

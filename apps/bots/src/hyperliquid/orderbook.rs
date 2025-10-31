@@ -79,11 +79,4 @@ impl Orderbook {
 
         (bids, asks)
     }
-
-    /// Get best bid and ask
-    pub fn get_best_prices(&self) -> Option<(Decimal, Decimal)> {
-        let best_bid = self.bids.iter().next_back().map(|(p, _)| *p)?;
-        let best_ask = self.asks.iter().next().map(|(p, _)| *p)?;
-        Some((best_bid, best_ask))
-    }
 }
