@@ -47,7 +47,10 @@ impl OrderbookMirrorBot {
 
         // Auto-faucet initial funds (large amounts for testing)
         // Bots will auto-faucet more if they run out during operation
-        info!("💰 Auto-fauceting initial funds for {}", config.user_address);
+        info!(
+            "💰 Auto-fauceting initial funds for {}",
+            config.user_address
+        );
         let faucet_amount = "10000000000000000000000000"; // Large amount for testing
 
         for token in [&market.base_ticker, &market.quote_ticker] {
@@ -157,7 +160,11 @@ impl OrderbookMirrorBot {
                     self.active_orders.insert(key, order_id);
                 }
                 Err(e) => {
-                    warn!("Failed to place bid order at {}: {}", price, e);
+                    let err_msg = e.to_string();
+                    warn!("Failed to place bid order at {}: {}", price, err_msg);
+
+                    // Try to auto-faucet if it's a balance error
+                    self.auto_faucet_on_error(&err_msg).await;
                 }
             }
         }
@@ -186,7 +193,11 @@ impl OrderbookMirrorBot {
                     self.active_orders.insert(key, order_id);
                 }
                 Err(e) => {
-                    warn!("Failed to place ask order at {}: {}", price, e);
+                    let err_msg = e.to_string();
+                    warn!("Failed to place ask order at {}: {}", price, err_msg);
+
+                    // Try to auto-faucet if it's a balance error
+                    self.auto_faucet_on_error(&err_msg).await;
                 }
             }
         }
@@ -235,10 +246,14 @@ impl OrderbookMirrorBot {
             };
 
             if let Some(token_name) = token {
-                info!("💰 Detected insufficient {}, auto-fauceting more...", token_name);
+                info!(
+                    "💰 Detected insufficient {}, auto-fauceting more...",
+                    token_name
+                );
                 let faucet_amount = "10000000000000000000000000";
 
-                match self.exchange_client
+                match self
+                    .exchange_client
                     .admin_faucet(
                         self.config.user_address.clone(),
                         token_name.to_string(),
@@ -247,7 +262,10 @@ impl OrderbookMirrorBot {
                     .await
                 {
                     Ok(_) => {
-                        info!("✓ Auto-fauceted {} for {}", token_name, self.config.user_address);
+                        info!(
+                            "✓ Auto-fauceted {} for {}",
+                            token_name, self.config.user_address
+                        );
                         return true;
                     }
                     Err(e) => {

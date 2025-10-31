@@ -252,13 +252,13 @@ export interface components {
         };
         /** @description Request for OHLCV candles */
         CandlesRequest: {
+            count_back?: number | null;
             /** Format: int64 */
             from: number;
             interval: string;
             market_id: string;
             /** Format: int64 */
             to: number;
-            count_back?: number;
         };
         /** @description Response containing candles */
         CandlesResponse: {

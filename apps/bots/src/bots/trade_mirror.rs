@@ -34,6 +34,27 @@ impl TradeMirrorBot {
             market.base_ticker, market.quote_ticker
         );
 
+        // Auto-faucet initial funds (large amounts for testing)
+        info!(
+            "💰 Auto-fauceting initial funds for {}",
+            config.user_address
+        );
+        let faucet_amount = "10000000000000000000000000";
+
+        for token in [&market.base_ticker, &market.quote_ticker] {
+            match exchange_client
+                .admin_faucet(
+                    config.user_address.clone(),
+                    token.to_string(),
+                    faucet_amount.to_string(),
+                )
+                .await
+            {
+                Ok(_) => info!("✓ Fauceted {} for {}", token, config.user_address),
+                Err(e) => info!("Note: Faucet {} for {}: {}", token, config.user_address, e),
+            }
+        }
+
         Ok(Self {
             config,
             exchange_client,
@@ -113,10 +134,59 @@ impl TradeMirrorBot {
                 );
             }
             Err(e) => {
-                warn!("Failed to place trade mirror order: {}", e);
+                let err_msg = e.to_string();
+                warn!("Failed to place trade mirror order: {}", err_msg);
+
+                // Try to auto-faucet if it's a balance error
+                self.auto_faucet_on_error(&err_msg).await;
             }
         }
 
         Ok(())
+    }
+
+    /// Auto-faucet funds if we detect insufficient balance error
+    async fn auto_faucet_on_error(&self, error_msg: &str) -> bool {
+        // Check if error is about insufficient balance
+        if error_msg.contains("Insufficient balance") || error_msg.contains("insufficient") {
+            // Extract token from error message if possible
+            let token = if error_msg.contains("BTC") {
+                Some("BTC")
+            } else if error_msg.contains("USDC") {
+                Some("USDC")
+            } else {
+                None
+            };
+
+            if let Some(token_name) = token {
+                info!(
+                    "💰 Detected insufficient {}, auto-fauceting more...",
+                    token_name
+                );
+                let faucet_amount = "10000000000000000000000000";
+
+                match self
+                    .exchange_client
+                    .admin_faucet(
+                        self.config.user_address.clone(),
+                        token_name.to_string(),
+                        faucet_amount.to_string(),
+                    )
+                    .await
+                {
+                    Ok(_) => {
+                        info!(
+                            "✓ Auto-fauceted {} for {}",
+                            token_name, self.config.user_address
+                        );
+                        return true;
+                    }
+                    Err(e) => {
+                        warn!("Failed to auto-faucet {}: {}", token_name, e);
+                    }
+                }
+            }
+        }
+        false
     }
 }

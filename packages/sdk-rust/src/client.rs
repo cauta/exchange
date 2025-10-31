@@ -1,8 +1,8 @@
 use crate::error::{SdkError, SdkResult};
 use backend::models::{api::*, domain::*};
 use reqwest::Client;
-use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::Decimal;
 use std::str::FromStr;
 
 /// REST API client for the exchange
@@ -275,8 +275,8 @@ impl ExchangeClient {
         market_id: String,
         side: Side,
         order_type: OrderType,
-        price_decimal: String,  // Human-readable price (e.g., "110000.50")
-        size_decimal: String,    // Human-readable size (e.g., "0.5")
+        price_decimal: String, // Human-readable price (e.g., "110000.50")
+        size_decimal: String,  // Human-readable size (e.g., "0.5")
         signature: String,
     ) -> SdkResult<crate::OrderPlaced> {
         // Get market and token details
@@ -289,15 +289,17 @@ impl ExchangeClient {
             .map_err(|e| SdkError::InvalidResponse(format!("Invalid price: {}", e)))?;
         let price_multiplier = Decimal::from(10u128.pow(quote_token.decimals as u32));
         let price_atoms = price_dec * price_multiplier;
-        let price_u128 = price_atoms.to_u128()
-            .ok_or_else(|| SdkError::InvalidResponse(format!("Price overflow: {}", price_decimal)))?;
+        let price_u128 = price_atoms.to_u128().ok_or_else(|| {
+            SdkError::InvalidResponse(format!("Price overflow: {}", price_decimal))
+        })?;
 
         // Convert size from decimal to atoms using base token decimals
         let size_dec = Decimal::from_str(&size_decimal)
             .map_err(|e| SdkError::InvalidResponse(format!("Invalid size: {}", e)))?;
         let size_multiplier = Decimal::from(10u128.pow(base_token.decimals as u32));
         let size_atoms = size_dec * size_multiplier;
-        let size_u128 = size_atoms.to_u128()
+        let size_u128 = size_atoms
+            .to_u128()
             .ok_or_else(|| SdkError::InvalidResponse(format!("Size overflow: {}", size_decimal)))?;
 
         // Round size to lot_size
@@ -417,6 +419,7 @@ impl ExchangeClient {
             interval: interval.to_string(),
             from,
             to,
+            count_back: None,
         };
         let response = self.post_candles(request).await?;
 
