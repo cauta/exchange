@@ -44,7 +44,7 @@ export default function Home() {
   }, [markets, selectedMarketId, selectMarket]);
 
   return (
-    <main className="min-h-screen bg-background text-foreground p-4">
+    <main className="min-h-screen bg-background text-foreground p-4 dither-strong">
       <div className="max-w-[2000px] mx-auto">
         {/* Header */}
         <div className="mb-4 md:mb-6">

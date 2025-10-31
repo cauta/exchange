@@ -60,22 +60,33 @@ export function Orderbook() {
     return { ...bid, cumulative };
   });
 
-  const maxAskCumulative = asksWithCumulative.length > 0 ? asksWithCumulative[asksWithCumulative.length - 1].cumulative : 1;
-  const maxBidCumulative = bidsWithCumulative.length > 0 ? bidsWithCumulative[bidsWithCumulative.length - 1].cumulative : 1;
+  const maxAskCumulative =
+    asksWithCumulative.length > 0 ? asksWithCumulative[asksWithCumulative.length - 1].cumulative : 1;
+  const maxBidCumulative =
+    bidsWithCumulative.length > 0 ? bidsWithCumulative[bidsWithCumulative.length - 1].cumulative : 1;
 
   return (
     <Card className="flex flex-col h-full gap-0 py-0 overflow-hidden">
       <Tabs defaultValue="orderbook" className="flex-1 flex flex-col gap-0 min-h-0">
         <TabsList className="w-full justify-start rounded-none border-b border-border h-auto p-0 bg-card/50 backdrop-blur-sm shrink-0 z-10">
-          <TabsTrigger value="orderbook" className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all duration-200 py-2 text-sm">
+          <TabsTrigger
+            value="orderbook"
+            className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all duration-200 py-2 text-sm"
+          >
             Orderbook
           </TabsTrigger>
-          <TabsTrigger value="trades" className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all duration-200 py-2 text-sm">
+          <TabsTrigger
+            value="trades"
+            className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all duration-200 py-2 text-sm"
+          >
             Trades
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="orderbook" className="overflow-hidden flex flex-col mt-0 flex-1 min-h-0 data-[state=active]:animate-in data-[state=active]:fade-in-0 data-[state=active]:slide-in-from-bottom-1 data-[state=active]:duration-200">
+        <TabsContent
+          value="orderbook"
+          className="overflow-hidden flex flex-col mt-0 flex-1 min-h-0 data-[state=active]:animate-in data-[state=active]:fade-in-0 data-[state=active]:slide-in-from-bottom-1 data-[state=active]:duration-200"
+        >
           <div className="flex justify-between font-medium mb-3 text-xs text-muted-foreground px-2 py-2 uppercase tracking-wide shrink-0">
             <span>Price ({quoteToken.ticker})</span>
             <span>Size ({baseToken.ticker})</span>
@@ -88,14 +99,21 @@ export function Orderbook() {
                 {asksWithCumulative.map((ask, i) => {
                   const depthPercentage = (ask.cumulative / maxAskCumulative) * 100;
                   return (
-                    <div key={i} className="relative flex justify-between text-sm hover:bg-red-500/20 px-2 py-0.5 transition-colors duration-0">
+                    <div
+                      key={i}
+                      className="relative flex justify-between text-sm hover:bg-red-500/20 px-2 py-0.5 transition-colors duration-0"
+                    >
                       {/* Depth background */}
                       <div
                         className="absolute left-0 top-0 bottom-0 bg-red-500/10 transition-all duration-300 ease-out"
                         style={{ width: `${depthPercentage}%` }}
                       />
-                      <span className="relative z-10 text-red-500 font-medium">{formatPrice(ask.price, quoteToken.decimals)}</span>
-                      <span className="relative z-10 text-muted-foreground">{formatSize(ask.size, baseToken.decimals)}</span>
+                      <span className="relative z-10 text-red-500 font-medium">
+                        {formatPrice(ask.price, quoteToken.decimals)}
+                      </span>
+                      <span className="relative z-10 text-muted-foreground">
+                        {formatSize(ask.size, baseToken.decimals)}
+                      </span>
                     </div>
                   );
                 })}
@@ -117,14 +135,21 @@ export function Orderbook() {
                 {bidsWithCumulative.map((bid, i) => {
                   const depthPercentage = (bid.cumulative / maxBidCumulative) * 100;
                   return (
-                    <div key={i} className="relative flex justify-between text-sm hover:bg-green-500/20 px-2 py-0.5 transition-colors duration-0">
+                    <div
+                      key={i}
+                      className="relative flex justify-between text-sm hover:bg-green-500/20 px-2 py-0.5 transition-colors duration-0"
+                    >
                       {/* Depth background */}
                       <div
                         className="absolute left-0 top-0 bottom-0 bg-green-500/10 transition-all duration-300 ease-out"
                         style={{ width: `${depthPercentage}%` }}
                       />
-                      <span className="relative z-10 text-green-500 font-medium">{formatPrice(bid.price, quoteToken.decimals)}</span>
-                      <span className="relative z-10 text-muted-foreground">{formatSize(bid.size, baseToken.decimals)}</span>
+                      <span className="relative z-10 text-green-500 font-medium">
+                        {formatPrice(bid.price, quoteToken.decimals)}
+                      </span>
+                      <span className="relative z-10 text-muted-foreground">
+                        {formatSize(bid.size, baseToken.decimals)}
+                      </span>
                     </div>
                   );
                 })}
@@ -133,7 +158,10 @@ export function Orderbook() {
           </div>
         </TabsContent>
 
-        <TabsContent value="trades" className="flex-1 overflow-hidden flex flex-col mt-0 min-h-0 data-[state=active]:animate-in data-[state=active]:fade-in-0 data-[state=active]:slide-in-from-bottom-1 data-[state=active]:duration-200">
+        <TabsContent
+          value="trades"
+          className="flex-1 overflow-hidden flex flex-col mt-0 min-h-0 data-[state=active]:animate-in data-[state=active]:fade-in-0 data-[state=active]:slide-in-from-bottom-1 data-[state=active]:duration-200"
+        >
           <div className="flex justify-between font-medium mb-3 text-xs text-muted-foreground px-2 py-2 uppercase tracking-wide shrink-0">
             <span>Price</span>
             <span>Size</span>
@@ -155,15 +183,17 @@ export function Orderbook() {
                       key={trade.id}
                       className="flex justify-between text-sm hover:bg-muted/50 px-2 py-0.5 transition-colors duration-0"
                     >
-                      <span className={`font-medium ${
-                        isBuy ? "text-green-500" :
-                        isSell ? "text-red-500" :
-                        "text-foreground"
-                      }`}>
+                      <span
+                        className={`font-medium ${
+                          isBuy ? "text-green-500" : isSell ? "text-red-500" : "text-foreground"
+                        }`}
+                      >
                         {formatPrice(trade.price, quoteToken.decimals)}
                       </span>
                       <span className="text-muted-foreground">{formatSize(trade.size, baseToken.decimals)}</span>
-                      <span className="text-muted-foreground text-xs">{new Date(trade.timestamp).toLocaleTimeString()}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {new Date(trade.timestamp).toLocaleTimeString()}
+                      </span>
                     </div>
                   );
                 })}
