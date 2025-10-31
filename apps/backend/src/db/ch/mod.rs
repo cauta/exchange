@@ -3,8 +3,11 @@ use clickhouse::Client;
 use std::env;
 
 /// Create a ClickHouse client and initialize schema
-pub async fn create_client() -> anyhow::Result<Client> {
-    let clickhouse_url = env::var("CH_URL").context("CH_URL must be set in environment")?;
+/// If url is provided, it will be used instead of reading from environment
+pub async fn create_client(url: Option<String>) -> anyhow::Result<Client> {
+    let clickhouse_url = url
+        .or_else(|| env::var("CH_URL").ok())
+        .context("CH_URL must be provided or set in environment")?;
 
     // Get credentials from env (empty password for testcontainers)
     let user = env::var("CH_USER").unwrap_or_else(|_| "default".to_string());

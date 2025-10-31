@@ -1,5 +1,4 @@
 use backend::db::Db;
-use std::env;
 use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::{clickhouse::ClickHouse, postgres::Postgres};
 
@@ -38,7 +37,7 @@ impl TestContainers {
             .await
             .map_err(|e| anyhow::anyhow!("Failed to get ClickHouse port: {}", e))?;
 
-        // ================================ Set environment variables ================================
+        // ================================ Build connection URLs ================================
         let postgres_url = format!(
             "postgres://postgres:postgres@{}:{}/postgres",
             postgres_container.get_host().await.unwrap(),
@@ -51,12 +50,9 @@ impl TestContainers {
             clickhouse_port
         );
 
-        env::set_var("PG_URL", &postgres_url);
-        env::set_var("CH_URL", &clickhouse_url);
-
-        // ================================ Connect using Db::connect() ================================
-        // This automatically runs migrations and creates schemas!
-        let db = Db::connect()
+        // ================================ Connect with explicit URLs ================================
+        // Pass URLs directly instead of using env vars to avoid conflicts in parallel tests
+        let db = Db::connect_with_urls(Some(postgres_url), Some(clickhouse_url))
             .await
             .map_err(|e| anyhow::anyhow!("Failed to connect to databases: {}", e))?;
 

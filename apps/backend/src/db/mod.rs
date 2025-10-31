@@ -24,12 +24,22 @@ pub struct Db {
 
 impl Db {
     /// Create a new Db instance with connections to both databases
+    /// Uses environment variables PG_URL and CH_URL
     pub async fn connect() -> anyhow::Result<Self> {
-        let postgres = pg::create_pool()
+        Self::connect_with_urls(None, None).await
+    }
+
+    /// Create a new Db instance with explicit URLs
+    /// Useful for testing to avoid environment variable conflicts
+    pub async fn connect_with_urls(
+        pg_url: Option<String>,
+        ch_url: Option<String>,
+    ) -> anyhow::Result<Self> {
+        let postgres = pg::create_pool(pg_url)
             .await
             .map_err(|e| anyhow::anyhow!("Failed to create PostgreSQL pool: {}", e))?;
 
-        let clickhouse = ch::create_client()
+        let clickhouse = ch::create_client(ch_url)
             .await
             .map_err(|e| anyhow::anyhow!("Failed to create ClickHouse client: {}", e))?;
 

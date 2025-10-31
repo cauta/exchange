@@ -172,14 +172,14 @@ async fn test_trades_roundtrip() {
         timestamp: 1234567890,
     };
 
-    // Insert
-    db.clickhouse
+    // Insert trade
+    let mut insert = db
+        .clickhouse
         .insert::<ClickHouseTradeRow>("trades")
         .await
-        .unwrap()
-        .write(&trade)
-        .await
-        .expect("Failed to insert trade");
+        .expect("Failed to create insert");
+    insert.write(&trade).await.expect("Failed to write trade");
+    insert.end().await.expect("Failed to end insert");
 
     // Wait for ClickHouse to process the insert (eventual consistency)
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
