@@ -10,6 +10,13 @@ export function Orderbook() {
   const tokens = useExchangeStore((state) => state.tokens);
   const { bids, asks } = useOrderbook(selectedMarketId);
 
+  console.log('[Orderbook] Rendering:', {
+    bidsCount: bids.length,
+    asksCount: asks.length,
+    bids: bids.slice(0, 5),
+    asks: asks.slice(0, 5),
+  });
+
   if (!selectedMarketId || !selectedMarket) {
     return (
       <div className="p-4 border rounded">
@@ -33,43 +40,36 @@ export function Orderbook() {
   }
 
   return (
-    <div className="p-4 border rounded">
+    <div className="p-4 border rounded flex flex-col h-full">
       <h3 className="text-lg font-bold mb-4">Orderbook</h3>
 
-      <div className="grid grid-cols-2 gap-4">
-        {/* Asks (Sell orders - Red) */}
-        <div>
-          <div className="flex justify-between font-bold mb-2 text-sm text-gray-500">
-            <span>Price ({quoteToken.ticker})</span>
-            <span>Size ({baseToken.ticker})</span>
-          </div>
-          <div className="space-y-1">
-            {asks
-              .slice(0, 15)
-              .reverse()
-              .map((ask, i) => (
-                <div key={i} className="flex justify-between text-sm text-red-500">
-                  <span>{formatPrice(ask.price, quoteToken.decimals)}</span>
-                  <span>{formatSize(ask.size, baseToken.decimals)}</span>
-                </div>
-              ))}
-          </div>
+      <div className="flex justify-between font-bold mb-2 text-sm text-gray-500 px-2">
+        <span>Price ({quoteToken.ticker})</span>
+        <span>Size ({baseToken.ticker})</span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {/* Asks (Sell orders - Red) - Top section */}
+        <div className="flex flex-col-reverse px-2">
+          {asks.map((ask, i) => (
+            <div key={i} className="flex justify-between text-sm text-red-500 py-0.5">
+              <span>{formatPrice(ask.price, quoteToken.decimals)}</span>
+              <span>{formatSize(ask.size, baseToken.decimals)}</span>
+            </div>
+          ))}
         </div>
 
-        {/* Bids (Buy orders - Green) */}
-        <div>
-          <div className="flex justify-between font-bold mb-2 text-sm text-gray-500">
-            <span>Price ({quoteToken.ticker})</span>
-            <span>Size ({baseToken.ticker})</span>
-          </div>
-          <div className="space-y-1">
-            {bids.slice(0, 15).map((bid, i) => (
-              <div key={i} className="flex justify-between text-sm text-green-500">
-                <span>{formatPrice(bid.price, quoteToken.decimals)}</span>
-                <span>{formatSize(bid.size, baseToken.decimals)}</span>
-              </div>
-            ))}
-          </div>
+        {/* Spread separator */}
+        <div className="border-t border-gray-700 my-2"></div>
+
+        {/* Bids (Buy orders - Green) - Bottom section */}
+        <div className="px-2">
+          {bids.map((bid, i) => (
+            <div key={i} className="flex justify-between text-sm text-green-500 py-0.5">
+              <span>{formatPrice(bid.price, quoteToken.decimals)}</span>
+              <span>{formatSize(bid.size, baseToken.decimals)}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

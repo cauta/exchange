@@ -21,15 +21,31 @@ export function useOrderbook(marketId: string | null) {
     setOrderbookLoading(true);
 
     // Handler for orderbook messages
-    const handleOrderbookSnapshot = (message: OrderbookSnapshotMessage) => {
-      if (message.data.market_id === marketId) {
-        updateOrderbook(message.data.market_id, message.data.bids, message.data.asks);
+    const handleOrderbookSnapshot = (message: any) => {
+      console.log('[useOrderbook] Snapshot received:', {
+        messageMarketId: message.orderbook?.market_id,
+        hookMarketId: marketId,
+        matches: message.orderbook?.market_id === marketId,
+        bidsCount: message.orderbook?.bids?.length,
+        asksCount: message.orderbook?.asks?.length,
+      });
+
+      if (message.orderbook && message.orderbook.market_id === marketId) {
+        updateOrderbook(message.orderbook.market_id, message.orderbook.bids, message.orderbook.asks);
       }
     };
 
-    const handleOrderbookUpdate = (message: OrderbookUpdateMessage) => {
-      if (message.data.market_id === marketId) {
-        updateOrderbook(message.data.market_id, message.data.bids, message.data.asks);
+    const handleOrderbookUpdate = (message: any) => {
+      console.log('[useOrderbook] Update received:', {
+        messageMarketId: message.orderbook?.market_id,
+        hookMarketId: marketId,
+        matches: message.orderbook?.market_id === marketId,
+        bidsCount: message.orderbook?.bids?.length,
+        asksCount: message.orderbook?.asks?.length,
+      });
+
+      if (message.orderbook && message.orderbook.market_id === marketId) {
+        updateOrderbook(message.orderbook.market_id, message.orderbook.bids, message.orderbook.asks);
       }
     };
 
