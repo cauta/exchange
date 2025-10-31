@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS balances (
     user_address TEXT NOT NULL REFERENCES users(address),
     token_ticker TEXT NOT NULL REFERENCES tokens(ticker),
     amount NUMERIC(39, 0) NOT NULL DEFAULT 0 CHECK (amount >= 0),
-    open_interest NUMERIC(39, 0) NOT NULL,
+    open_interest NUMERIC(39, 0) NOT NULL CHECK (open_interest >= 0),
     updated_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (user_address, token_ticker)
 );

@@ -168,7 +168,7 @@ export class ExchangeDatafeed implements IBasicDataFeed {
     onResult: HistoryCallback,
     onError: ErrorCallback,
   ): void {
-    const { from, to } = periodParams;
+    const { from, to, countBack } = periodParams;
     const interval = resolutionMap[resolution] || "1m";
 
     // Get market config
@@ -197,6 +197,7 @@ export class ExchangeDatafeed implements IBasicDataFeed {
         interval,
         from,
         to,
+        countBack,
       })
       .then((candles) => {
         if (!candles || candles.length === 0) {

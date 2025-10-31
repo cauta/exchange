@@ -1193,6 +1193,7 @@ dependencies = [
  "exchange-test-utils",
  "futures-util",
  "reqwest",
+ "rust_decimal",
  "serde_json",
  "thiserror",
  "tokio",

@@ -279,12 +279,14 @@ export class RestClient {
     interval: string;
     from: number;
     to: number;
+    countBack?: number;
   }): Promise<Candle[]> {
     const request: CandlesRequest = {
       market_id: params.marketId,
       interval: params.interval,
       from: params.from,
       to: params.to,
+      count_back: params.countBack,
     };
     const response = await this.post<CandlesResponse>('/api/candles', request);
     return response.candles;

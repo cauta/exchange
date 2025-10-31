@@ -51,6 +51,7 @@ missing production
 - mm channel prioritization
 - cancel prioritization
 - cleaner sdks
+- orderbook is in memory. not synced to db.
 
 # process
 
@@ -67,6 +68,7 @@ missing production
 - using channels for engine input and websocket broadcast.
 - after general structure, most anoying is types. finagiling different systems to work together. refactoring types , ensuring things lined up correctly when testing, etc. claude is great helping with this.
 - decision fatigue for things that are not immediatley obvious. harder to gridn through. config, deps, env vars are tedious and kind adistracitng.
+- truly great things take a lot of polish
 
 ### what's covered
 

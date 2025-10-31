@@ -181,10 +181,11 @@ impl Db {
         let amount_str = amount.to_string();
         let now = Utc::now();
 
-        let result = sqlx::query(
+        sqlx::query(
             r#"
             UPDATE balances
-            SET open_interest = open_interest - $3::numeric, updated_at = $4
+            SET open_interest = GREATEST(open_interest - $3::numeric, 0),
+                updated_at = $4
             WHERE user_address = $1 AND token_ticker = $2
             "#,
         )
@@ -195,18 +196,15 @@ impl Db {
         .execute(&self.postgres)
         .await?;
 
-        // If balance doesn't exist (0 rows updated), create a zero balance record
-        if result.rows_affected() == 0 {
-            return Ok(Balance {
-                user_address: user_address.to_string(),
-                token_ticker: token_ticker.to_string(),
-                amount: 0,
-                open_interest: 0,
-                updated_at: now,
-            });
-        }
-
-        self.get_balance(user_address, token_ticker).await
+        // Return a stub balance - callers don't use it anyway
+        // This avoids the problematic get_balance() call that can panic on conversion
+        Ok(Balance {
+            user_address: user_address.to_string(),
+            token_ticker: token_ticker.to_string(),
+            amount: 0,
+            open_interest: 0,
+            updated_at: now,
+        })
     }
 
     /// Lock balance within a transaction (for atomic operations)
@@ -261,7 +259,8 @@ impl Db {
         sqlx::query(
             r#"
             UPDATE balances
-            SET open_interest = open_interest - $3::numeric, updated_at = $4
+            SET open_interest = GREATEST(open_interest - $3::numeric, 0),
+                updated_at = $4
             WHERE user_address = $1 AND token_ticker = $2
             "#,
         )

@@ -1,34 +1,34 @@
 # Default tokens to create on startup
 [[tokens]]
 ticker = "BTC"
-decimals = 6
+decimals = 8                 # Standard Bitcoin: 1 BTC = 100,000,000 satoshis
 name = "Bitcoin"
 
 [[tokens]]
 ticker = "ETH"
-decimals = 6
+decimals = 18                # Standard Ethereum: 1 ETH = 10^18 wei
 name = "Ethereum"
 
 [[tokens]]
 ticker = "USDC"
-decimals = 6
+decimals = 6                 # Standard USDC: 1 USDC = 1,000,000 base units
 name = "USD Coin"
 
 # Default markets to create on startup
 [[markets]]
 base_ticker = "BTC"
 quote_ticker = "USDC"
-tick_size = "1000000"        # 1 USDC (6 decimals)
-lot_size = "10"              # 0.00001 BTC (6 decimals) - very small for bot testing
-min_size = "10"              # 0.00001 BTC minimum order (~$1 at $100k BTC)
-maker_fee_bps = 5            # 0.05% maker fee
-taker_fee_bps = 10           # 0.10% taker fee
+tick_size = "10000"                      # 0.01 USDC (6 decimals) - $0.01 price increments
+lot_size = "10000"                       # 0.0001 BTC (8 decimals) - ~$9 at $90k BTC
+min_size = "10000"                       # 0.0001 BTC minimum order (~$9 at $90k BTC)
+maker_fee_bps = 5                        # 0.05% maker fee
+taker_fee_bps = 10                       # 0.10% taker fee
 
 [[markets]]
 base_ticker = "ETH"
 quote_ticker = "USDC"
-tick_size = "1000000"        # 1 USDC
-lot_size = "100"             # 0.0001 ETH (6 decimals) - very small for bot testing
-min_size = "100"             # 0.0001 ETH minimum order (~$0.25 at $2.5k ETH)
+tick_size = "10000"                      # 0.01 USDC - $0.01 price increments
+lot_size = "1000000000000000"            # 0.001 ETH (18 decimals) - ~$3 at $3k ETH
+min_size = "1000000000000000"            # 0.001 ETH minimum order (~$3 at $3k ETH)
 maker_fee_bps = 5
 taker_fee_bps = 10

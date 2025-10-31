@@ -87,6 +87,9 @@ export function TradingViewChart() {
 
       widget.onChartReady(() => {
         console.log("TradingView chart is ready");
+
+        // Force candlestick chart style
+        widget.activeChart().setChartType(1); // 1 = Candles
       });
     } catch (error) {
       console.error("Failed to create TradingView widget:", error);

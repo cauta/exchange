@@ -66,9 +66,24 @@ impl Db {
         start: DateTime<Utc>,
         end: DateTime<Utc>,
     ) -> Result<Vec<Candle>> {
+        // Aggregate candles from multiple trade rows
         let candles = self
             .clickhouse
-            .query("SELECT market_id, timestamp, interval, open, high, low, close, volume FROM candles WHERE market_id = ? AND interval = ? AND timestamp >= ? AND timestamp < ? ORDER BY timestamp ASC")
+            .query(
+                "SELECT
+                market_id,
+                timestamp,
+                interval,
+                argMin(open, timestamp) as open,
+                max(high) as high,
+                min(low) as low,
+                argMax(close, timestamp) as close,
+                sum(volume) as volume
+            FROM candles
+            WHERE market_id = ? AND interval = ? AND timestamp >= ? AND timestamp < ?
+            GROUP BY market_id, timestamp, interval
+            ORDER BY timestamp ASC",
+            )
             .bind(market_id)
             .bind(interval)
             .bind(start.timestamp() as u32)

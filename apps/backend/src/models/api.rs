@@ -252,9 +252,11 @@ pub struct AdminErrorResponse {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CandlesRequest {
     pub market_id: String,
-    pub interval: String, // 1m, 5m, 15m, 1h, 1d
-    pub from: i64,        // Unix timestamp in seconds
-    pub to: i64,          // Unix timestamp in seconds
+    pub interval: String,           // 1m, 5m, 15m, 1h, 1d
+    pub from: i64,                  // Unix timestamp in seconds
+    pub to: i64,                    // Unix timestamp in seconds
+    #[serde(default)]
+    pub count_back: Option<usize>,  // Limit results to N most recent bars before 'to'
 }
 
 /// OHLCV candle data

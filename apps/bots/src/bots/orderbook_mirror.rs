@@ -1,11 +1,9 @@
 use crate::hyperliquid::{HlMessage, HyperliquidClient, Orderbook};
 use anyhow::Result;
-use backend::models::domain::{OrderType, Side};
+use backend::models::domain::{Market, OrderType, Side};
 use exchange_sdk::ExchangeClient;
-use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -13,12 +11,10 @@ use uuid::Uuid;
 /// Configuration for the orderbook mirror bot
 #[derive(Clone)]
 pub struct OrderbookMirrorConfig {
-    pub coin: String,             // e.g., "BTC"
-    pub market_id: String,        // e.g., "BTC/USDC"
-    pub user_address: String,     // Bot's wallet address
-    pub depth_levels: usize,      // How many levels to mirror (e.g., 5)
-    pub update_interval_ms: u64,  // Min time between order updates
-    pub size_multiplier: Decimal, // Scale order sizes (e.g., 0.1 for 10% of Hyperliquid)
+    pub market_id: String,       // e.g., "BTC/USDC"
+    pub user_address: String,    // Bot's wallet address
+    pub depth_levels: usize,     // How many levels to mirror (e.g., 5)
+    pub update_interval_ms: u64, // Min time between order updates
 }
 
 /// Orderbook mirror bot - maintains liquidity by copying Hyperliquid's orderbook
@@ -27,25 +23,65 @@ pub struct OrderbookMirrorBot {
     exchange_client: ExchangeClient,
     orderbook: Orderbook,
     active_orders: HashMap<String, Uuid>, // price_side -> order_id
+
+    // Market configuration fetched from backend
+    market: Market,
 }
 
 impl OrderbookMirrorBot {
-    pub fn new(config: OrderbookMirrorConfig, exchange_client: ExchangeClient) -> Self {
-        let orderbook = Orderbook::new(config.coin.clone());
+    pub async fn new(
+        config: OrderbookMirrorConfig,
+        exchange_client: ExchangeClient,
+    ) -> Result<Self> {
+        // Fetch market configuration from backend
+        let market = exchange_client.get_market(&config.market_id).await?;
 
-        Self {
+        info!(
+            "Orderbook mirror bot initialized for market {}",
+            config.market_id
+        );
+        info!(
+            "Market: {} (base) / {} (quote)",
+            market.base_ticker, market.quote_ticker
+        );
+
+        // Auto-faucet initial funds (large amounts for testing)
+        // Bots will auto-faucet more if they run out during operation
+        info!("💰 Auto-fauceting initial funds for {}", config.user_address);
+        let faucet_amount = "10000000000000000000000000"; // Large amount for testing
+
+        for token in [&market.base_ticker, &market.quote_ticker] {
+            match exchange_client
+                .admin_faucet(
+                    config.user_address.clone(),
+                    token.to_string(),
+                    faucet_amount.to_string(),
+                )
+                .await
+            {
+                Ok(_) => info!("✓ Fauceted {} for {}", token, config.user_address),
+                Err(e) => info!("Note: Faucet {} for {}: {}", token, config.user_address, e),
+            }
+        }
+
+        // Use base ticker as coin symbol for Hyperliquid (e.g., "BTC" from "BTC/USDC")
+        let coin = market.base_ticker.clone();
+        let orderbook = Orderbook::new(coin.clone());
+
+        Ok(Self {
             config,
             exchange_client,
             orderbook,
             active_orders: HashMap::new(),
-        }
+            market,
+        })
     }
 
     /// Start the bot
     pub async fn start(&mut self) -> Result<()> {
         info!(
             "Starting orderbook mirror bot for {} PERP -> {} market",
-            self.config.coin, self.config.market_id
+            self.market.base_ticker, self.config.market_id
         );
         info!(
             "Update interval: {}ms (throttling to prevent spam)",
@@ -53,7 +89,7 @@ impl OrderbookMirrorBot {
         );
 
         // Connect to Hyperliquid (perps by default)
-        let hl_client = HyperliquidClient::new(self.config.coin.clone());
+        let hl_client = HyperliquidClient::new(self.market.base_ticker.clone());
 
         let (mut rx, _handle) = hl_client.start().await?;
 
@@ -99,12 +135,12 @@ impl OrderbookMirrorBot {
 
         // Place new bid orders
         for level in bids {
-            let price = self.convert_price(level.price);
-            let size = self.convert_size(level.quantity);
+            let price = level.price.to_string();
+            let size = level.quantity.to_string();
 
             match self
                 .exchange_client
-                .place_order_with_rounding(
+                .place_order_decimal(
                     self.config.user_address.clone(),
                     self.config.market_id.clone(),
                     Side::Buy,
@@ -128,12 +164,12 @@ impl OrderbookMirrorBot {
 
         // Place new ask orders
         for level in asks {
-            let price = self.convert_price(level.price);
-            let size = self.convert_size(level.quantity);
+            let price = level.price.to_string();
+            let size = level.quantity.to_string();
 
             match self
                 .exchange_client
-                .place_order_with_rounding(
+                .place_order_decimal(
                     self.config.user_address.clone(),
                     self.config.market_id.clone(),
                     Side::Sell,
@@ -185,18 +221,41 @@ impl OrderbookMirrorBot {
         Ok(())
     }
 
-    /// Convert Hyperliquid price to our exchange format (u128 as string)
-    fn convert_price(&self, price: Decimal) -> String {
-        // Assuming 6 decimals for price precision
-        let scaled = price * Decimal::from(1_000_000);
-        scaled.to_u128().unwrap_or(0).to_string()
-    }
+    /// Auto-faucet funds if we detect insufficient balance error
+    async fn auto_faucet_on_error(&self, error_msg: &str) -> bool {
+        // Check if error is about insufficient balance
+        if error_msg.contains("Insufficient balance") || error_msg.contains("insufficient") {
+            // Extract token from error message if possible
+            let token = if error_msg.contains("BTC") {
+                Some("BTC")
+            } else if error_msg.contains("USDC") {
+                Some("USDC")
+            } else {
+                None
+            };
 
-    /// Convert Hyperliquid size to our exchange format, applying multiplier
-    fn convert_size(&self, size: Decimal) -> String {
-        let adjusted = size * self.config.size_multiplier;
-        // Assuming 6 decimals for size precision
-        let scaled = adjusted * Decimal::from(1_000_000);
-        scaled.to_u128().unwrap_or(0).to_string()
+            if let Some(token_name) = token {
+                info!("💰 Detected insufficient {}, auto-fauceting more...", token_name);
+                let faucet_amount = "10000000000000000000000000";
+
+                match self.exchange_client
+                    .admin_faucet(
+                        self.config.user_address.clone(),
+                        token_name.to_string(),
+                        faucet_amount.to_string(),
+                    )
+                    .await
+                {
+                    Ok(_) => {
+                        info!("✓ Auto-fauceted {} for {}", token_name, self.config.user_address);
+                        return true;
+                    }
+                    Err(e) => {
+                        warn!("Failed to auto-faucet {}: {}", token_name, e);
+                    }
+                }
+            }
+        }
+        false
     }
 }

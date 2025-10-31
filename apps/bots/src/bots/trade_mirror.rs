@@ -1,45 +1,55 @@
 use crate::hyperliquid::{HlMessage, HyperliquidClient};
 use anyhow::Result;
-use backend::models::domain::{OrderType, Side};
+use backend::models::domain::{Market, OrderType, Side};
 use exchange_sdk::ExchangeClient;
-use rust_decimal::prelude::ToPrimitive;
-use rust_decimal::Decimal;
-use std::str::FromStr;
 use tracing::{error, info, warn};
 
 /// Configuration for the trade mirror bot
 #[derive(Clone)]
 pub struct TradeMirrorConfig {
-    pub coin: String,             // e.g., "BTC"
-    pub market_id: String,        // e.g., "BTC/USDC"
-    pub user_address: String,     // Bot's wallet address
-    pub size_multiplier: Decimal, // Scale trade sizes (e.g., 0.1 for 10% of Hyperliquid)
-    pub min_trade_size: Decimal,  // Minimum trade size to mirror
+    pub market_id: String,    // e.g., "BTC/USDC"
+    pub user_address: String, // Bot's wallet address
 }
 
 /// Trade mirror bot - creates realistic trading activity by copying Hyperliquid trades
 pub struct TradeMirrorBot {
     config: TradeMirrorConfig,
     exchange_client: ExchangeClient,
+
+    // Market configuration fetched from backend
+    market: Market,
 }
 
 impl TradeMirrorBot {
-    pub fn new(config: TradeMirrorConfig, exchange_client: ExchangeClient) -> Self {
-        Self {
+    pub async fn new(config: TradeMirrorConfig, exchange_client: ExchangeClient) -> Result<Self> {
+        // Fetch market configuration from backend
+        let market = exchange_client.get_market(&config.market_id).await?;
+
+        info!(
+            "Trade mirror bot initialized for market {}",
+            config.market_id
+        );
+        info!(
+            "Market: {} (base) / {} (quote)",
+            market.base_ticker, market.quote_ticker
+        );
+
+        Ok(Self {
             config,
             exchange_client,
-        }
+            market,
+        })
     }
 
     /// Start the bot
     pub async fn start(&mut self) -> Result<()> {
         info!(
             "Starting trade mirror bot for {} PERP -> {} market",
-            self.config.coin, self.config.market_id
+            self.market.base_ticker, self.config.market_id
         );
 
         // Connect to Hyperliquid (perps by default)
-        let hl_client = HyperliquidClient::new(self.config.coin.clone());
+        let hl_client = HyperliquidClient::new(self.market.base_ticker.clone());
 
         let (mut rx, _handle) = hl_client.start().await?;
 
@@ -65,21 +75,6 @@ impl TradeMirrorBot {
 
     /// Mirror a Hyperliquid trade on our exchange
     async fn mirror_trade(&self, price_str: &str, size_str: &str, side_str: &str) -> Result<()> {
-        // Parse trade details
-        let size = Decimal::from_str(size_str)?;
-
-        // Apply size multiplier
-        let adjusted_size = size * self.config.size_multiplier;
-
-        // Skip tiny trades
-        if adjusted_size < self.config.min_trade_size {
-            return Ok(());
-        }
-
-        // Convert to our exchange format
-        let price = self.convert_price_from_str(price_str)?;
-        let size_formatted = self.convert_size(adjusted_size);
-
         // Determine side from Hyperliquid:
         // "A" = ask/sell (seller initiated), "B" = bid/buy (buyer initiated)
         let side = match side_str {
@@ -93,19 +88,20 @@ impl TradeMirrorBot {
 
         info!(
             "Mirroring {} trade: {:?} {} @ {}",
-            self.config.coin, side, size_formatted, price
+            self.market.base_ticker, side, size_str, price_str
         );
 
-        // Place market order to execute the trade
+        // Place market order with human-readable decimal values
+        // The SDK will handle conversion to atoms
         match self
             .exchange_client
-            .place_order_with_rounding(
+            .place_order_decimal(
                 self.config.user_address.clone(),
                 self.config.market_id.clone(),
                 side,
                 OrderType::Market,
-                price,
-                size_formatted,
+                price_str.to_string(),
+                size_str.to_string(),
                 "trade_mirror".to_string(),
             )
             .await
@@ -122,20 +118,5 @@ impl TradeMirrorBot {
         }
 
         Ok(())
-    }
-
-    /// Convert Hyperliquid price string to our exchange format (u128 as string)
-    fn convert_price_from_str(&self, price_str: &str) -> Result<String> {
-        let price = Decimal::from_str(price_str)?;
-        // Assuming 6 decimals for price precision
-        let scaled = price * Decimal::from(1_000_000);
-        Ok(scaled.to_u128().unwrap_or(0).to_string())
-    }
-
-    /// Convert Hyperliquid size to our exchange format
-    fn convert_size(&self, size: Decimal) -> String {
-        // Assuming 6 decimals for size precision
-        let scaled = size * Decimal::from(1_000_000);
-        scaled.to_u128().unwrap_or(0).to_string()
     }
 }

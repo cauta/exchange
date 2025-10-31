@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub exchange: ExchangeConfig,
     pub accounts: AccountsConfig,
-    pub funding: FundingConfig,
     pub orderbook_mirror: OrderbookMirrorConfig,
     pub trade_mirror: TradeMirrorConfig,
     pub hyperliquid: HyperliquidConfig,
@@ -23,28 +22,17 @@ pub struct AccountsConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FundingConfig {
-    pub btc_amount: String,
-    pub usdc_amount: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrderbookMirrorConfig {
     pub enabled: bool,
-    pub coin: String,
     pub market_id: String,
     pub depth_levels: usize,
     pub update_interval_ms: u64,
-    pub size_multiplier: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TradeMirrorConfig {
     pub enabled: bool,
-    pub coin: String,
     pub market_id: String,
-    pub size_multiplier: String,
-    pub min_trade_size: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

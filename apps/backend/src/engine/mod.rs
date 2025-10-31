@@ -214,48 +214,73 @@ impl MatchingEngine {
         let mut cancelled_order_ids = Vec::new();
 
         // Process each cancelled order
+        // Continue processing even if individual unlocks fail to prevent orphaned locks
         for cancelled_order in cancelled_orders {
             let order_id = cancelled_order.id;
 
             // Get market config to determine which token to unlock
-            let market = self.db.get_market(&cancelled_order.market_id).await?;
+            let market = match self.db.get_market(&cancelled_order.market_id).await {
+                Ok(m) => m,
+                Err(e) => {
+                    log::error!("Failed to get market for order {}: {}", order_id, e);
+                    continue;
+                }
+            };
 
             // Calculate unfilled amount that needs to be unlocked
             let unfilled_size = cancelled_order.size - cancelled_order.filled_size;
 
             if unfilled_size > 0 {
                 // Determine which token and amount to unlock based on order side
-                let (token_to_unlock, amount_to_unlock) = match cancelled_order.side {
+                let unlock_result = match cancelled_order.side {
                     crate::models::domain::Side::Buy => {
                         // Buy order: unlock quote tokens (price * unfilled_size)
-                        let quote_amount = cancelled_order
-                            .price
-                            .checked_mul(unfilled_size)
-                            .ok_or_else(|| ExchangeError::InvalidParameter {
-                                message: "Unlock amount overflow".to_string(),
-                            })?;
-                        (market.quote_ticker, quote_amount)
+                        match cancelled_order.price.checked_mul(unfilled_size) {
+                            Some(quote_amount) => {
+                                self.db
+                                    .unlock_balance(
+                                        &user_address,
+                                        &market.quote_ticker,
+                                        quote_amount,
+                                    )
+                                    .await
+                            }
+                            None => {
+                                log::error!(
+                                    "Overflow calculating unlock amount for order {}",
+                                    order_id
+                                );
+                                continue;
+                            }
+                        }
                     }
                     crate::models::domain::Side::Sell => {
                         // Sell order: unlock base tokens (unfilled_size)
-                        (market.base_ticker, unfilled_size)
+                        self.db
+                            .unlock_balance(&user_address, &market.base_ticker, unfilled_size)
+                            .await
                     }
                 };
 
-                // Unlock the balance
-                self.db
-                    .unlock_balance(&user_address, &token_to_unlock, amount_to_unlock)
-                    .await?;
+                // Log unlock failures but continue processing
+                if let Err(e) = unlock_result {
+                    log::error!("Failed to unlock balance for order {}: {}", order_id, e);
+                }
             }
 
             // Update order status in database
-            self.db
+            if let Err(e) = self
+                .db
                 .update_order_fill(
                     order_id,
                     cancelled_order.filled_size,
                     OrderStatus::Cancelled,
                 )
-                .await?;
+                .await
+            {
+                log::error!("Failed to update order {} status: {}", order_id, e);
+                continue;
+            }
 
             // Broadcast cancellation event
             let _ = self.event_tx.send(EngineEvent::OrderCancelled {

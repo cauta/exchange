@@ -8,27 +8,17 @@ url = "http://localhost:8888"
 maker_address = "maker_bot"
 taker_address = "taker_bot"
 
-# Initial funding amounts (only used by init script)
-[funding]
-btc_amount = "1000000000000000"     # 1,000,000,000 BTC (6 decimals) - massive for testing
-usdc_amount = "1000000000000000000"  # 1,000,000,000,000 USDC (6 decimals) - massive for testing
-
 # Orderbook mirror bot - copies Hyperliquid's orderbook
 [orderbook_mirror]
 enabled = true
-coin = "BTC"                    # Hyperliquid PERP (perpetual futures) - just use coin symbol
 market_id = "BTC/USDC"          # Your exchange market to mirror to
-depth_levels = 5                 # Number of price levels to mirror (reduced for less spam)
-update_interval_ms = 2000        # THROTTLING: Only sync orders every 2000ms (Hyperliquid sends ~100 updates/sec!)
-size_multiplier = "1.0"          # Scale orders to 100% of Hyperliquid size (was 0.1 = too small!)
+depth_levels = 5                # Number of price levels to mirror
+update_interval_ms = 2000       # Only sync orders every 2000ms (throttling)
 
 # Trade mirror bot - executes trades based on Hyperliquid
 [trade_mirror]
 enabled = true
-coin = "BTC"                    # Hyperliquid PERP - tracks perpetual futures
 market_id = "BTC/USDC"          # Your exchange market
-size_multiplier = "1.0"          # Scale trades to 100% of Hyperliquid size (was 0.1 = too small!)
-min_trade_size = "0.001"         # Minimum trade size
 
 # Hyperliquid connection
 [hyperliquid]

@@ -1,6 +1,9 @@
 use crate::error::{SdkError, SdkResult};
 use backend::models::{api::*, domain::*};
 use reqwest::Client;
+use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
+use std::str::FromStr;
 
 /// REST API client for the exchange
 #[derive(Clone)]
@@ -258,6 +261,63 @@ impl ExchangeClient {
             side,
             order_type,
             price,
+            rounded_size.to_string(),
+            signature,
+        )
+        .await
+    }
+
+    /// Place an order with human-readable decimal values (e.g., "0.5" BTC, "110000" USDC)
+    /// Automatically converts to atoms using token decimals from market config
+    pub async fn place_order_decimal(
+        &self,
+        user_address: String,
+        market_id: String,
+        side: Side,
+        order_type: OrderType,
+        price_decimal: String,  // Human-readable price (e.g., "110000.50")
+        size_decimal: String,    // Human-readable size (e.g., "0.5")
+        signature: String,
+    ) -> SdkResult<crate::OrderPlaced> {
+        // Get market and token details
+        let market = self.get_market(&market_id).await?;
+        let base_token = self.get_token(&market.base_ticker).await?;
+        let quote_token = self.get_token(&market.quote_ticker).await?;
+
+        // Convert price from decimal to atoms using quote token decimals
+        let price_dec = Decimal::from_str(&price_decimal)
+            .map_err(|e| SdkError::InvalidResponse(format!("Invalid price: {}", e)))?;
+        let price_multiplier = Decimal::from(10u128.pow(quote_token.decimals as u32));
+        let price_atoms = price_dec * price_multiplier;
+        let price_u128 = price_atoms.to_u128()
+            .ok_or_else(|| SdkError::InvalidResponse(format!("Price overflow: {}", price_decimal)))?;
+
+        // Convert size from decimal to atoms using base token decimals
+        let size_dec = Decimal::from_str(&size_decimal)
+            .map_err(|e| SdkError::InvalidResponse(format!("Invalid size: {}", e)))?;
+        let size_multiplier = Decimal::from(10u128.pow(base_token.decimals as u32));
+        let size_atoms = size_dec * size_multiplier;
+        let size_u128 = size_atoms.to_u128()
+            .ok_or_else(|| SdkError::InvalidResponse(format!("Size overflow: {}", size_decimal)))?;
+
+        // Round size to lot_size
+        let rounded_size = Self::round_size_to_lot(size_u128, market.lot_size);
+
+        // Check minimum size
+        if rounded_size < market.min_size {
+            return Err(SdkError::InvalidResponse(format!(
+                "Size {} ({} atoms) is below minimum {} atoms",
+                size_decimal, rounded_size, market.min_size
+            )));
+        }
+
+        // Place order with converted values
+        self.place_order(
+            user_address,
+            market_id,
+            side,
+            order_type,
+            price_u128.to_string(),
             rounded_size.to_string(),
             signature,
         )

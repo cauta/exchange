@@ -24,8 +24,24 @@ impl BigDecimalExt for BigDecimal {
             .to_bigint()
             .expect("BUG: BigDecimal has fractional part - all values should be in atoms");
 
-        // Convert BigInt to u128
-        bigint.to_u128().expect("BUG: Value out of u128 range")
+        // Convert BigInt to u128, clamping to valid range to prevent panics
+        // This handles negative values (clamp to 0) and overflow (clamp to MAX)
+        bigint.to_u128().unwrap_or_else(|| {
+            // Check if negative
+            if bigint.sign() == bigdecimal::num_bigint::Sign::Minus {
+                log::error!(
+                    "Negative value in to_u128 conversion (clamping to 0): {:?}",
+                    bigint
+                );
+                0
+            } else {
+                log::error!(
+                    "Overflow in to_u128 conversion (clamping to MAX): {:?}",
+                    bigint
+                );
+                u128::MAX
+            }
+        })
     }
 
     fn from_u128(value: u128) -> Self {

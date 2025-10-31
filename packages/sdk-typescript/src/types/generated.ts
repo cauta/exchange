@@ -258,6 +258,7 @@ export interface components {
             market_id: string;
             /** Format: int64 */
             to: number;
+            count_back?: number;
         };
         /** @description Response containing candles */
         CandlesResponse: {
