@@ -1,6 +1,5 @@
 /// Tests to verify ClickHouse schema matches Rust structs
 /// These tests catch schema mismatches that cause runtime panics
-use backend::db::Db;
 use backend::models::db::{CandleRow, ClickHouseTradeRow};
 use exchange_test_utils::TestContainers;
 
@@ -155,7 +154,6 @@ async fn test_candles_table_has_all_required_columns() {
 /// Test that we can insert and retrieve a trade
 /// Note: Disabled due to ClickHouse eventual consistency - data isn't immediately queryable
 #[tokio::test]
-#[ignore]
 async fn test_trades_roundtrip() {
     let containers = TestContainers::setup()
         .await

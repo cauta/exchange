@@ -29,6 +29,11 @@ db-reset:
   # Drop and recreate databases (WARNING: destroys all data)
   psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" 2>/dev/null || true
   clickhouse client --user default --password password --query "DROP DATABASE IF EXISTS exchange" 2>/dev/null || true
+  just db-setup
+
+db-setup:
+  cd apps/backend/src/db/pg && cargo sqlx migrate run --database-url $DATABASE_URL
+  clickhouse client --user default --password password --query "$(cat apps/backend/src/db/ch/schema.sql)"
 
 db-prepare:
   cd apps/backend && cargo sqlx prepare --database-url $DATABASE_URL
