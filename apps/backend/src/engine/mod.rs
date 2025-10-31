@@ -275,13 +275,13 @@ impl MatchingEngine {
     }
 
     /// Spawn a background task that periodically broadcasts orderbook snapshots
-    /// Snapshots are sent every 100ms for all active markets
+    /// Snapshots are sent every 1s for all active markets
     fn spawn_snapshot_broadcaster(&self) -> JoinHandle<()> {
         let event_tx = self.event_tx.clone();
         let orderbooks = Arc::clone(&self.orderbooks);
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_millis(100));
+            let mut interval = tokio::time::interval(Duration::from_millis(1000));
             loop {
                 interval.tick().await;
 
