@@ -39,7 +39,9 @@ export function formatNumberWithCommas(value: number, maxDecimals: number = 8): 
   const trimmed = fixed.replace(/\.?0+$/, '');
 
   // Split into integer and decimal parts
-  const [integer, decimal] = trimmed.split('.');
+  const parts = trimmed.split('.');
+  const integer = parts[0] || '0';
+  const decimal = parts[1];
 
   // Add commas to integer part
   const withCommas = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',');

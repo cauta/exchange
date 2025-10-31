@@ -71,21 +71,37 @@ pub async fn trade(
             // Validate order parameters
             validate_order_params(price_value, size_value, &market)?;
 
+            // Get token decimals for proper calculation
+            let base_token = state.db.get_token(&market.base_ticker).await.map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(TradeErrorResponse {
+                        error: format!("Failed to get base token: {}", e),
+                        code: "TOKEN_NOT_FOUND".to_string(),
+                    }),
+                )
+            })?;
+
             // Lock balance based on order side
-            // BUY orders: lock quote token (price * size)
+            // BUY orders: lock quote token = (price_atoms * size_atoms) / 10^base_decimals
             // SELL orders: lock base token (size)
             let (token_to_lock, amount_to_lock) = match side {
                 crate::models::domain::Side::Buy => {
                     // For buy orders, need to lock quote token amount
-                    let quote_amount = price_value.checked_mul(size_value).ok_or_else(|| {
-                        (
-                            StatusCode::BAD_REQUEST,
-                            Json(TradeErrorResponse {
-                                error: "Order value overflow".to_string(),
-                                code: "ORDER_VALUE_OVERFLOW".to_string(),
-                            }),
-                        )
-                    })?;
+                    // quote_amount = (price_atoms * size_atoms) / 10^base_decimals
+                    let divisor = 10u128.pow(base_token.decimals as u32);
+                    let quote_amount = price_value
+                        .checked_mul(size_value)
+                        .and_then(|v| v.checked_div(divisor))
+                        .ok_or_else(|| {
+                            (
+                                StatusCode::BAD_REQUEST,
+                                Json(TradeErrorResponse {
+                                    error: "Order value overflow or division error".to_string(),
+                                    code: "ORDER_VALUE_OVERFLOW".to_string(),
+                                }),
+                            )
+                        })?;
                     (market.quote_ticker.clone(), quote_amount)
                 }
                 crate::models::domain::Side::Sell => {

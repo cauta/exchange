@@ -26,7 +26,7 @@ export default function Home() {
   );
   const currentPrice = useExchangeStore((state) => {
     if (state.priceHistory.length > 0) {
-      return state.priceHistory[state.priceHistory.length - 1].price;
+      return state.priceHistory[state.priceHistory.length - 1]?.price ?? null;
     }
     return null;
   });
