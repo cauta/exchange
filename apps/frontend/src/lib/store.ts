@@ -86,7 +86,6 @@ export const useExchangeStore = create<ExchangeState>()(
 
       selectMarket: (marketId) =>
         set((state) => {
-          console.log('[Store] Market selected:', marketId);
           state.selectedMarketId = marketId;
           // Clear orderbook and trades when switching markets
           state.orderbook = null;
@@ -97,13 +96,6 @@ export const useExchangeStore = create<ExchangeState>()(
       // Orderbook actions
       updateOrderbook: (marketId, bids, asks) =>
         set((state) => {
-          console.log('[Store] updateOrderbook called:', {
-            incomingMarketId: marketId,
-            selectedMarketId: state.selectedMarketId,
-            matches: state.selectedMarketId === marketId,
-            bidsCount: bids.length,
-            asksCount: asks.length,
-          });
           // Only update if this is for the selected market
           if (state.selectedMarketId === marketId) {
             state.orderbook = {
@@ -113,9 +105,6 @@ export const useExchangeStore = create<ExchangeState>()(
               timestamp: Date.now(),
             };
             state.isLoadingOrderbook = false;
-            console.log('[Store] Orderbook updated successfully');
-          } else {
-            console.log('[Store] Orderbook NOT updated - market mismatch');
           }
         }),
 

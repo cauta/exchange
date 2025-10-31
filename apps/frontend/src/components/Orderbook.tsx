@@ -10,13 +10,6 @@ export function Orderbook() {
   const tokens = useExchangeStore((state) => state.tokens);
   const { bids, asks } = useOrderbook(selectedMarketId);
 
-  console.log('[Orderbook] Rendering:', {
-    bidsCount: bids.length,
-    asksCount: asks.length,
-    bids: bids.slice(0, 5),
-    asks: asks.slice(0, 5),
-  });
-
   if (!selectedMarketId || !selectedMarket) {
     return (
       <div className="p-4 border rounded">

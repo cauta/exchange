@@ -22,28 +22,12 @@ export function useOrderbook(marketId: string | null) {
 
     // Handler for orderbook messages
     const handleOrderbookSnapshot = (message: any) => {
-      console.log('[useOrderbook] Snapshot received:', {
-        messageMarketId: message.orderbook?.market_id,
-        hookMarketId: marketId,
-        matches: message.orderbook?.market_id === marketId,
-        bidsCount: message.orderbook?.bids?.length,
-        asksCount: message.orderbook?.asks?.length,
-      });
-
       if (message.orderbook && message.orderbook.market_id === marketId) {
         updateOrderbook(message.orderbook.market_id, message.orderbook.bids, message.orderbook.asks);
       }
     };
 
     const handleOrderbookUpdate = (message: any) => {
-      console.log('[useOrderbook] Update received:', {
-        messageMarketId: message.orderbook?.market_id,
-        hookMarketId: marketId,
-        matches: message.orderbook?.market_id === marketId,
-        bidsCount: message.orderbook?.bids?.length,
-        asksCount: message.orderbook?.asks?.length,
-      });
-
       if (message.orderbook && message.orderbook.market_id === marketId) {
         updateOrderbook(message.orderbook.market_id, message.orderbook.bids, message.orderbook.asks);
       }
