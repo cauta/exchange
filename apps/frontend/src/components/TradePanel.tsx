@@ -252,16 +252,10 @@ export function TradePanel() {
         className="flex-1 flex flex-col"
       >
         <TabsList className="w-full justify-start rounded-none border-b border-border h-auto p-0 bg-card/50 backdrop-blur-sm shrink-0">
-          <TabsTrigger
-            value="limit"
-            className="flex-1 rounded-none"
-          >
+          <TabsTrigger value="limit" className="flex-1 rounded-none">
             Limit
           </TabsTrigger>
-          <TabsTrigger
-            value="market"
-            className="flex-1 rounded-none"
-          >
+          <TabsTrigger value="market" className="flex-1 rounded-none">
             Market
           </TabsTrigger>
         </TabsList>

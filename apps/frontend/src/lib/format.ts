@@ -33,20 +33,24 @@ export function parseSize(rawSize: string, baseDecimals: number): number {
  * @param keepTrailingZeros If true, keeps trailing zeros (e.g., for prices)
  * @returns Formatted string with commas
  */
-export function formatNumberWithCommas(value: number, maxDecimals: number = 8, keepTrailingZeros: boolean = false): string {
+export function formatNumberWithCommas(
+  value: number,
+  maxDecimals: number = 8,
+  keepTrailingZeros: boolean = false,
+): string {
   // Format with max decimals
   const fixed = value.toFixed(maxDecimals);
 
   // If we want to keep trailing zeros, don't trim them
-  const trimmed = keepTrailingZeros ? fixed : fixed.replace(/\.?0+$/, '');
+  const trimmed = keepTrailingZeros ? fixed : fixed.replace(/\.?0+$/, "");
 
   // Split into integer and decimal parts
-  const parts = trimmed.split('.');
-  const integer = parts[0] || '0';
+  const parts = trimmed.split(".");
+  const integer = parts[0] || "0";
   const decimal = parts[1];
 
   // Add commas to integer part
-  const withCommas = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const withCommas = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
   // Rejoin with decimal if it exists
   return decimal !== undefined ? `${withCommas}.${decimal}` : withCommas;
@@ -122,8 +126,8 @@ export function formatDisplayPrice(price: number, maxDecimals: number = 8): stri
  * @returns Raw value as string
  */
 export function toRawValue(displayValue: number | string, decimals: number): string {
-  const value = typeof displayValue === 'string' ? parseFloat(displayValue) : displayValue;
-  if (isNaN(value)) return '0';
+  const value = typeof displayValue === "string" ? parseFloat(displayValue) : displayValue;
+  if (isNaN(value)) return "0";
 
   // Use BigInt for precision
   const multiplier = BigInt(10 ** decimals);
@@ -187,8 +191,8 @@ export function getDecimalPlaces(tickOrLotSize: string, decimals: number): numbe
   if (displayValue === 0) return decimals;
 
   const str = displayValue.toFixed(decimals);
-  const trimmed = str.replace(/\.?0+$/, '');
-  const decimalIndex = trimmed.indexOf('.');
+  const trimmed = str.replace(/\.?0+$/, "");
+  const decimalIndex = trimmed.indexOf(".");
 
   if (decimalIndex === -1) return 0;
   return trimmed.length - decimalIndex - 1;

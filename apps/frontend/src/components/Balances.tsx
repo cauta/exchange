@@ -6,21 +6,8 @@ import { getExchangeClient } from "@/lib/api";
 import { formatSize } from "@/lib/format";
 import type { Balance } from "@exchange/sdk";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function Balances() {
   const tokens = useExchangeStore((state) => state.tokens);
@@ -30,7 +17,7 @@ export function Balances() {
   const [loading, setLoading] = useState(false);
   const [faucetToken, setFaucetToken] = useState<string>("");
   const [faucetLoading, setFaucetLoading] = useState(false);
-  const [faucetMessage, setFaucetMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
+  const [faucetMessage, setFaucetMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const fetchBalances = async () => {
     if (!userAddress || !isAuthenticated) {
@@ -95,7 +82,7 @@ export function Balances() {
       console.error("Faucet error:", err);
       setFaucetMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to get tokens from faucet"
+        text: err instanceof Error ? err.message : "Failed to get tokens from faucet",
       });
     } finally {
       setFaucetLoading(false);
@@ -130,11 +117,13 @@ export function Balances() {
             </Button>
           </div>
           {faucetMessage && (
-            <div className={`text-xs px-3 py-2 rounded-md font-medium ${
-              faucetMessage.type === "success"
-                ? "bg-green-500/10 text-green-500 border border-green-500/20"
-                : "bg-red-500/10 text-red-500 border border-red-500/20"
-            }`}>
+            <div
+              className={`text-xs px-3 py-2 rounded-md font-medium ${
+                faucetMessage.type === "success"
+                  ? "bg-green-500/10 text-green-500 border border-green-500/20"
+                  : "bg-red-500/10 text-red-500 border border-red-500/20"
+              }`}
+            >
               {faucetMessage.text}
             </div>
           )}
@@ -174,7 +163,10 @@ export function Balances() {
                   const total = BigInt(balance.amount);
 
                   return (
-                    <TableRow key={balance.token_ticker} className="border-border/50 hover:bg-primary/5 transition-colors">
+                    <TableRow
+                      key={balance.token_ticker}
+                      className="border-border/50 hover:bg-primary/5 transition-colors"
+                    >
                       <TableCell className="font-semibold text-foreground">{balance.token_ticker}</TableCell>
                       <TableCell className="text-right font-mono text-sm">
                         {formatSize(available.toString(), token.decimals)}

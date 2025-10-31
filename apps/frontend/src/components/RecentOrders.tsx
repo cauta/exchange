@@ -6,14 +6,7 @@ import { getExchangeClient } from "@/lib/api";
 import { formatPrice, formatSize } from "@/lib/format";
 import type { Order } from "@exchange/sdk";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function RecentOrders() {
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
@@ -88,20 +81,14 @@ export function RecentOrders() {
               {orders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell>
-                    <span
-                      className={`font-bold ${
-                        order.side === "buy" ? "text-green-500" : "text-red-500"
-                      }`}
-                    >
+                    <span className={`font-bold ${order.side === "buy" ? "text-green-500" : "text-red-500"}`}>
                       {order.side === "buy" ? "Buy" : "Sell"}
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {order.order_type === "limit" ? "Limit" : "Market"}
                   </TableCell>
-                  <TableCell className="font-mono">
-                    {formatPrice(order.price, quoteToken.decimals)}
-                  </TableCell>
+                  <TableCell className="font-mono">{formatPrice(order.price, quoteToken.decimals)}</TableCell>
                   <TableCell className="font-mono text-muted-foreground">
                     {formatSize(order.size, baseToken.decimals)}
                   </TableCell>
@@ -114,10 +101,10 @@ export function RecentOrders() {
                         order.status === "filled"
                           ? "bg-green-500/10 text-green-500 border border-green-500/20"
                           : order.status === "open"
-                          ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
-                          : order.status === "partially_filled"
-                          ? "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20"
-                          : "bg-muted text-muted-foreground border border-border"
+                            ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                            : order.status === "partially_filled"
+                              ? "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20"
+                              : "bg-muted text-muted-foreground border border-border"
                       }`}
                     >
                       {order.status.replace("_", " ")}

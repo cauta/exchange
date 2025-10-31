@@ -5,14 +5,7 @@ import { useExchangeStore, selectSelectedMarket } from "@/lib/store";
 import { getExchangeClient } from "@/lib/api";
 import { formatPrice, formatSize } from "@/lib/format";
 import type { Trade } from "@exchange/sdk";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function RecentTrades() {
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);

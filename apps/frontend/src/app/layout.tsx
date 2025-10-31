@@ -26,15 +26,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="/vendor/trading-view/charting_library.standalone.js" strategy="beforeInteractive" />
       </head>
       <body className={`${geistSans.className} ${geistMono.className} font-sans antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          <TurnkeyProvider>
-            {children}
-          </TurnkeyProvider>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+          <TurnkeyProvider>{children}</TurnkeyProvider>
         </ThemeProvider>
       </body>
     </html>

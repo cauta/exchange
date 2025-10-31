@@ -4,21 +4,13 @@ import { useExchangeStore } from "@/lib/store";
 import { useMarkets } from "@/lib/hooks";
 import { AuthButton } from "@/components/AuthButton";
 import { formatPrice, formatSize } from "@/lib/format";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function MarketHeader() {
   const { markets, isLoading } = useMarkets();
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
   const selectMarket = useExchangeStore((state) => state.selectMarket);
-  const selectedMarket = useExchangeStore((state) =>
-    state.markets.find((m) => m.id === selectedMarketId)
-  );
+  const selectedMarket = useExchangeStore((state) => state.markets.find((m) => m.id === selectedMarketId));
   const currentPrice = useExchangeStore((state) => {
     if (state.priceHistory.length > 0) {
       return state.priceHistory[state.priceHistory.length - 1]?.price ?? null;
@@ -49,10 +41,7 @@ export function MarketHeader() {
             ) : markets.length === 0 ? (
               <div className="text-muted-foreground">No markets</div>
             ) : (
-              <Select
-                value={selectedMarketId || ""}
-                onValueChange={selectMarket}
-              >
+              <Select value={selectedMarketId || ""} onValueChange={selectMarket}>
                 <SelectTrigger className="w-[130px] bg-primary/10 border-primary/40 hover:bg-primary/20 hover:border-primary/50 h-7 text-xs transition-colors">
                   <SelectValue placeholder="Select market" />
                 </SelectTrigger>

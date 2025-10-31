@@ -8,7 +8,5 @@ export const turnkeyConfig = {
 
 // Validate that required environment variables are set
 if (!turnkeyConfig.defaultOrganizationId && typeof window !== "undefined") {
-  console.warn(
-    "NEXT_PUBLIC_TURNKEY_ORGANIZATION_ID is not set. Please set it in .env.local"
-  );
+  console.warn("NEXT_PUBLIC_TURNKEY_ORGANIZATION_ID is not set. Please set it in .env.local");
 }

@@ -1,4 +1,4 @@
-use exchange_bots::hyperliquid::{HyperliquidClient, HlMessage};
+use exchange_bots::hyperliquid::{HlMessage, HyperliquidClient};
 use tracing_subscriber;
 
 #[tokio::main]
@@ -19,14 +19,24 @@ async fn main() -> anyhow::Result<()> {
 
                 println!("📊 BIDS: {} levels", bids.len());
                 for (i, bid) in bids.iter().take(15).enumerate() {
-                    println!("  #{:2}: price={:>10} size={:>10} orders={}",
-                        i+1, bid.px, bid.sz, bid.n);
+                    println!(
+                        "  #{:2}: price={:>10} size={:>10} orders={}",
+                        i + 1,
+                        bid.px,
+                        bid.sz,
+                        bid.n
+                    );
                 }
 
                 println!("\n📊 ASKS: {} levels", asks.len());
                 for (i, ask) in asks.iter().take(15).enumerate() {
-                    println!("  #{:2}: price={:>10} size={:>10} orders={}",
-                        i+1, ask.px, ask.sz, ask.n);
+                    println!(
+                        "  #{:2}: price={:>10} size={:>10} orders={}",
+                        i + 1,
+                        ask.px,
+                        ask.sz,
+                        ask.n
+                    );
                 }
 
                 count += 1;
