@@ -89,7 +89,7 @@
   --accent: 260 30% 15%;
   --accent-foreground: 260 15% 85%;
   --destructive: 0 63% 31%;
-  --border: 270 50% 35%;
+  --border: 0 0% 20%;
   --input: 260 35% 10%;
   --ring: 270 80% 65%;
   --chart-1: 270 70% 50%;
@@ -106,6 +106,15 @@
   body {
     @apply bg-background text-foreground;
     position: relative;
+  }
+
+  /* Ensure all borders use the purple color */
+  *[class*="border"] {
+    border-color: hsl(var(--border)) !important;
+  }
+
+  .border-border {
+    border-color: hsl(var(--border)) !important;
   }
 
   /* Dither overlay effect */

@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Balance } from "@exchange/sdk";
 import {
   toRawValue,
@@ -86,17 +87,12 @@ export function TradePanel() {
   const quoteBalance = balances.find((b) => b.token_ticker === quoteToken.ticker);
 
   // Calculate available balances (total - locked in orders)
-  const availableBase = baseBalance
-    ? Number(BigInt(baseBalance.amount) - BigInt(baseBalance.open_interest))
-    : 0;
-  const availableQuote = quoteBalance
-    ? Number(BigInt(quoteBalance.amount) - BigInt(quoteBalance.open_interest))
-    : 0;
+  const availableBase = baseBalance ? Number(BigInt(baseBalance.amount) - BigInt(baseBalance.open_interest)) : 0;
+  const availableQuote = quoteBalance ? Number(BigInt(quoteBalance.amount) - BigInt(quoteBalance.open_interest)) : 0;
 
   // Get price helpers
-  const lastTradePrice = recentTrades.length > 0 && recentTrades[0]
-    ? toDisplayValue(recentTrades[0].price, quoteToken.decimals)
-    : null;
+  const lastTradePrice =
+    recentTrades.length > 0 && recentTrades[0] ? toDisplayValue(recentTrades[0].price, quoteToken.decimals) : null;
   const bestBid = bids.length > 0 && bids[0] ? toDisplayValue(bids[0].price, quoteToken.decimals) : null;
   const bestAsk = asks.length > 0 && asks[0] ? toDisplayValue(asks[0].price, quoteToken.decimals) : null;
 
@@ -226,7 +222,9 @@ export function TradePanel() {
         signature,
       });
 
-      setSuccess(`Order placed! ${result.trades.length > 0 ? `Filled ${result.trades.length} trade(s)` : 'Order in book'}`);
+      setSuccess(
+        `Order placed! ${result.trades.length > 0 ? `Filled ${result.trades.length} trade(s)` : "Order in book"}`,
+      );
       setPrice("");
       setSize("");
 
@@ -247,219 +245,215 @@ export function TradePanel() {
   const estimatedFee = (estimatedTotal * Math.abs(feeBps)) / 10000;
 
   return (
-    <Card className="h-full">
-      <CardContent className="p-4 space-y-4">
-        {/* Order Type Tabs */}
-        <div className="flex gap-2 p-1 bg-muted/50 rounded-lg backdrop-blur-sm">
-          <Button
-            onClick={() => setOrderType("limit")}
-            variant="ghost"
-            size="sm"
-            className={`flex-1 ${orderType === "limit" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
+    <Card className="h-full flex flex-col gap-0 py-0 overflow-hidden">
+      <Tabs
+        value={orderType}
+        onValueChange={(v) => setOrderType(v as "limit" | "market")}
+        className="flex-1 flex flex-col"
+      >
+        <TabsList className="w-full justify-start rounded-none border-b border-border h-auto p-0 bg-card/50 backdrop-blur-sm shrink-0">
+          <TabsTrigger
+            value="limit"
+            className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all duration-200 py-2 text-sm"
           >
             Limit
-          </Button>
-          <Button
-            onClick={() => setOrderType("market")}
-            variant="ghost"
-            size="sm"
-            className={`flex-1 ${orderType === "market" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
+          </TabsTrigger>
+          <TabsTrigger
+            value="market"
+            className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 transition-all duration-200 py-2 text-sm"
           >
             Market
-          </Button>
-        </div>
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Buy/Sell Buttons */}
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            onClick={() => setSide("buy")}
-            variant={side === "buy" ? "default" : "outline"}
-            className={side === "buy" ? "bg-green-600 hover:bg-green-700 text-white" : "hover:bg-green-600/10"}
-            size="lg"
-          >
-            Buy
-          </Button>
-          <Button
-            onClick={() => setSide("sell")}
-            variant={side === "sell" ? "default" : "outline"}
-            className={side === "sell" ? "bg-red-600 hover:bg-red-700 text-white" : "hover:bg-red-600/10"}
-            size="lg"
-          >
-            Sell
-          </Button>
-        </div>
+        <CardContent className="p-4 space-y-4 flex-1">
+          {/* Buy/Sell Buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              onClick={() => setSide("buy")}
+              variant={side === "buy" ? "default" : "outline"}
+              className={side === "buy" ? "bg-green-600 hover:bg-green-700 text-white" : "hover:bg-green-600/10"}
+              size="lg"
+            >
+              Buy
+            </Button>
+            <Button
+              onClick={() => setSide("sell")}
+              variant={side === "sell" ? "default" : "outline"}
+              className={side === "sell" ? "bg-red-600 hover:bg-red-700 text-white" : "hover:bg-red-600/10"}
+              size="lg"
+            >
+              Sell
+            </Button>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Wallet Connection Status */}
-          {!isAuthenticated && (
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-yellow-600 text-xs text-center">
-              Connect your wallet to start trading
-            </div>
-          )}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Wallet Connection Status */}
+            {!isAuthenticated && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-yellow-600 text-xs text-center">
+                Connect your wallet to start trading
+              </div>
+            )}
 
-          {/* Price - Only for limit orders */}
-          {orderType === "limit" && (
+            {/* Price - Only for limit orders */}
+            {orderType === "limit" && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label className="text-xs font-medium text-muted-foreground">Price ({quoteToken.ticker})</Label>
+                  {/* Quick price buttons */}
+                  <div className="flex gap-1">
+                    {bestBid !== null && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setQuickPrice("bid")}
+                        className="h-6 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-600/10"
+                      >
+                        Bid
+                      </Button>
+                    )}
+                    {bestAsk !== null && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setQuickPrice("ask")}
+                        className="h-6 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-600/10"
+                      >
+                        Ask
+                      </Button>
+                    )}
+                    {lastTradePrice !== null && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setQuickPrice("last")}
+                        className="h-6 px-2 text-xs hover:bg-muted"
+                      >
+                        Last
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <Input
+                  type="number"
+                  value={price}
+                  onChange={(e) => handlePriceChange(e.target.value)}
+                  onBlur={handlePriceBlur}
+                  placeholder="0.00"
+                  step={toDisplayValue(selectedMarket.tick_size, quoteToken.decimals)}
+                  className="font-mono"
+                />
+              </div>
+            )}
+
+            {/* Size */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <Label className="text-xs font-medium text-muted-foreground">
-                  Price ({quoteToken.ticker})
-                </Label>
-                {/* Quick price buttons */}
-                <div className="flex gap-1">
-                  {bestBid !== null && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setQuickPrice("bid")}
-                      className="h-6 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-600/10"
-                    >
-                      Bid
-                    </Button>
-                  )}
-                  {bestAsk !== null && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setQuickPrice("ask")}
-                      className="h-6 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-600/10"
-                    >
-                      Ask
-                    </Button>
-                  )}
-                  {lastTradePrice !== null && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setQuickPrice("last")}
-                      className="h-6 px-2 text-xs hover:bg-muted"
-                    >
-                      Last
-                    </Button>
-                  )}
-                </div>
+                <Label className="text-xs font-medium text-muted-foreground">Size ({baseToken.ticker})</Label>
+                {isAuthenticated && (
+                  <span className="text-xs text-muted-foreground">
+                    Available:{" "}
+                    {formatNumberWithCommas(
+                      toDisplayValue(
+                        (side === "buy" ? availableQuote : availableBase).toString(),
+                        side === "buy" ? quoteToken.decimals : baseToken.decimals,
+                      ),
+                      4,
+                    )}{" "}
+                    {side === "buy" ? quoteToken.ticker : baseToken.ticker}
+                  </span>
+                )}
               </div>
               <Input
                 type="number"
-                value={price}
-                onChange={(e) => handlePriceChange(e.target.value)}
-                onBlur={handlePriceBlur}
+                value={size}
+                onChange={(e) => handleSizeChange(e.target.value)}
+                onBlur={handleSizeBlur}
                 placeholder="0.00"
-                step={toDisplayValue(selectedMarket.tick_size, quoteToken.decimals)}
+                step={toDisplayValue(selectedMarket.lot_size, baseToken.decimals)}
                 className="font-mono"
               />
-            </div>
-          )}
 
-          {/* Size */}
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label className="text-xs font-medium text-muted-foreground">
-                Size ({baseToken.ticker})
-              </Label>
+              {/* Percentage buttons */}
               {isAuthenticated && (
-                <span className="text-xs text-muted-foreground">
-                  Available: {formatNumberWithCommas(
-                    toDisplayValue(
-                      (side === "buy" ? availableQuote : availableBase).toString(),
-                      side === "buy" ? quoteToken.decimals : baseToken.decimals
-                    ),
-                    4
-                  )} {side === "buy" ? quoteToken.ticker : baseToken.ticker}
-                </span>
+                <div className="grid grid-cols-4 gap-1">
+                  {[25, 50, 75, 100].map((pct) => (
+                    <Button
+                      key={pct}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPercentageSize(pct)}
+                      className="h-7 text-xs"
+                    >
+                      {pct}%
+                    </Button>
+                  ))}
+                </div>
               )}
             </div>
-            <Input
-              type="number"
-              value={size}
-              onChange={(e) => handleSizeChange(e.target.value)}
-              onBlur={handleSizeBlur}
-              placeholder="0.00"
-              step={toDisplayValue(selectedMarket.lot_size, baseToken.decimals)}
-              className="font-mono"
-            />
 
-            {/* Percentage buttons */}
-            {isAuthenticated && (
-              <div className="grid grid-cols-4 gap-1">
-                {[25, 50, 75, 100].map((pct) => (
-                  <Button
-                    key={pct}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPercentageSize(pct)}
-                    className="h-7 text-xs"
-                  >
-                    {pct}%
-                  </Button>
-                ))}
+            {/* Estimated total and fees */}
+            {estimatedSize > 0 && estimatedPrice > 0 && (
+              <div className="space-y-1 bg-muted/50 border border-border/50 rounded-lg p-3 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total</span>
+                  <span className="font-mono font-medium">
+                    {formatNumberWithCommas(estimatedTotal, Math.min(priceDecimals, 4))} {quoteToken.ticker}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Est. Fee ({(Math.abs(feeBps) / 100).toFixed(2)}%)</span>
+                  <span className="font-mono text-muted-foreground">
+                    {formatNumberWithCommas(estimatedFee, Math.min(priceDecimals, 4))} {quoteToken.ticker}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-border/50">
+                  <span className="text-muted-foreground font-medium">
+                    {side === "buy" ? "Total Cost" : "You Receive"}
+                  </span>
+                  <span className="font-mono font-semibold">
+                    {formatNumberWithCommas(
+                      side === "buy" ? estimatedTotal + estimatedFee : estimatedTotal - estimatedFee,
+                      Math.min(priceDecimals, 4),
+                    )}{" "}
+                    {quoteToken.ticker}
+                  </span>
+                </div>
               </div>
             )}
-          </div>
 
-          {/* Estimated total and fees */}
-          {estimatedSize > 0 && estimatedPrice > 0 && (
-            <div className="space-y-1 bg-muted/50 border border-border/50 rounded-lg p-3 text-xs">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total</span>
-                <span className="font-mono font-medium">
-                  {formatNumberWithCommas(estimatedTotal, Math.min(priceDecimals, 4))} {quoteToken.ticker}
-                </span>
+            {/* Error/Success Messages */}
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-600 text-xs">{error}</div>
+            )}
+            {success && (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-green-600 text-xs">
+                {success}
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Est. Fee ({(Math.abs(feeBps) / 100).toFixed(2)}%)</span>
-                <span className="font-mono text-muted-foreground">
-                  {formatNumberWithCommas(estimatedFee, Math.min(priceDecimals, 4))} {quoteToken.ticker}
-                </span>
-              </div>
-              <div className="flex justify-between pt-1 border-t border-border/50">
-                <span className="text-muted-foreground font-medium">
-                  {side === "buy" ? "Total Cost" : "You Receive"}
-                </span>
-                <span className="font-mono font-semibold">
-                  {formatNumberWithCommas(
-                    side === "buy" ? estimatedTotal + estimatedFee : estimatedTotal - estimatedFee,
-                    Math.min(priceDecimals, 4)
-                  )} {quoteToken.ticker}
-                </span>
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Error/Success Messages */}
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-600 text-xs">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-green-600 text-xs">
-              {success}
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            disabled={loading || !isAuthenticated}
-            size="lg"
-            className={`w-full font-semibold ${
-              side === "buy"
-                ? "bg-green-600 hover:bg-green-700 text-white"
-                : "bg-red-600 hover:bg-red-700 text-white"
-            }`}
-          >
-            {loading
-              ? "Placing Order..."
-              : !isAuthenticated
-              ? "Connect Wallet"
-              : `${side === "buy" ? "Buy" : "Sell"} ${baseToken.ticker}`}
-          </Button>
-        </form>
-      </CardContent>
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={loading || !isAuthenticated}
+              size="lg"
+              className={`w-full font-semibold ${
+                side === "buy" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"
+              }`}
+            >
+              {loading
+                ? "Placing Order..."
+                : !isAuthenticated
+                  ? "Connect Wallet"
+                  : `${side === "buy" ? "Buy" : "Sell"} ${baseToken.ticker}`}
+            </Button>
+          </form>
+        </CardContent>
+      </Tabs>
     </Card>
   );
 }

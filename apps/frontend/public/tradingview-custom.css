@@ -1,45 +1,49 @@
-/* Custom TradingView theme to match dark purple theme */
+/* Custom TradingView theme to match dark purple theme with dither effect */
 
-/* Toolbar background */
+/* Toolbar background - match card background */
 .chart-page .chart-container,
 .layout__area--top {
   background-color: #0d0a14 !important;
 }
 
-/* Toolbar buttons and controls */
+/* Toolbar buttons and controls - match muted foreground */
 .button-QtKYfKGZ,
 .button-merBkM5y,
 .item-Xp1EE8m2 {
   color: #a295c1 !important;
+  transition: all 0.15s ease;
 }
 
 .button-QtKYfKGZ:hover,
 .button-merBkM5y:hover,
 .item-Xp1EE8m2:hover {
-  background-color: #1f1832 !important;
+  background-color: rgba(157, 126, 250, 0.1) !important;
   color: #9d7efa !important;
 }
 
-/* Active button state */
+/* Active button state - primary purple */
 .button-QtKYfKGZ.isActive-QtKYfKGZ,
 .button-merBkM5y.isActive-merBkM5y {
   color: #9d7efa !important;
+  background-color: rgba(157, 126, 250, 0.15) !important;
 }
 
 /* Dropdown menus */
 .menuWrap-Kq3ruQo8,
 .menu-Kq3ruQo8 {
   background-color: #0d0a14 !important;
-  border-color: #1f1832 !important;
+  border-color: #333333 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* Menu items */
 .item-WJDah4zj {
   color: #a295c1 !important;
+  transition: all 0.15s ease;
 }
 
 .item-WJDah4zj:hover {
-  background-color: #1f1832 !important;
+  background-color: rgba(157, 126, 250, 0.1) !important;
   color: #9d7efa !important;
 }
 
@@ -49,13 +53,20 @@
   background-color: #0d0a14 !important;
 }
 
-/* Scrollbar */
+/* Scrollbar styling - match app theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
 ::-webkit-scrollbar-track {
   background: #0d0a14 !important;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1f1832 !important;
+  background: #333333 !important;
+  border-radius: 4px;
+  transition: background 0.15s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -65,24 +76,78 @@
 /* Context menu */
 .menuBox-biWYdsXC {
   background-color: #0d0a14 !important;
-  border-color: #1f1832 !important;
+  border-color: #333333 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Separators */
+/* Separators - match border color */
 .separator-Pf4rIzEt {
-  background-color: #1f1832 !important;
+  background-color: #333333 !important;
 }
 
-/* Input fields */
+/* Input fields - match app inputs */
 input[type="text"],
 input[type="number"] {
-  background-color: #1f1832 !important;
+  background-color: rgba(157, 126, 250, 0.05) !important;
   color: #a295c1 !important;
-  border-color: #1f1832 !important;
+  border-color: #333333 !important;
+  transition: all 0.15s ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+  border-color: #9d7efa !important;
+  box-shadow: 0 0 0 2px rgba(157, 126, 250, 0.1) !important;
 }
 
 /* Remove any white backgrounds */
 .chart-gui-wrapper,
 .chart-container-border {
   background-color: #0d0a14 !important;
+}
+
+/* Dither effect overlay for chart canvas */
+.chart-container {
+  position: relative;
+}
+
+/* Legend and watermark text - improve readability */
+.pane-legend {
+  color: #a295c1 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Tooltip styling */
+.tv-lightweight-charts-tooltip {
+  background-color: rgba(13, 10, 20, 0.95) !important;
+  border: 1px solid #333333 !important;
+  color: #a295c1 !important;
+  backdrop-filter: blur(8px);
+}
+
+/* Drawing tools - match purple theme */
+.drawing-toolbar {
+  background-color: #0d0a14 !important;
+  border-color: #333333 !important;
+}
+
+/* Panel background */
+.panel-nX4VbaC0 {
+  background-color: #0d0a14 !important;
+}
+
+/* Selected item highlight */
+.item-WJDah4zj.isActive-WJDah4zj {
+  background-color: rgba(157, 126, 250, 0.15) !important;
+  color: #9d7efa !important;
+}
+
+/* Tabs and navigation */
+.tab-1ydBmW6T {
+  color: #a295c1 !important;
+}
+
+.tab-1ydBmW6T.isActive-1ydBmW6T {
+  color: #9d7efa !important;
+  border-bottom-color: #9d7efa !important;
 }

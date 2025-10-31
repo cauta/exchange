@@ -62,22 +62,24 @@ export function TradingViewChart() {
         "paneProperties.backgroundGradientStartColor": "#0d0a14",
         "paneProperties.backgroundGradientEndColor": "#0d0a14",
 
-        // Grid lines - subtle purple tint
-        "paneProperties.vertGridProperties.color": "#1f1832",
-        "paneProperties.horzGridProperties.color": "#1f1832",
+        // Grid lines - match border color (hsl(0, 0%, 20%))
+        "paneProperties.vertGridProperties.color": "rgba(51, 51, 51, 0.3)",
+        "paneProperties.horzGridProperties.color": "rgba(51, 51, 51, 0.3)",
+        "paneProperties.vertGridProperties.style": 0,
+        "paneProperties.horzGridProperties.style": 0,
 
         // Separators
-        "paneProperties.separatorColor": "#1f1832",
+        "paneProperties.separatorColor": "#333333",
 
         // Chart style - 1 for candles
         "mainSeriesProperties.style": 1,
 
-        // Candle colors - matching your green/red theme
-        "mainSeriesProperties.candleStyle.upColor": "#10b981",
+        // Candle colors - vibrant green/red with glow effect
+        "mainSeriesProperties.candleStyle.upColor": "#22c55e",
         "mainSeriesProperties.candleStyle.downColor": "#ef4444",
-        "mainSeriesProperties.candleStyle.wickUpColor": "#10b981",
+        "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
         "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
-        "mainSeriesProperties.candleStyle.borderUpColor": "#10b981",
+        "mainSeriesProperties.candleStyle.borderUpColor": "#22c55e",
         "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
         "mainSeriesProperties.candleStyle.drawWick": true,
         "mainSeriesProperties.candleStyle.drawBorder": true,
@@ -86,17 +88,24 @@ export function TradingViewChart() {
         "mainSeriesProperties.lineStyle.color": "#9d7efa",
         "mainSeriesProperties.lineStyle.linewidth": 2,
 
-        // Crosshair
-        "crosshairProperties.color": "#9d7efa",
+        // Area chart colors
+        "mainSeriesProperties.areaStyle.color1": "rgba(157, 126, 250, 0.3)",
+        "mainSeriesProperties.areaStyle.color2": "rgba(157, 126, 250, 0.05)",
+        "mainSeriesProperties.areaStyle.linecolor": "#9d7efa",
 
-        // Scale text color and background
+        // Crosshair - purple primary
+        "crosshairProperties.color": "#9d7efa",
+        "crosshairProperties.width": 1,
+        "crosshairProperties.style": 2,
+
+        // Scale text color and background - match muted foreground
         "scalesProperties.textColor": "#a295c1",
         "scalesProperties.backgroundColor": "#0d0a14",
-        "scalesProperties.lineColor": "#1f1832",
+        "scalesProperties.lineColor": "#333333",
       },
       studies_overrides: {
         "volume.volume.color.0": "#ef4444",
-        "volume.volume.color.1": "#10b981",
+        "volume.volume.color.1": "#22c55e",
         "volume.volume.transparency": 70,
       },
     };
@@ -135,7 +144,7 @@ export function TradingViewChart() {
   }
 
   return (
-    <Card className="overflow-hidden h-full p-0">
+    <Card className="overflow-hidden h-full p-0 dither">
       <div ref={containerRef} className="h-full w-full" />
     </Card>
   );
