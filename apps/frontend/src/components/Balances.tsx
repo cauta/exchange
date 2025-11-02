@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useExchangeStore } from "@/lib/store";
 import { getExchangeClient } from "@/lib/api";
-import { formatSize, toRawValue } from "@/lib/format";
-import type { Balance } from "@exchange/sdk";
+import { toRawValue } from "@/lib/format";
+import type { Balance } from "@/lib/types/exchange";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -156,11 +156,8 @@ export function Balances() {
               </TableHeader>
               <TableBody>
                 {balances.map((balance) => {
-                  const token = tokens.find((t) => t.ticker === balance.token_ticker);
-                  if (!token) return null;
-
-                  const available = BigInt(balance.amount) - BigInt(balance.open_interest);
-                  const total = BigInt(balance.amount);
+                  // Calculate available (amount - locked)
+                  const available = balance.amountValue - balance.lockedValue;
 
                   return (
                     <TableRow
@@ -168,14 +165,12 @@ export function Balances() {
                       className="border-border/50 hover:bg-primary/5 transition-colors"
                     >
                       <TableCell className="font-semibold text-foreground">{balance.token_ticker}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {formatSize(available.toString(), token.decimals)}
-                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">{available.toFixed(8)}</TableCell>
                       <TableCell className="text-right font-mono text-sm text-muted-foreground">
-                        {formatSize(balance.open_interest, token.decimals)}
+                        {balance.lockedDisplay}
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm font-semibold text-foreground">
-                        {formatSize(total.toString(), token.decimals)}
+                        {balance.amountDisplay}
                       </TableCell>
                     </TableRow>
                   );

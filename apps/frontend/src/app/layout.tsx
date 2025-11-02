@@ -1,8 +1,8 @@
+import "@turnkey/react-wallet-kit/styles.css";
 import "@/styles/globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
-import { ThemeProvider } from "@/lib/providers/theme-provider";
-import { TurnkeyProvider } from "@/lib/turnkey/provider";
+import { Providers } from "@/lib/providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,9 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="/vendor/trading-view/charting_library.standalone.js" strategy="beforeInteractive" />
       </head>
       <body className={`${geistSans.className} ${geistMono.className} font-sans antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
-          <TurnkeyProvider>{children}</TurnkeyProvider>
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

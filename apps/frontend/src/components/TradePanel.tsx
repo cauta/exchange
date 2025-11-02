@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Balance } from "@exchange/sdk";
+import type { Balance } from "@/lib/types/exchange";
 import {
   toRawValue,
   toDisplayValue,
@@ -86,13 +86,12 @@ export function TradePanel() {
   const baseBalance = balances.find((b) => b.token_ticker === baseToken.ticker);
   const quoteBalance = balances.find((b) => b.token_ticker === quoteToken.ticker);
 
-  // Calculate available balances (total - locked in orders)
-  const availableBase = baseBalance ? Number(BigInt(baseBalance.amount) - BigInt(baseBalance.open_interest)) : 0;
-  const availableQuote = quoteBalance ? Number(BigInt(quoteBalance.amount) - BigInt(quoteBalance.open_interest)) : 0;
+  // Calculate available balances (total - locked in orders) - use enhanced values!
+  const availableBase = baseBalance ? baseBalance.amountValue - baseBalance.lockedValue : 0;
+  const availableQuote = quoteBalance ? quoteBalance.amountValue - quoteBalance.lockedValue : 0;
 
-  // Get price helpers
-  const lastTradePrice =
-    recentTrades.length > 0 && recentTrades[0] ? toDisplayValue(recentTrades[0].price, quoteToken.decimals) : null;
+  // Get price helpers - recentTrades now has priceValue!
+  const lastTradePrice = recentTrades.length > 0 && recentTrades[0] ? recentTrades[0].priceValue : null;
   const bestBid = bids.length > 0 && bids[0] ? toDisplayValue(bids[0].price, quoteToken.decimals) : null;
   const bestAsk = asks.length > 0 && asks[0] ? toDisplayValue(asks[0].price, quoteToken.decimals) : null;
 
@@ -120,11 +119,10 @@ export function TradePanel() {
     if (side === "buy") {
       // For buy: limited by quote balance / price
       const currentPrice = parseFloat(price) || lastTradePrice || bestAsk || 1;
-      const availableQuoteDisplay = toDisplayValue(availableQuote.toString(), quoteToken.decimals);
-      maxSize = availableQuoteDisplay / currentPrice;
+      maxSize = availableQuote / currentPrice;
     } else {
       // For sell: limited by base balance
-      maxSize = toDisplayValue(availableBase.toString(), baseToken.decimals);
+      maxSize = availableBase;
     }
 
     const targetSize = maxSize * (percentage / 100);
@@ -349,14 +347,7 @@ export function TradePanel() {
                 <Label className="text-xs font-medium text-muted-foreground">Size ({baseToken.ticker})</Label>
                 {isAuthenticated && (
                   <span className="text-xs text-muted-foreground">
-                    Available:{" "}
-                    {formatNumberWithCommas(
-                      toDisplayValue(
-                        (side === "buy" ? availableQuote : availableBase).toString(),
-                        side === "buy" ? quoteToken.decimals : baseToken.decimals,
-                      ),
-                      4,
-                    )}{" "}
+                    Available: {formatNumberWithCommas(side === "buy" ? availableQuote : availableBase, 4)}{" "}
                     {side === "buy" ? quoteToken.ticker : baseToken.ticker}
                   </span>
                 )}

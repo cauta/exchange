@@ -90,8 +90,8 @@ async fn test_insufficient_balance_buy_order() {
         &market.id,
         Side::Buy,
         OrderType::Limit,
-        "50000000000",   // Price
-        "100000000000",  // Size - needs 5000 atoms
+        "50000000000",  // Price
+        "100000000000", // Size - needs 5000 atoms
     )
     .await;
 
@@ -190,8 +190,8 @@ async fn test_multiple_orders_lock_balance() {
         &market.id,
         Side::Buy,
         OrderType::Limit,
-        "30000000000",  // Price
-        "10000000000",  // Size - needs 300 atoms
+        "30000000000", // Price
+        "10000000000", // Size - needs 300 atoms
     )
     .await
     .expect("First order should succeed");
@@ -203,8 +203,8 @@ async fn test_multiple_orders_lock_balance() {
         &market.id,
         Side::Buy,
         OrderType::Limit,
-        "40000000000",  // Price
-        "10000000000",  // Size - needs 400 atoms
+        "40000000000", // Price
+        "10000000000", // Size - needs 400 atoms
     )
     .await
     .expect("Second order should succeed");
@@ -250,8 +250,8 @@ async fn test_cancel_order_unlocks_balance() {
         &market.id,
         Side::Buy,
         OrderType::Limit,
-        "10000000000",  // Price
-        "40000000000",  // Size - needs 400 atoms
+        "10000000000", // Price
+        "40000000000", // Size - needs 400 atoms
     )
     .await
     .expect("First order should succeed");
@@ -265,11 +265,14 @@ async fn test_cancel_order_unlocks_balance() {
         &market.id,
         Side::Buy,
         OrderType::Limit,
-        "10000000000",  // Price
-        "20000000000",  // Size - needs 200 atoms
+        "10000000000", // Price
+        "20000000000", // Size - needs 200 atoms
     )
     .await;
-    assert!(result.is_err(), "Second order should fail due to locked balance");
+    assert!(
+        result.is_err(),
+        "Second order should fail due to locked balance"
+    );
 
     // Cancel first order
     let client = reqwest::Client::new();

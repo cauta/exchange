@@ -204,9 +204,7 @@ export function getDecimalPlaces(tickOrLotSize: string, decimals: number): numbe
  * @returns Formatted time string (e.g., "2:30:45 PM")
  */
 export function formatTime(timestamp: Date | string | number): string {
-  const date = typeof timestamp === "number" || typeof timestamp === "string"
-    ? new Date(timestamp)
-    : timestamp;
+  const date = typeof timestamp === "number" || typeof timestamp === "string" ? new Date(timestamp) : timestamp;
   return date.toLocaleTimeString();
 }
 
@@ -216,9 +214,7 @@ export function formatTime(timestamp: Date | string | number): string {
  * @returns Formatted date string (e.g., "12/31/2024")
  */
 export function formatDate(timestamp: Date | string | number): string {
-  const date = typeof timestamp === "number" || typeof timestamp === "string"
-    ? new Date(timestamp)
-    : timestamp;
+  const date = typeof timestamp === "number" || typeof timestamp === "string" ? new Date(timestamp) : timestamp;
   return date.toLocaleDateString();
 }
 
@@ -228,8 +224,6 @@ export function formatDate(timestamp: Date | string | number): string {
  * @returns Formatted date and time string (e.g., "12/31/2024, 2:30:45 PM")
  */
 export function formatDateTime(timestamp: Date | string | number): string {
-  const date = typeof timestamp === "number" || typeof timestamp === "string"
-    ? new Date(timestamp)
-    : timestamp;
+  const date = typeof timestamp === "number" || typeof timestamp === "string" ? new Date(timestamp) : timestamp;
   return date.toLocaleString();
 }

@@ -3,17 +3,21 @@
 import { useState, useEffect } from "react";
 import { useExchangeStore, selectSelectedMarket } from "@/lib/store";
 import { getExchangeClient } from "@/lib/api";
-// formatTime is still needed for timestamp display
-import type { Trade } from "@exchange/sdk";
+import type { Trade } from "@/lib/types/exchange";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function RecentTrades() {
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
+  const selectedMarket = useExchangeStore(selectSelectedMarket);
+  const tokens = useExchangeStore((state) => state.tokens);
   const userAddress = useExchangeStore((state) => state.userAddress);
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
 
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const baseToken = tokens.find((t) => t.ticker === selectedMarket?.base_ticker);
+  const quoteToken = tokens.find((t) => t.ticker === selectedMarket?.quote_ticker);
 
   useEffect(() => {
     if (!userAddress || !isAuthenticated || !selectedMarketId) {
@@ -41,7 +45,7 @@ export function RecentTrades() {
     return () => clearInterval(interval);
   }, [userAddress, isAuthenticated, selectedMarketId]);
 
-  if (!selectedMarketId) {
+  if (!selectedMarketId || !selectedMarket || !baseToken || !quoteToken) {
     return <p className="text-muted-foreground text-sm">Select a market to view trades</p>;
   }
 
@@ -72,12 +76,8 @@ export function RecentTrades() {
 
                 return (
                   <TableRow key={trade.id}>
-                    <TableCell className="font-mono font-semibold">
-                      {trade.priceDisplay}
-                    </TableCell>
-                    <TableCell className="font-mono text-muted-foreground">
-                      {trade.sizeDisplay}
-                    </TableCell>
+                    <TableCell className="font-mono font-semibold">{trade.priceDisplay}</TableCell>
+                    <TableCell className="font-mono text-muted-foreground">{trade.sizeDisplay}</TableCell>
                     <TableCell>
                       <span
                         className={`text-xs px-2 py-1 font-semibold uppercase tracking-wide ${

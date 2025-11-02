@@ -3,7 +3,7 @@
 import { useExchangeStore } from "@/lib/store";
 import { useMarkets } from "@/lib/hooks";
 import { AuthButton } from "@/components/AuthButton";
-import { formatPrice, formatSize } from "@/lib/format";
+import { toDisplayValue } from "@/lib/format";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function MarketHeader() {
@@ -11,12 +11,17 @@ export function MarketHeader() {
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
   const selectMarket = useExchangeStore((state) => state.selectMarket);
   const selectedMarket = useExchangeStore((state) => state.markets.find((m) => m.id === selectedMarketId));
+  const tokens = useExchangeStore((state) => state.tokens);
   const currentPrice = useExchangeStore((state) => {
     if (state.priceHistory.length > 0) {
       return state.priceHistory[state.priceHistory.length - 1]?.price ?? null;
     }
     return null;
   });
+
+  // Look up tokens for the selected market
+  const baseToken = selectedMarket ? tokens.find((t) => t.ticker === selectedMarket.base_ticker) : null;
+  const quoteToken = selectedMarket ? tokens.find((t) => t.ticker === selectedMarket.quote_ticker) : null;
 
   return (
     <>
@@ -55,7 +60,7 @@ export function MarketHeader() {
               </Select>
             )}
 
-            {selectedMarket && (
+            {selectedMarket && baseToken && quoteToken && (
               <>
                 <div className="h-3.5 w-[1px] bg-primary/40"></div>
                 <div className="flex items-center gap-1.5">
@@ -69,14 +74,14 @@ export function MarketHeader() {
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground/60 uppercase tracking-wider">Tick</span>
                   <span className="text-foreground font-mono font-medium">
-                    {formatPrice(selectedMarket.tick_size, selectedMarket.quote_decimals)}
+                    {toDisplayValue(selectedMarket.tick_size, quoteToken.decimals).toFixed(Math.min(quoteToken.decimals, 8))}
                   </span>
                 </div>
                 <div className="h-3.5 w-[1px] bg-primary/40"></div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground/60 uppercase tracking-wider">Lot</span>
                   <span className="text-foreground font-mono font-medium">
-                    {formatSize(selectedMarket.lot_size, selectedMarket.base_decimals)}
+                    {toDisplayValue(selectedMarket.lot_size, baseToken.decimals).toFixed(Math.min(baseToken.decimals, 8))}
                   </span>
                 </div>
               </>

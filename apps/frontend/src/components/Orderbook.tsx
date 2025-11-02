@@ -2,7 +2,7 @@
 
 import { useOrderbook, useTrades } from "@/lib/hooks";
 import { useExchangeStore, selectSelectedMarket } from "@/lib/store";
-import { formatPrice, formatSize, formatTime } from "@/lib/format";
+import { toDisplayValue } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -12,13 +12,6 @@ export function Orderbook() {
   const tokens = useExchangeStore((state) => state.tokens);
   const { bids, asks } = useOrderbook(selectedMarketId);
   const trades = useTrades(selectedMarketId);
-
-  // Determine if trade is buy or sell based on price movement
-  const getTradeDirection = (price: string, index: number) => {
-    if (index >= trades.length - 1) return "neutral";
-    const prevPrice = trades[index + 1].price;
-    return parseFloat(price) >= parseFloat(prevPrice) ? "buy" : "sell";
-  };
 
   if (!selectedMarketId || !selectedMarket) {
     return (
@@ -30,7 +23,7 @@ export function Orderbook() {
     );
   }
 
-  // Look up token decimals
+  // Look up token decimals for orderbook formatting (orderbook data is still raw)
   const baseToken = tokens.find((t) => t.ticker === selectedMarket.base_ticker);
   const quoteToken = tokens.find((t) => t.ticker === selectedMarket.quote_ticker);
 
@@ -44,9 +37,20 @@ export function Orderbook() {
     );
   }
 
+  // Helper functions for formatting (orderbook is still raw, trades are enhanced)
+  const formatPrice = (price: string) => {
+    const value = toDisplayValue(price, quoteToken.decimals);
+    return value >= 1000 ? value.toFixed(2) : value.toFixed(Math.min(quoteToken.decimals, 8));
+  };
+
+  const formatSize = (size: string) => {
+    const value = toDisplayValue(size, baseToken.decimals);
+    return value.toFixed(Math.min(baseToken.decimals, 8));
+  };
+
   // Calculate spread
-  const lowestAsk = asks.length > 0 ? parseFloat(asks[0].price) : 0;
-  const highestBid = bids.length > 0 ? parseFloat(bids[0].price) : 0;
+  const lowestAsk = asks.length > 0 && asks[0] ? parseFloat(asks[0].price) : 0;
+  const highestBid = bids.length > 0 && bids[0] ? parseFloat(bids[0].price) : 0;
   const spread = lowestAsk && highestBid ? lowestAsk - highestBid : 0;
   const spreadPercentage = highestBid ? ((spread / highestBid) * 100).toFixed(2) : "0.00";
 
@@ -61,9 +65,9 @@ export function Orderbook() {
   });
 
   const maxAskCumulative =
-    asksWithCumulative.length > 0 ? asksWithCumulative[asksWithCumulative.length - 1].cumulative : 1;
+    asksWithCumulative.length > 0 ? asksWithCumulative[asksWithCumulative.length - 1]?.cumulative ?? 1 : 1;
   const maxBidCumulative =
-    bidsWithCumulative.length > 0 ? bidsWithCumulative[bidsWithCumulative.length - 1].cumulative : 1;
+    bidsWithCumulative.length > 0 ? bidsWithCumulative[bidsWithCumulative.length - 1]?.cumulative ?? 1 : 1;
 
   return (
     <Card className="flex flex-col h-full gap-0 py-0 overflow-hidden">
@@ -103,10 +107,10 @@ export function Orderbook() {
                         style={{ width: `${depthPercentage}%` }}
                       />
                       <span className="relative z-10 text-red-500 font-medium">
-                        {formatPrice(ask.price, quoteToken.decimals)}
+                        {formatPrice(ask.price)}
                       </span>
                       <span className="relative z-10 text-muted-foreground">
-                        {formatSize(ask.size, baseToken.decimals)}
+                        {formatSize(ask.size)}
                       </span>
                     </div>
                   );
@@ -139,10 +143,10 @@ export function Orderbook() {
                         style={{ width: `${depthPercentage}%` }}
                       />
                       <span className="relative z-10 text-green-500 font-medium">
-                        {formatPrice(bid.price, quoteToken.decimals)}
+                        {formatPrice(bid.price)}
                       </span>
                       <span className="relative z-10 text-muted-foreground">
-                        {formatSize(bid.size, baseToken.decimals)}
+                        {formatSize(bid.size)}
                       </span>
                     </div>
                   );
@@ -168,7 +172,12 @@ export function Orderbook() {
             ) : (
               <div className="px-2 space-y-0.5">
                 {trades.slice(0, 30).map((trade, index) => {
-                  const direction = getTradeDirection(trade.price, index);
+                  // Use priceValue for comparison if available, fallback to parsing price string
+                  const currentPrice = trade.priceValue ?? parseFloat(trade.price);
+                  const prevTrade = trades[index + 1];
+                  const prevPrice = prevTrade ? (prevTrade.priceValue ?? parseFloat(prevTrade.price)) : currentPrice;
+
+                  const direction = index >= trades.length - 1 ? "neutral" : currentPrice >= prevPrice ? "buy" : "sell";
                   const isBuy = direction === "buy";
                   const isSell = direction === "sell";
 
@@ -182,11 +191,13 @@ export function Orderbook() {
                           isBuy ? "text-green-500" : isSell ? "text-red-500" : "text-foreground"
                         }`}
                       >
-                        {formatPrice(trade.price, quoteToken.decimals)}
+                        {trade.priceDisplay ?? formatPrice(trade.price)}
                       </span>
-                      <span className="text-muted-foreground">{formatSize(trade.size, baseToken.decimals)}</span>
+                      <span className="text-muted-foreground">{trade.sizeDisplay ?? formatSize(trade.size)}</span>
                       <span className="text-muted-foreground text-xs">
-                        {formatTime(trade.timestamp)}
+                        {trade.timestamp instanceof Date
+                          ? trade.timestamp.toLocaleTimeString()
+                          : new Date(trade.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
                   );

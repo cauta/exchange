@@ -3,23 +3,18 @@
 import { useState, useEffect } from "react";
 import { useExchangeStore, selectSelectedMarket } from "@/lib/store";
 import { getExchangeClient } from "@/lib/api";
-import { formatPrice, formatSize, formatTime } from "@/lib/format";
-import type { Order } from "@exchange/sdk";
+import type { Order } from "@/lib/types/exchange";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function RecentOrders() {
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
   const selectedMarket = useExchangeStore(selectSelectedMarket);
-  const tokens = useExchangeStore((state) => state.tokens);
   const userAddress = useExchangeStore((state) => state.userAddress);
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const baseToken = tokens.find((t) => t.ticker === selectedMarket?.base_ticker);
-  const quoteToken = tokens.find((t) => t.ticker === selectedMarket?.quote_ticker);
 
   useEffect(() => {
     if (!userAddress || !isAuthenticated || !selectedMarketId) {
@@ -31,11 +26,7 @@ export function RecentOrders() {
       setLoading(true);
       try {
         const client = getExchangeClient();
-        const result = await client.getOrders({
-          userAddress,
-          marketId: selectedMarketId,
-          limit: 50,
-        });
+        const result = await client.getOrders(userAddress, selectedMarketId);
         setOrders(result);
       } catch (err) {
         console.error("Failed to fetch orders:", err);
@@ -51,7 +42,7 @@ export function RecentOrders() {
     return () => clearInterval(interval);
   }, [userAddress, isAuthenticated, selectedMarketId]);
 
-  if (!selectedMarketId || !selectedMarket || !baseToken || !quoteToken) {
+  if (!selectedMarketId || !selectedMarket) {
     return <p className="text-muted-foreground text-sm">Select a market to view orders</p>;
   }
 
@@ -88,30 +79,26 @@ export function RecentOrders() {
                   <TableCell className="text-muted-foreground">
                     {order.order_type === "limit" ? "Limit" : "Market"}
                   </TableCell>
-                  <TableCell className="font-mono">{formatPrice(order.price, quoteToken.decimals)}</TableCell>
-                  <TableCell className="font-mono text-muted-foreground">
-                    {formatSize(order.size, baseToken.decimals)}
-                  </TableCell>
-                  <TableCell className="font-mono text-muted-foreground">
-                    {formatSize(order.filled_size, baseToken.decimals)}
-                  </TableCell>
+                  <TableCell className="font-mono">{order.priceDisplay}</TableCell>
+                  <TableCell className="font-mono text-muted-foreground">{order.sizeDisplay}</TableCell>
+                  <TableCell className="font-mono text-muted-foreground">{order.filledDisplay}</TableCell>
                   <TableCell>
                     <span
                       className={`text-xs px-2 py-1 font-semibold uppercase tracking-wide ${
                         order.status === "filled"
                           ? "bg-green-500/10 text-green-500 border border-green-500/20"
-                          : order.status === "open"
-                            ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
-                            : order.status === "partially_filled"
-                              ? "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20"
-                              : "bg-muted text-muted-foreground border border-border"
+                          : order.status === "partially_filled"
+                            ? "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20"
+                            : order.status === "cancelled"
+                              ? "bg-muted text-muted-foreground border border-border"
+                              : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
                       }`}
                     >
                       {order.status.replace("_", " ")}
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
-                    {formatTime(order.created_at)}
+                    {order.created_at.toLocaleTimeString()}
                   </TableCell>
                 </TableRow>
               ))}

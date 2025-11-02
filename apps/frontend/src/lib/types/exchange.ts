@@ -14,13 +14,16 @@ export type {
   EnhancedOrder as Order,
   EnhancedBalance as Balance,
   EnhancedOrderbookLevel as OrderbookLevel,
-} from '@exchange/sdk';
+} from "@exchange/sdk";
 
-// Orderbook composite type
+// Import raw OrderbookLevel for WebSocket data (not enhanced)
+import type { OrderbookLevel as RawOrderbookLevel } from "@exchange/sdk";
+
+// Orderbook composite type - uses raw data from WebSocket
 export interface Orderbook {
   market_id: string;
-  bids: OrderbookLevel[];
-  asks: OrderbookLevel[];
+  bids: RawOrderbookLevel[];
+  asks: RawOrderbookLevel[];
   timestamp?: number;
 }
 
