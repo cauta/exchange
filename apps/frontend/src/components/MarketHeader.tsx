@@ -3,6 +3,7 @@
 import { useExchangeStore } from "@/lib/store";
 import { useMarkets } from "@/lib/hooks";
 import { AuthButton } from "@/components/AuthButton";
+import { FaucetDialog } from "@/components/FaucetDialog";
 import { toDisplayValue, formatWithoutTrailingZeros } from "@/lib/format";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -31,8 +32,11 @@ export function MarketHeader() {
           {/* Logo */}
           <h1 className="text-2xl font-bold tracking-tight">Exchange</h1>
 
-          {/* Auth Button */}
-          <AuthButton />
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <FaucetDialog />
+            <AuthButton />
+          </div>
         </div>
       </div>
 

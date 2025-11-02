@@ -3,6 +3,7 @@ import "@/styles/globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { Providers } from "@/lib/providers";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`${geistSans.className} ${geistMono.className} font-sans antialiased`}>
         <Providers>{children}</Providers>
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );

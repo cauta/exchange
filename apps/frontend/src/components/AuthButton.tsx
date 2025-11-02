@@ -7,7 +7,7 @@ import { autoFaucet } from "@/lib/faucet";
 import { Button } from "@/components/ui/button";
 
 export function AuthButton() {
-  const { handleLogin, wallets, authState, user } = useTurnkey();
+  const { handleLogin, wallets, authState, user, logout } = useTurnkey();
   const userAddress = useExchangeStore((state) => state.userAddress);
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
   const setUser = useExchangeStore((state) => state.setUser);
@@ -35,10 +35,9 @@ export function AuthButton() {
   }, [authState, wallets, isAuthenticated, setUser, clearUser, tokens]);
 
   const handleLogout = () => {
+    // Call Turnkey logout and clear local state
+    logout();
     clearUser();
-    // Note: Turnkey wallet-kit doesn't have a built-in logout function
-    // You may need to clear local storage or session manually
-    // For now, we just clear our local state
   };
 
   if (isAuthenticated && userAddress) {
