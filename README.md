@@ -69,6 +69,7 @@ missing production
 - after general structure, most anoying is types. finagiling different systems to work together. refactoring types , ensuring things lined up correctly when testing, etc. claude is great helping with this.
 - decision fatigue for things that are not immediatley obvious. harder to gridn through. config, deps, env vars are tedious and kind adistracitng.
 - truly great things take a lot of polish
+- i like clean data layers. seperations of concerns intuitivley feels good. liek the way i managed the frontend data and sdk, abstracting complexity into sdk unlike gtx where it was mangled in the app. backend api/domain/db layers.
 
 ### what's covered
 

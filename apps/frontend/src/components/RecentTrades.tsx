@@ -3,14 +3,12 @@
 import { useState, useEffect } from "react";
 import { useExchangeStore, selectSelectedMarket } from "@/lib/store";
 import { getExchangeClient } from "@/lib/api";
-import { formatPrice, formatSize, formatTime } from "@/lib/format";
+// formatTime is still needed for timestamp display
 import type { Trade } from "@exchange/sdk";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function RecentTrades() {
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
-  const selectedMarket = useExchangeStore(selectSelectedMarket);
-  const tokens = useExchangeStore((state) => state.tokens);
   const userAddress = useExchangeStore((state) => state.userAddress);
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
 
@@ -43,15 +41,8 @@ export function RecentTrades() {
     return () => clearInterval(interval);
   }, [userAddress, isAuthenticated, selectedMarketId]);
 
-  if (!selectedMarketId || !selectedMarket) {
+  if (!selectedMarketId) {
     return <p className="text-muted-foreground text-sm">Select a market to view trades</p>;
-  }
-
-  const baseToken = tokens.find((t) => t.ticker === selectedMarket.base_ticker);
-  const quoteToken = tokens.find((t) => t.ticker === selectedMarket.quote_ticker);
-
-  if (!baseToken || !quoteToken) {
-    return <p className="text-muted-foreground text-sm">Loading token information...</p>;
   }
 
   return (
@@ -82,10 +73,10 @@ export function RecentTrades() {
                 return (
                   <TableRow key={trade.id}>
                     <TableCell className="font-mono font-semibold">
-                      {formatPrice(trade.price, quoteToken.decimals)}
+                      {trade.priceDisplay}
                     </TableCell>
                     <TableCell className="font-mono text-muted-foreground">
-                      {formatSize(trade.size, baseToken.decimals)}
+                      {trade.sizeDisplay}
                     </TableCell>
                     <TableCell>
                       <span
@@ -99,7 +90,7 @@ export function RecentTrades() {
                       </span>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
-                      {formatTime(trade.timestamp)}
+                      {trade.timestamp.toLocaleTimeString()}
                     </TableCell>
                   </TableRow>
                 );

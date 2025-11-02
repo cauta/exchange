@@ -4,6 +4,7 @@
 
 import type { components } from './types/generated';
 import { ApiError } from './errors';
+import { toDisplayValue, formatPrice, formatSize } from './format';
 
 // Extract types from OpenAPI components
 type InfoRequest = components['schemas']['InfoRequest'];
@@ -18,7 +19,7 @@ type AdminRequest = components['schemas']['AdminRequest'];
 type AdminResponse = components['schemas']['AdminResponse'];
 type CandlesRequest = components['schemas']['CandlesRequest'];
 
-// Domain types
+// Domain types (from API)
 export type Market = components['schemas']['ApiMarket'];
 export type Token = components['schemas']['Token'];
 export type Order = components['schemas']['ApiOrder'];
@@ -30,6 +31,43 @@ export type OrderStatus = components['schemas']['OrderStatus'];
 export type Candle = components['schemas']['ApiCandle'];
 export type CandlesResponse = components['schemas']['CandlesResponse'];
 
+// Enhanced types (with display values pre-computed)
+export type EnhancedTrade = Omit<Trade, 'timestamp'> & {
+  timestamp: Date;          // Converted from string
+  priceDisplay: string;     // Formatted price
+  sizeDisplay: string;      // Formatted size
+  priceValue: number;       // Numeric price
+  sizeValue: number;        // Numeric size
+};
+
+export type EnhancedOrder = Omit<Order, 'created_at' | 'updated_at'> & {
+  created_at: Date;         // Converted from string
+  updated_at: Date;         // Converted from string
+  priceDisplay: string;     // Formatted price
+  sizeDisplay: string;      // Formatted size
+  filledDisplay: string;    // Formatted filled_size
+  priceValue: number;       // Numeric price
+  sizeValue: number;        // Numeric size
+  filledValue: number;      // Numeric filled_size
+};
+
+export type EnhancedBalance = Omit<Balance, 'updated_at'> & {
+  updated_at: Date;         // Converted from string
+  amountDisplay: string;    // Formatted amount
+  lockedDisplay: string;    // Formatted open_interest
+  amountValue: number;      // Numeric amount
+  lockedValue: number;      // Numeric open_interest
+};
+
+export interface EnhancedOrderbookLevel {
+  price: string;            // atoms
+  size: string;             // atoms
+  priceDisplay: string;     // Formatted
+  sizeDisplay: string;      // Formatted
+  priceValue: number;       // Numeric
+  sizeValue: number;        // Numeric
+}
+
 export interface RestClientConfig {
   baseUrl: string;
   timeout?: number;
@@ -39,12 +77,100 @@ export class RestClient {
   private baseUrl: string;
   private timeout: number;
 
+  // Internal caches for data enhancement
+  private tokensCache: Map<string, Token> = new Map();
+  private marketsCache: Map<string, Market> = new Map();
+
   constructor(config: RestClientConfig) {
     if (!config.baseUrl) {
       throw new Error('RestClient: baseUrl is required');
     }
     this.baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
     this.timeout = config.timeout ?? 30000;
+  }
+
+  // Public access to cached data
+  get tokens(): Token[] {
+    return Array.from(this.tokensCache.values());
+  }
+
+  get markets(): Market[] {
+    return Array.from(this.marketsCache.values());
+  }
+
+  getTokenByTicker(ticker: string): Token | undefined {
+    return this.tokensCache.get(ticker);
+  }
+
+  getMarketById(marketId: string): Market | undefined {
+    return this.marketsCache.get(marketId);
+  }
+
+  // ===== Enhancement Helpers =====
+
+  private enhanceTrade(trade: Trade): EnhancedTrade {
+    const market = this.marketsCache.get(trade.market_id);
+    if (!market) {
+      throw new Error(`Market ${trade.market_id} not found in cache. Call getMarkets() first.`);
+    }
+
+    const baseToken = this.tokensCache.get(market.base_ticker);
+    const quoteToken = this.tokensCache.get(market.quote_ticker);
+
+    if (!baseToken || !quoteToken) {
+      throw new Error(`Tokens for market ${trade.market_id} not found in cache. Call getTokens() first.`);
+    }
+
+    return {
+      ...trade,
+      timestamp: new Date(trade.timestamp),
+      priceDisplay: formatPrice(trade.price, quoteToken.decimals),
+      sizeDisplay: formatSize(trade.size, baseToken.decimals),
+      priceValue: toDisplayValue(trade.price, quoteToken.decimals),
+      sizeValue: toDisplayValue(trade.size, baseToken.decimals),
+    };
+  }
+
+  private enhanceOrder(order: Order, marketId: string): EnhancedOrder {
+    const market = this.marketsCache.get(marketId);
+    if (!market) {
+      throw new Error(`Market ${marketId} not found in cache. Call getMarkets() first.`);
+    }
+
+    const baseToken = this.tokensCache.get(market.base_ticker);
+    const quoteToken = this.tokensCache.get(market.quote_ticker);
+
+    if (!baseToken || !quoteToken) {
+      throw new Error(`Tokens for market ${marketId} not found in cache. Call getTokens() first.`);
+    }
+
+    return {
+      ...order,
+      created_at: new Date(order.created_at),
+      updated_at: new Date(order.updated_at),
+      priceDisplay: formatPrice(order.price, quoteToken.decimals),
+      sizeDisplay: formatSize(order.size, baseToken.decimals),
+      filledDisplay: formatSize(order.filled_size, baseToken.decimals),
+      priceValue: toDisplayValue(order.price, quoteToken.decimals),
+      sizeValue: toDisplayValue(order.size, baseToken.decimals),
+      filledValue: toDisplayValue(order.filled_size, baseToken.decimals),
+    };
+  }
+
+  private enhanceBalance(balance: Balance): EnhancedBalance {
+    const token = this.tokensCache.get(balance.token_ticker);
+    if (!token) {
+      throw new Error(`Token ${balance.token_ticker} not found in cache. Call getTokens() first.`);
+    }
+
+    return {
+      ...balance,
+      updated_at: new Date(balance.updated_at),
+      amountDisplay: formatSize(balance.amount, token.decimals),
+      lockedDisplay: formatSize(balance.open_interest, token.decimals),
+      amountValue: toDisplayValue(balance.amount, token.decimals),
+      lockedValue: toDisplayValue(balance.open_interest, token.decimals),
+    };
   }
 
   // ===== Info Endpoints =====
@@ -73,6 +199,12 @@ export class RestClient {
     if (response.type !== 'all_markets') {
       throw new ApiError('Invalid response type', 500);
     }
+
+    // Cache markets for data enhancement
+    response.markets.forEach(market => {
+      this.marketsCache.set(market.id, market);
+    });
+
     return response.markets;
   }
 
@@ -82,6 +214,12 @@ export class RestClient {
     if (response.type !== 'all_tokens') {
       throw new ApiError('Invalid response type', 500);
     }
+
+    // Cache tokens for data enhancement
+    response.tokens.forEach(token => {
+      this.tokensCache.set(token.ticker, token);
+    });
+
     return response.tokens;
   }
 
@@ -92,7 +230,7 @@ export class RestClient {
     marketId?: string;
     status?: OrderStatus;
     limit?: number;
-  }): Promise<Order[]> {
+  }): Promise<EnhancedOrder[]> {
     const request: UserRequest = {
       type: 'orders',
       user_address: params.userAddress,
@@ -104,10 +242,15 @@ export class RestClient {
     if (response.type !== 'orders') {
       throw new ApiError('Invalid response type', 500);
     }
-    return response.orders;
+
+    // Enhance orders with display values
+    if (!params.marketId) {
+      throw new Error('marketId is required for data enhancement');
+    }
+    return response.orders.map(order => this.enhanceOrder(order, params.marketId!));
   }
 
-  async getBalances(userAddress: string): Promise<Balance[]> {
+  async getBalances(userAddress: string): Promise<EnhancedBalance[]> {
     const request: UserRequest = {
       type: 'balances',
       user_address: userAddress,
@@ -116,14 +259,16 @@ export class RestClient {
     if (response.type !== 'balances') {
       throw new ApiError('Invalid response type', 500);
     }
-    return response.balances;
+
+    // Enhance balances with display values
+    return response.balances.map(balance => this.enhanceBalance(balance));
   }
 
   async getTrades(params: {
     userAddress: string;
     marketId?: string;
     limit?: number;
-  }): Promise<Trade[]> {
+  }): Promise<EnhancedTrade[]> {
     const request: UserRequest = {
       type: 'trades',
       user_address: params.userAddress,
@@ -134,7 +279,9 @@ export class RestClient {
     if (response.type !== 'trades') {
       throw new ApiError('Invalid response type', 500);
     }
-    return response.trades;
+
+    // Enhance trades with display values
+    return response.trades.map(trade => this.enhanceTrade(trade));
   }
 
   // ===== Trade Endpoints =====
@@ -167,7 +314,7 @@ export class RestClient {
     price: string;
     size: string;
     signature: string;
-  }): Promise<{ order: Order; trades: Trade[] }> {
+  }): Promise<{ order: EnhancedOrder; trades: EnhancedTrade[] }> {
     const request: TradeRequest = {
       type: 'place_order',
       user_address: params.userAddress,
@@ -182,7 +329,12 @@ export class RestClient {
     if (response.type !== 'place_order') {
       throw new ApiError('Invalid response type', 500);
     }
-    return { order: response.order, trades: response.trades };
+
+    // Enhance the order and trades
+    return {
+      order: this.enhanceOrder(response.order, params.marketId),
+      trades: response.trades.map(trade => this.enhanceTrade(trade)),
+    };
   }
 
   /**
@@ -196,7 +348,7 @@ export class RestClient {
     price: string;
     size: string;
     signature: string;
-  }): Promise<{ order: Order; trades: Trade[] }> {
+  }): Promise<{ order: EnhancedOrder; trades: EnhancedTrade[] }> {
     // Get market details to find lot_size
     const market = await this.getMarket(params.marketId);
 
@@ -234,7 +386,7 @@ export class RestClient {
     priceDecimal: string; // Human-readable price (e.g., "110000.50")
     sizeDecimal: string;  // Human-readable size (e.g., "0.5")
     signature: string;
-  }): Promise<{ order: Order; trades: Trade[] }> {
+  }): Promise<{ order: EnhancedOrder; trades: EnhancedTrade[] }> {
     // Get market and token details
     const market = await this.getMarket(params.marketId);
     const baseToken = await this.getToken(market.base_ticker);

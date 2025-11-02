@@ -6,7 +6,6 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import type { Market, Token, Orderbook, OrderbookLevel, Trade, PricePoint } from "./types/exchange";
-import { parsePrice } from "./format";
 
 // ============================================================================
 // State Interface
@@ -137,24 +136,15 @@ export const useExchangeStore = create<ExchangeState>()(
               state.recentTrades = state.recentTrades.slice(0, 100);
             }
 
-            // Add to price history - convert using token decimals
-            const market = state.markets.find((m) => m.id === trade.market_id);
-            if (market) {
-              const quoteToken = state.tokens.find((t) => t.ticker === market.quote_ticker);
-              if (quoteToken) {
-                const price = parsePrice(trade.price, quoteToken.decimals);
-                if (!isNaN(price)) {
-                  state.priceHistory.push({
-                    timestamp: Date.now(),
-                    price,
-                  });
+            // Add to price history - use pre-computed priceValue from SDK!
+            state.priceHistory.push({
+              timestamp: Date.now(),
+              price: trade.priceValue,
+            });
 
-                  // Keep only last 200 price points
-                  if (state.priceHistory.length > 200) {
-                    state.priceHistory = state.priceHistory.slice(-200);
-                  }
-                }
-              }
+            // Keep only last 200 price points
+            if (state.priceHistory.length > 200) {
+              state.priceHistory = state.priceHistory.slice(-200);
             }
           }
         }),
@@ -166,20 +156,11 @@ export const useExchangeStore = create<ExchangeState>()(
             if (state.selectedMarketId === trade.market_id) {
               state.recentTrades.unshift(trade);
 
-              // Add to price history - convert using token decimals
-              const market = state.markets.find((m) => m.id === trade.market_id);
-              if (market) {
-                const quoteToken = state.tokens.find((t) => t.ticker === market.quote_ticker);
-                if (quoteToken) {
-                  const price = parsePrice(trade.price, quoteToken.decimals);
-                  if (!isNaN(price)) {
-                    state.priceHistory.push({
-                      timestamp: Date.now(),
-                      price,
-                    });
-                  }
-                }
-              }
+              // Add to price history - use pre-computed priceValue from SDK!
+              state.priceHistory.push({
+                timestamp: Date.now(),
+                price: trade.priceValue,
+              });
             }
           });
 

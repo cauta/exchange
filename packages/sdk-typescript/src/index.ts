@@ -53,6 +53,10 @@ export type {
   OrderStatus,
   Candle,
   CandlesResponse,
+  EnhancedTrade,
+  EnhancedOrder,
+  EnhancedBalance,
+  EnhancedOrderbookLevel,
 } from './rest';
 
 export type {
