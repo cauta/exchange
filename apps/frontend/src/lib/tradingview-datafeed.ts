@@ -20,8 +20,7 @@ import type {
 // ErrorCallback is not exported from TradingView types, so we define it here
 type ErrorCallback = (reason: string) => void;
 
-import { exchange } from "./api";
-import { getWebSocketManager } from "./websocket";
+import { exchange, getExchangeClient } from "./api";
 import type { ServerMessage } from "@exchange/sdk";
 import type { Market, Token } from "./types/exchange";
 
@@ -61,9 +60,10 @@ export class ExchangeDatafeed implements IBasicDataFeed {
     symbols_types: [{ name: "crypto", value: "crypto" }],
   };
   private subscriptions = new Map<string, BarSubscription>();
-  private wsManager = getWebSocketManager();
+  private client = getExchangeClient();
   private marketsCache: Market[] = [];
   private tokensCache: Token[] = [];
+  private tradeUnsubscribers = new Map<string, () => void>();
 
   /**
    * Called when the library is initialized
@@ -258,13 +258,16 @@ export class ExchangeDatafeed implements IBasicDataFeed {
 
     if (isFirstSubscription) {
       console.log(`[TradingView] Subscribing to trades for ${marketId}`);
-      this.wsManager.subscribe("trades", marketId);
 
-      // Setup trade handler if not already done
-      if (!this.tradeHandler) {
-        this.tradeHandler = this.handleTrade.bind(this);
-        this.wsManager.on("trade", this.tradeHandler);
-      }
+      // Subscribe using SDK convenience method
+      const unsubscribe = this.client.onTrades(marketId, (trade) => {
+        this.handleTrade({
+          type: "trade",
+          trade,
+        });
+      });
+
+      this.tradeUnsubscribers.set(marketId, unsubscribe);
     }
 
     console.log(`[TradingView] Subscribed to bars: ${marketId} ${resolution}`);
@@ -289,7 +292,11 @@ export class ExchangeDatafeed implements IBasicDataFeed {
 
     if (!hasOtherSubscriptions) {
       console.log(`[TradingView] Unsubscribing from trades for ${marketId}`);
-      this.wsManager.unsubscribe("trades", marketId);
+      const unsubscribe = this.tradeUnsubscribers.get(marketId);
+      if (unsubscribe) {
+        unsubscribe();
+        this.tradeUnsubscribers.delete(marketId);
+      }
     }
 
     console.log(`[TradingView] Unsubscribed from bars: ${listenerGuid}`);
@@ -298,8 +305,6 @@ export class ExchangeDatafeed implements IBasicDataFeed {
   /**
    * Trade handler for WebSocket events
    */
-  private tradeHandler: ((message: ServerMessage) => void) | null = null;
-
   private handleTrade(message: ServerMessage): void {
     if (message.type !== "trade") {
       return;

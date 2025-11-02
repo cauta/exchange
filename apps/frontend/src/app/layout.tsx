@@ -1,7 +1,7 @@
 import "@/styles/globals.css";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/lib/providers/theme-provider";
 import { TurnkeyProvider } from "@/lib/turnkey/provider";
 
 const geistSans = Geist({

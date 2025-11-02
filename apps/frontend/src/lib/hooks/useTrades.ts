@@ -4,8 +4,7 @@
 
 import { useEffect } from "react";
 import { useExchangeStore, selectRecentTrades } from "../store";
-import { getWebSocketManager } from "../websocket";
-import type { TradeMessage, ServerMessage } from "../types/websocket";
+import { getExchangeClient } from "../api";
 
 export function useTrades(marketId: string | null) {
   const addTrade = useExchangeStore((state) => state.addTrade);
@@ -14,36 +13,25 @@ export function useTrades(marketId: string | null) {
   useEffect(() => {
     if (!marketId) return;
 
-    const ws = getWebSocketManager();
+    const client = getExchangeClient();
 
-    // Handler for trade messages
-    const handleTrade = (message: TradeMessage) => {
-      if (message.trade.market_id === marketId) {
-        addTrade({
-          id: message.trade.id,
-          market_id: message.trade.market_id,
-          buyer_address: message.trade.buyer_address,
-          seller_address: message.trade.seller_address,
-          price: message.trade.price,
-          size: message.trade.size,
-          buyer_fee: "0", // Not included in WebSocket message
-          seller_fee: "0", // Not included in WebSocket message
-          timestamp: message.trade.timestamp,
-        });
-      }
-    };
-
-    // Register handler
-    ws.on("trade", handleTrade as (message: ServerMessage) => void);
-
-    // Subscribe to trades
-    ws.subscribe("trades", marketId);
+    // Subscribe to trade updates using SDK convenience method
+    const unsubscribe = client.onTrades(marketId, (trade) => {
+      addTrade({
+        id: trade.id,
+        market_id: trade.market_id,
+        buyer_address: trade.buyer_address,
+        seller_address: trade.seller_address,
+        price: trade.price,
+        size: trade.size,
+        buyer_fee: "0", // Not included in WebSocket message
+        seller_fee: "0", // Not included in WebSocket message
+        timestamp: trade.timestamp,
+      });
+    });
 
     // Cleanup
-    return () => {
-      ws.off("trade", handleTrade as (message: ServerMessage) => void);
-      ws.unsubscribe("trades", marketId);
-    };
+    return unsubscribe;
   }, [marketId, addTrade]);
 
   return trades;

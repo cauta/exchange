@@ -3,11 +3,7 @@
  */
 
 // API
-export { exchange, ApiError } from "./api";
-
-// WebSocket
-export { getWebSocketManager, resetWebSocketManager } from "./websocket";
-export type { WebSocketManager } from "./websocket";
+export { exchange, getExchangeClient } from "./api";
 
 // Store
 export { useExchangeStore } from "./store";

@@ -4,8 +4,7 @@
 
 import { useEffect } from "react";
 import { useExchangeStore, selectOrderbookBids, selectOrderbookAsks } from "../store";
-import { getWebSocketManager } from "../websocket";
-import type { ServerMessage } from "../types/websocket";
+import { getExchangeClient } from "../api";
 
 export function useOrderbook(marketId: string | null) {
   const updateOrderbook = useExchangeStore((state) => state.updateOrderbook);
@@ -16,27 +15,16 @@ export function useOrderbook(marketId: string | null) {
   useEffect(() => {
     if (!marketId) return;
 
-    const ws = getWebSocketManager();
+    const client = getExchangeClient();
     setOrderbookLoading(true);
 
-    // Handler for orderbook messages
-    const handleOrderbook = (message: any) => {
-      if (message.orderbook && message.orderbook.market_id === marketId) {
-        updateOrderbook(message.orderbook.market_id, message.orderbook.bids, message.orderbook.asks);
-      }
-    };
-
-    // Register handler
-    ws.on("orderbook", handleOrderbook as (message: ServerMessage) => void);
-
-    // Subscribe to orderbook
-    ws.subscribe("orderbook", marketId);
+    // Subscribe to orderbook updates using SDK convenience method
+    const unsubscribe = client.onOrderbook(marketId, ({ bids, asks }) => {
+      updateOrderbook(marketId, bids, asks);
+    });
 
     // Cleanup
-    return () => {
-      ws.off("orderbook", handleOrderbook as (message: ServerMessage) => void);
-      ws.unsubscribe("orderbook", marketId);
-    };
+    return unsubscribe;
   }, [marketId, updateOrderbook, setOrderbookLoading]);
 
   return {
