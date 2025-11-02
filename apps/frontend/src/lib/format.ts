@@ -2,8 +2,6 @@
  * Formatting utilities for market data with proper decimal handling
  */
 
-import type { Market, Token } from "./types/exchange";
-
 /**
  * Convert a raw price value to actual value using quote token decimals
  * @param rawPrice Raw price string from backend (fixed-point integer)

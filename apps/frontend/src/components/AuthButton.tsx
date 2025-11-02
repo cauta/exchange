@@ -7,7 +7,7 @@ import { autoFaucet } from "@/lib/faucet";
 import { Button } from "@/components/ui/button";
 
 export function AuthButton() {
-  const { handleLogin, wallets, authState, user, logout } = useTurnkey();
+  const { handleLogin, wallets, authState, logout } = useTurnkey();
   const userAddress = useExchangeStore((state) => state.userAddress);
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
   const setUser = useExchangeStore((state) => state.setUser);
