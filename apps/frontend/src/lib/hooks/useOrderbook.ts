@@ -15,7 +15,7 @@ export function useOrderbook(marketId: string | null) {
   useEffect(() => {
     if (!marketId) return;
 
-    console.log('[useOrderbook] Subscribing to orderbook for', marketId);
+    console.log("[useOrderbook] Subscribing to orderbook for", marketId);
     const client = getExchangeClient();
     setOrderbookLoading(true);
 
@@ -26,7 +26,7 @@ export function useOrderbook(marketId: string | null) {
 
     // Cleanup
     return () => {
-      console.log('[useOrderbook] Cleaning up subscription for', marketId);
+      console.log("[useOrderbook] Cleaning up subscription for", marketId);
       unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

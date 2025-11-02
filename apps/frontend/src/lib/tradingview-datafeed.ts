@@ -103,10 +103,10 @@ export class ExchangeDatafeed implements IBasicDataFeed {
    * Resolve symbol info
    */
   resolveSymbol(symbolName: string, onResolve: ResolveCallback, onError: ErrorCallback): void {
-    console.log('[TradingView Datafeed] resolveSymbol called for:', symbolName);
+    console.log("[TradingView Datafeed] resolveSymbol called for:", symbolName);
     Promise.all([exchange.getMarkets(), exchange.getTokens()])
       .then(([markets, tokens]) => {
-        console.log('[TradingView Datafeed] Got markets and tokens');
+        console.log("[TradingView Datafeed] Got markets and tokens");
         this.marketsCache = markets; // Cache markets for later use
         this.tokensCache = tokens; // Cache tokens for later use
         const market = markets.find((m) => m.id === symbolName);
@@ -150,7 +150,7 @@ export class ExchangeDatafeed implements IBasicDataFeed {
           format: "price",
         };
 
-        console.log('[TradingView Datafeed] Symbol resolved:', symbolInfo.name);
+        console.log("[TradingView Datafeed] Symbol resolved:", symbolInfo.name);
         onResolve(symbolInfo);
       })
       .catch((error) => {
@@ -174,14 +174,14 @@ export class ExchangeDatafeed implements IBasicDataFeed {
     onResult: HistoryCallback,
     onError: ErrorCallback,
   ): void {
-    console.log('[TradingView Datafeed] getBars called for:', symbolInfo.name, resolution);
+    console.log("[TradingView Datafeed] getBars called for:", symbolInfo.name, resolution);
     const { from, to, countBack } = periodParams;
     const interval = resolutionMap[resolution] || "1m";
 
     // Get market config
     const market = this.marketsCache.find((m) => m.id === symbolInfo.name);
     if (!market) {
-      console.error('[TradingView Datafeed] Market not found in cache');
+      console.error("[TradingView Datafeed] Market not found in cache");
       onError("Market not found in cache");
       return;
     }

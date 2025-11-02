@@ -14,11 +14,11 @@ export function useMarkets() {
 
     async function fetchData() {
       try {
-        console.log('[useMarkets] Fetching markets and tokens...');
+        console.log("[useMarkets] Fetching markets and tokens...");
         const [marketsData, tokensData] = await Promise.all([exchange.getMarkets(), exchange.getTokens()]);
 
         if (mounted) {
-          console.log('[useMarkets] Got data:', marketsData.length, 'markets,', tokensData.length, 'tokens');
+          console.log("[useMarkets] Got data:", marketsData.length, "markets,", tokensData.length, "tokens");
           // Enrich markets with decimal information from tokens
           const enrichedMarkets = marketsData.map((market: any) => {
             const baseToken = tokensData.find((t: any) => t.ticker === market.base_ticker);
@@ -31,10 +31,10 @@ export function useMarkets() {
             };
           });
 
-          console.log('[useMarkets] Setting markets and tokens in store');
+          console.log("[useMarkets] Setting markets and tokens in store");
           setMarkets(enrichedMarkets);
           setTokens(tokensData);
-          console.log('[useMarkets] Done!');
+          console.log("[useMarkets] Done!");
         }
       } catch (error) {
         console.error("Failed to fetch markets:", error);

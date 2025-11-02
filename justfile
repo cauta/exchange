@@ -4,7 +4,7 @@ default:
   just --list
 
 backend:
-  cd apps/backend && cargo run --release
+  cd apps/backend && cargo run
 
 frontend:
   cd apps/frontend && bun run dev
