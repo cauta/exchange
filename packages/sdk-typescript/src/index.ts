@@ -195,6 +195,17 @@ export class ExchangeClient {
     return this.rest.cancelOrder(params);
   }
 
+  /**
+   * Cancel all orders for a user, optionally filtered by market
+   */
+  cancelAllOrders(params: {
+    userAddress: string;
+    marketId?: string;
+    signature: string;
+  }) {
+    return this.rest.cancelAllOrders(params);
+  }
+
   // ============================================================================
   // Type-Safe WebSocket Stream Helpers
   // ============================================================================

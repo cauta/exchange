@@ -139,6 +139,26 @@ export class RestClient {
 
   // ===== Trade Endpoints =====
 
+  /**
+   * Round a size to the nearest multiple of lot_size (rounds down)
+   */
+  static roundSizeToLot(size: bigint, lotSize: bigint): bigint {
+    if (lotSize === 0n) {
+      return size;
+    }
+    return (size / lotSize) * lotSize;
+  }
+
+  /**
+   * Round a size string to the nearest multiple of lot_size (rounds down)
+   */
+  static roundSizeToLotStr(size: string, lotSize: string): string {
+    const sizeVal = BigInt(size);
+    const lotSizeVal = BigInt(lotSize);
+    const rounded = RestClient.roundSizeToLot(sizeVal, lotSizeVal);
+    return rounded.toString();
+  }
+
   async placeOrder(params: {
     userAddress: string;
     marketId: string;
@@ -165,6 +185,96 @@ export class RestClient {
     return { order: response.order, trades: response.trades };
   }
 
+  /**
+   * Place an order with automatic size rounding to lot_size
+   */
+  async placeOrderWithRounding(params: {
+    userAddress: string;
+    marketId: string;
+    side: Side;
+    orderType: OrderType;
+    price: string;
+    size: string;
+    signature: string;
+  }): Promise<{ order: Order; trades: Trade[] }> {
+    // Get market details to find lot_size
+    const market = await this.getMarket(params.marketId);
+
+    // Parse size
+    const sizeVal = BigInt(params.size);
+    const lotSizeVal = BigInt(market.lot_size);
+
+    // Round size to lot_size
+    const roundedSize = RestClient.roundSizeToLot(sizeVal, lotSizeVal);
+
+    // Check if rounded size is 0
+    if (roundedSize === 0n) {
+      throw new ApiError(
+        `Size ${params.size} is too small for lot_size ${market.lot_size} (rounded to 0)`,
+        400
+      );
+    }
+
+    // Place order with rounded size
+    return this.placeOrder({
+      ...params,
+      size: roundedSize.toString(),
+    });
+  }
+
+  /**
+   * Place an order with human-readable decimal values (e.g., "0.5" BTC, "110000" USDC)
+   * Automatically converts to atoms using token decimals from market config
+   */
+  async placeOrderDecimal(params: {
+    userAddress: string;
+    marketId: string;
+    side: Side;
+    orderType: OrderType;
+    priceDecimal: string; // Human-readable price (e.g., "110000.50")
+    sizeDecimal: string;  // Human-readable size (e.g., "0.5")
+    signature: string;
+  }): Promise<{ order: Order; trades: Trade[] }> {
+    // Get market and token details
+    const market = await this.getMarket(params.marketId);
+    const baseToken = await this.getToken(market.base_ticker);
+    const quoteToken = await this.getToken(market.quote_ticker);
+
+    // Convert price from decimal to atoms using quote token decimals
+    const priceDecimal = parseFloat(params.priceDecimal);
+    const priceMultiplier = Math.pow(10, quoteToken.decimals);
+    const priceAtoms = BigInt(Math.floor(priceDecimal * priceMultiplier));
+
+    // Convert size from decimal to atoms using base token decimals
+    const sizeDecimal = parseFloat(params.sizeDecimal);
+    const sizeMultiplier = Math.pow(10, baseToken.decimals);
+    const sizeAtoms = BigInt(Math.floor(sizeDecimal * sizeMultiplier));
+
+    // Round size to lot_size
+    const lotSizeVal = BigInt(market.lot_size);
+    const roundedSize = RestClient.roundSizeToLot(sizeAtoms, lotSizeVal);
+
+    // Check minimum size
+    const minSizeVal = BigInt(market.min_size);
+    if (roundedSize < minSizeVal) {
+      throw new ApiError(
+        `Size ${params.sizeDecimal} (${roundedSize} atoms) is below minimum ${market.min_size} atoms`,
+        400
+      );
+    }
+
+    // Place order with converted values
+    return this.placeOrder({
+      userAddress: params.userAddress,
+      marketId: params.marketId,
+      side: params.side,
+      orderType: params.orderType,
+      price: priceAtoms.toString(),
+      size: roundedSize.toString(),
+      signature: params.signature,
+    });
+  }
+
   async cancelOrder(params: {
     userAddress: string;
     orderId: string;
@@ -181,6 +291,24 @@ export class RestClient {
       throw new ApiError('Invalid response type', 500);
     }
     return { orderId: response.order_id };
+  }
+
+  async cancelAllOrders(params: {
+    userAddress: string;
+    marketId?: string;
+    signature: string;
+  }): Promise<{ cancelledOrderIds: string[]; count: number }> {
+    const request: TradeRequest = {
+      type: 'cancel_all_orders',
+      user_address: params.userAddress,
+      market_id: params.marketId,
+      signature: params.signature,
+    };
+    const response = await this.post<TradeResponse>('/api/trade', request);
+    if (response.type !== 'cancel_all_orders') {
+      throw new ApiError('Invalid response type', 500);
+    }
+    return { cancelledOrderIds: response.cancelled_order_ids, count: response.count };
   }
 
   // ===== Drip/Faucet =====

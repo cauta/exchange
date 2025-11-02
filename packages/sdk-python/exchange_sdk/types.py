@@ -128,6 +128,24 @@ class OrderCancelled(BaseModel):
     order_id: str
 
 
+class OrdersCancelled(BaseModel):
+    """Response after cancelling multiple orders."""
+
+    cancelled_order_ids: list[str]
+    count: int
+
+
+class Candle(BaseModel):
+    """OHLCV candle data."""
+
+    timestamp: int
+    open: str
+    high: str
+    low: str
+    close: str
+    volume: str
+
+
 # ============================================================================
 # WebSocket Message Models
 # ============================================================================
