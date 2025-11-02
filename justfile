@@ -7,7 +7,7 @@ backend:
   cd apps/backend && cargo run
 
 frontend:
-  cd apps/frontend && bun run dev
+  bun run dev
 
 bots:
   cd apps/bots && cargo run
@@ -47,7 +47,7 @@ db-prepare:
 # ================================
 
 install:
-  cd apps/frontend && bun install
+  bun install
   cargo build --workspace
   cd packages/sdk-python && uv sync
 
@@ -62,21 +62,21 @@ bench:
 
 openapi:
   cd apps/backend && cargo run --bin generate_openapi
-  cd packages/sdk-typescript && bun run generate
+  bun run openapi
 
 fmt:
-  cd apps/frontend && bun run format
+  bun run format
   cargo fmt --all
 
 lint:
-  cd apps/frontend && bun run lint
+  bun run lint
   cargo clippy --workspace --all-targets
 
 typecheck:
-  cd apps/frontend && bun run typecheck
+  bun run typecheck
 
 clean:
-  cd apps/frontend && bun run clean
+  bun run clean
   cargo clean
 
 ci:

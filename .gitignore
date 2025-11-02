@@ -1,5 +1,6 @@
 # node
 **/node_modules
+node_modules
 **/.next/
 **/out/
 **/build/
@@ -7,6 +8,9 @@
 **/*.tsbuildinfo
 **/vercel
 **/next-env.d.ts
+
+# bun
+bun.lockb
 
 # python
 **/.venv/

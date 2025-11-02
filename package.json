@@ -1,0 +1,24 @@
+{
+  "name": "exchange-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/frontend",
+    "packages/sdk-typescript"
+  ],
+  "scripts": {
+    "dev": "bun --filter exchange dev",
+    "build": "bun --filter @exchange/sdk build && bun --filter exchange build",
+    "build:frontend": "bun --filter exchange build",
+    "build:sdk": "bun --filter @exchange/sdk build",
+    "format": "prettier --write .",
+    "lint": "bun --filter exchange lint",
+    "typecheck": "bun --filter '@exchange/*' typecheck && bun --filter exchange typecheck",
+    "clean": "rm -rf apps/frontend/.next apps/frontend/node_modules packages/sdk-typescript/dist packages/sdk-typescript/node_modules node_modules",
+    "openapi": "bun --filter @exchange/sdk generate"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "typescript": "^5"
+  }
+}
