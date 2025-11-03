@@ -2,7 +2,6 @@ use crate::hyperliquid::{HlMessage, HyperliquidClient, Orderbook};
 use anyhow::Result;
 use backend::models::domain::{Market, OrderType, Side};
 use exchange_sdk::ExchangeClient;
-use rust_decimal::Decimal;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tracing::{error, info, warn};

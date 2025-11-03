@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useExchangeStore, selectSelectedMarket, selectOrderbookBids, selectOrderbookAsks } from "@/lib/store";
-import { getExchangeClient } from "@/lib/api";
+import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
 } from "@/lib/format";
 
 export function TradePanel() {
+  const client = useExchangeClient();
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
   const selectedMarket = useExchangeStore(selectSelectedMarket);
   const tokens = useExchangeStore((state) => state.tokens);
@@ -46,7 +47,6 @@ export function TradePanel() {
 
     const fetchBalances = async () => {
       try {
-        const client = getExchangeClient();
         const result = await client.getBalances(userAddress);
         setBalances(result);
       } catch (err) {
@@ -57,7 +57,7 @@ export function TradePanel() {
     fetchBalances();
     const interval = setInterval(fetchBalances, 3000);
     return () => clearInterval(interval);
-  }, [userAddress, isAuthenticated]);
+  }, [userAddress, isAuthenticated, client]);
 
   if (!selectedMarketId || !selectedMarket) {
     return (
@@ -174,8 +174,6 @@ export function TradePanel() {
       if (!size.trim()) {
         throw new Error("Size is required");
       }
-
-      const client = getExchangeClient();
 
       // Parse and round values
       let finalPrice = orderType === "limit" ? parseFloat(price) : 0;

@@ -4,4 +4,4 @@ pub mod types;
 
 pub use client::HyperliquidClient;
 pub use orderbook::Orderbook;
-pub use types::{HlMessage, L2BookData, TradeData};
+pub use types::HlMessage;

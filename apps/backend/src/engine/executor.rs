@@ -15,7 +15,7 @@ impl Executor {
     /// - Calculates and applies fees
     /// - Unlocks and transfers balances
     /// - Persists everything to database atomically
-    /// Returns the executed trades
+    ///   Returns the executed trades
     pub async fn execute(
         db: Db,
         matches: Vec<Match>,

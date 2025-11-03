@@ -1,4 +1,5 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use std::hint::black_box;
 
 /// Benchmark fee calculation
 fn bench_fee_calculation(c: &mut Criterion) {

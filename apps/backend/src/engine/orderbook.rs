@@ -14,6 +14,12 @@ pub struct Orderbooks {
     orderbooks: HashMap<String, Orderbook>,
 }
 
+impl Default for Orderbooks {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Orderbooks {
     pub fn new() -> Self {
         Self {

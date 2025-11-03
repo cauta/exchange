@@ -1,5 +1,4 @@
 use exchange_bots::hyperliquid::{HlMessage, HyperliquidClient};
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

@@ -2,33 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useExchangeStore } from "@/lib/store";
-import { getExchangeClient } from "@/lib/api";
+import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
 import type { Balance } from "@/lib/types/exchange";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function Balances() {
+  const client = useExchangeClient();
   const userAddress = useExchangeStore((state) => state.userAddress);
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
   const [balances, setBalances] = useState<Balance[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const fetchBalances = async () => {
-    if (!userAddress || !isAuthenticated) {
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const client = getExchangeClient();
-      const result = await client.getBalances(userAddress);
-      setBalances(result);
-    } catch (err) {
-      console.error("Failed to fetch balances:", err);
-      setBalances([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (!userAddress || !isAuthenticated) {
@@ -36,11 +19,24 @@ export function Balances() {
       return;
     }
 
+    const fetchBalances = async () => {
+      setLoading(true);
+      try {
+        const result = await client.getBalances(userAddress);
+        setBalances(result);
+      } catch (err) {
+        console.error("Failed to fetch balances:", err);
+        setBalances([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchBalances();
     const interval = setInterval(fetchBalances, 3000); // Refresh every 3 seconds
 
     return () => clearInterval(interval);
-  }, [userAddress, isAuthenticated]);
+  }, [userAddress, isAuthenticated, client]);
 
   return (
     <div className="space-y-6">

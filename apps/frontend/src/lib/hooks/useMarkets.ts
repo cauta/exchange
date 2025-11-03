@@ -20,9 +20,9 @@ export function useMarkets() {
         if (mounted) {
           console.log("[useMarkets] Got data:", marketsData.length, "markets,", tokensData.length, "tokens");
           // Enrich markets with decimal information from tokens
-          const enrichedMarkets = marketsData.map((market: any) => {
-            const baseToken = tokensData.find((t: any) => t.ticker === market.base_ticker);
-            const quoteToken = tokensData.find((t: any) => t.ticker === market.quote_ticker);
+          const enrichedMarkets = marketsData.map((market: { base_ticker: string; quote_ticker: string }) => {
+            const baseToken = tokensData.find((t: { ticker: string }) => t.ticker === market.base_ticker);
+            const quoteToken = tokensData.find((t: { ticker: string }) => t.ticker === market.quote_ticker);
 
             return {
               ...market,

@@ -44,6 +44,7 @@ pub struct TradeData {
 
 /// Hyperliquid WebSocket message wrapper
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct HyperliquidMessage {
     pub channel: String,
     pub data: serde_json::Value,

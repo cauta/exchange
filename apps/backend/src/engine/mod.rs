@@ -374,8 +374,8 @@ impl MatchingEngine {
         market: &crate::models::domain::Market,
     ) -> Result<(), ExchangeError> {
         // Validate tick size for limit orders only (price matters for limit orders)
-        if order.order_type == crate::models::domain::OrderType::Limit {
-            if order.price % market.tick_size != 0 {
+        if order.order_type == crate::models::domain::OrderType::Limit
+            && !order.price.is_multiple_of(market.tick_size) {
                 return Err(ExchangeError::InvalidParameter {
                     message: format!(
                         "Price {} is not a multiple of tick size {}",
@@ -383,10 +383,9 @@ impl MatchingEngine {
                     ),
                 });
             }
-        }
 
         // Validate lot size (size must be multiple of lot_size)
-        if order.size % market.lot_size != 0 {
+        if !order.size.is_multiple_of(market.lot_size) {
             return Err(ExchangeError::InvalidParameter {
                 message: format!(
                     "Size {} is not a multiple of lot size {}",

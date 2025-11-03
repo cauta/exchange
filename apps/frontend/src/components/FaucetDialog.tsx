@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useExchangeStore } from "@/lib/store";
-import { getExchangeClient } from "@/lib/api";
+import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
 import { toRawValue } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,7 @@ import { useTurnkey } from "@turnkey/react-wallet-kit";
 import { Droplet } from "lucide-react";
 
 export function FaucetDialog() {
+  const client = useExchangeClient();
   const { handleLogin } = useTurnkey();
   const tokens = useExchangeStore((state) => state.tokens);
   const userAddress = useExchangeStore((state) => state.userAddress);
@@ -33,7 +34,6 @@ export function FaucetDialog() {
     setLoadingToken(tokenTicker);
 
     try {
-      const client = getExchangeClient();
       const token = tokens.find((t) => t.ticker === tokenTicker);
       if (!token) {
         throw new Error("Token not found");

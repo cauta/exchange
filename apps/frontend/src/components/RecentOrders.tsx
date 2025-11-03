@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useExchangeStore, selectSelectedMarket } from "@/lib/store";
-import { getExchangeClient } from "@/lib/api";
+import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
 import type { Order } from "@/lib/types/exchange";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function RecentOrders() {
+  const client = useExchangeClient();
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
   const selectedMarket = useExchangeStore(selectSelectedMarket);
   const userAddress = useExchangeStore((state) => state.userAddress);
@@ -24,7 +25,6 @@ export function RecentOrders() {
     const fetchOrders = async () => {
       setLoading(true);
       try {
-        const client = getExchangeClient();
         const result = await client.getOrders(userAddress, selectedMarketId);
         setOrders(result);
       } catch (err) {
@@ -39,7 +39,7 @@ export function RecentOrders() {
     const interval = setInterval(fetchOrders, 2000); // Refresh every 2 seconds
 
     return () => clearInterval(interval);
-  }, [userAddress, isAuthenticated, selectedMarketId]);
+  }, [userAddress, isAuthenticated, selectedMarketId, client]);
 
   if (!selectedMarketId || !selectedMarket) {
     return <p className="text-muted-foreground text-sm">Select a market to view orders</p>;

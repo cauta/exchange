@@ -2,7 +2,8 @@ use backend::engine::matcher::Matcher;
 use backend::engine::orderbook::Orderbook;
 use backend::models::domain::{Market, Order, OrderStatus, OrderType, Side};
 use chrono::Utc;
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use std::hint::black_box;
 use uuid::Uuid;
 
 fn create_test_market() -> Market {
@@ -36,14 +37,14 @@ fn create_order(user: &str, market_id: &str, side: Side, price: u128, size: u128
 
 /// Benchmark single order matching against empty orderbook
 fn bench_match_single_order_empty_book(c: &mut Criterion) {
-    let market = create_test_market();
+    let _market = create_test_market();
 
     c.bench_function("match_single_order_empty_book", |b| {
         b.iter(|| {
-            let mut orderbook = Orderbook::new("BTC/USDC".to_string());
+            let orderbook = Orderbook::new("BTC/USDC".to_string());
             let order = create_order("buyer", "BTC/USDC", Side::Buy, 50_000_000_000, 1_000_000);
 
-            let matches = Matcher::match_order(black_box(&order), black_box(&mut orderbook));
+            let matches = Matcher::match_order(black_box(&order), &orderbook);
             black_box(matches);
         });
     });
@@ -51,7 +52,7 @@ fn bench_match_single_order_empty_book(c: &mut Criterion) {
 
 /// Benchmark matching against orderbook with various sizes
 fn bench_match_order_against_book_sizes(c: &mut Criterion) {
-    let market = create_test_market();
+    let _market = create_test_market();
     let mut group = c.benchmark_group("match_order_book_size");
 
     for book_size in [10, 50, 100, 500, 1000].iter() {
@@ -85,7 +86,7 @@ fn bench_match_order_against_book_sizes(c: &mut Criterion) {
                     );
 
                     let matches =
-                        Matcher::match_order(black_box(&buy_order), black_box(&mut orderbook));
+                        Matcher::match_order(black_box(&buy_order), &orderbook);
                     black_box(matches);
                 });
             },
@@ -96,7 +97,7 @@ fn bench_match_order_against_book_sizes(c: &mut Criterion) {
 
 /// Benchmark partial fills
 fn bench_partial_fill_matching(c: &mut Criterion) {
-    let market = create_test_market();
+    let _market = create_test_market();
 
     c.bench_function("partial_fill_matching", |b| {
         b.iter(|| {
@@ -117,7 +118,7 @@ fn bench_partial_fill_matching(c: &mut Criterion) {
             // Match with smaller buy order (only fills 3)
             let buy_order = create_order("buyer", "BTC/USDC", Side::Buy, 50_050_000_000, 3_000_000);
 
-            let matches = Matcher::match_order(black_box(&buy_order), black_box(&mut orderbook));
+            let matches = Matcher::match_order(black_box(&buy_order), &orderbook);
             black_box(matches);
         });
     });
@@ -125,7 +126,7 @@ fn bench_partial_fill_matching(c: &mut Criterion) {
 
 /// Benchmark market order execution
 fn bench_market_order_execution(c: &mut Criterion) {
-    let market = create_test_market();
+    let _market = create_test_market();
 
     c.bench_function("market_order_execution", |b| {
         b.iter(|| {
@@ -158,7 +159,7 @@ fn bench_market_order_execution(c: &mut Criterion) {
                 updated_at: Utc::now(),
             };
 
-            let matches = Matcher::match_order(black_box(&market_order), black_box(&mut orderbook));
+            let matches = Matcher::match_order(black_box(&market_order), &orderbook);
             black_box(matches);
         });
     });
@@ -166,7 +167,7 @@ fn bench_market_order_execution(c: &mut Criterion) {
 
 /// Benchmark price-time priority sorting
 fn bench_price_time_priority(c: &mut Criterion) {
-    let market = create_test_market();
+    let _market = create_test_market();
 
     c.bench_function("price_time_priority", |b| {
         b.iter(|| {
@@ -190,7 +191,7 @@ fn bench_price_time_priority(c: &mut Criterion) {
             // Match buy order
             let buy_order = create_order("buyer", "BTC/USDC", Side::Buy, price, 10_000_000);
 
-            let matches = Matcher::match_order(black_box(&buy_order), black_box(&mut orderbook));
+            let matches = Matcher::match_order(black_box(&buy_order), &orderbook);
             black_box(matches);
         });
     });

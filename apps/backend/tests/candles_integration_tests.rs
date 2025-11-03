@@ -156,19 +156,19 @@ async fn test_candles_generated_from_trades() {
 
         // Verify values are in our expected price range
         assert!(
-            open >= 94000000000 && open <= 96000000000,
+            (94000000000..=96000000000).contains(&open),
             "Open price in reasonable range"
         );
         assert!(
-            high >= 94000000000 && high <= 96000000000,
+            (94000000000..=96000000000).contains(&high),
             "High price in reasonable range"
         );
         assert!(
-            low >= 94000000000 && low <= 96000000000,
+            (94000000000..=96000000000).contains(&low),
             "Low price in reasonable range"
         );
         assert!(
-            close >= 94000000000 && close <= 96000000000,
+            (94000000000..=96000000000).contains(&close),
             "Close price in reasonable range"
         );
     } else {

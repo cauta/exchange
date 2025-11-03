@@ -6,6 +6,7 @@ use crate::models::{db::MarketRow, domain::Market};
 
 impl Db {
     /// Create a new market
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_market(
         &self,
         base_ticker: String,

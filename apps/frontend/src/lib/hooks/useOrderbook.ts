@@ -4,9 +4,10 @@
 
 import { useEffect, useMemo } from "react";
 import { useExchangeStore, selectOrderbookBids, selectOrderbookAsks } from "../store";
-import { getExchangeClient } from "../api";
+import { useExchangeClient } from "./useExchangeClient";
 
 export function useOrderbook(marketId: string | null) {
+  const client = useExchangeClient();
   const updateOrderbook = useExchangeStore((state) => state.updateOrderbook);
   const setOrderbookLoading = useExchangeStore((state) => state.setOrderbookLoading);
   const bids = useExchangeStore(selectOrderbookBids);
@@ -16,7 +17,6 @@ export function useOrderbook(marketId: string | null) {
     if (!marketId) return;
 
     console.log("[useOrderbook] Subscribing to orderbook for", marketId);
-    const client = getExchangeClient();
     setOrderbookLoading(true);
 
     // Subscribe to orderbook updates using SDK convenience method
@@ -29,7 +29,7 @@ export function useOrderbook(marketId: string | null) {
       console.log("[useOrderbook] Cleaning up subscription for", marketId);
       unsubscribe();
     };
-  }, [marketId]); // Only re-subscribe when marketId changes - store functions are stable
+  }, [marketId, client, updateOrderbook, setOrderbookLoading]);
 
   // Calculate spread - use enhanced priceValue from SDK
   const spread = useMemo(() => {

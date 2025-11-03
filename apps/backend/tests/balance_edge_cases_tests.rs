@@ -15,7 +15,7 @@ async fn drip_tokens(
 ) -> serde_json::Value {
     let client = reqwest::Client::new();
     let response = client
-        .post(&format!("{}/api/drip", server_url))
+        .post(format!("{}/api/drip", server_url))
         .json(&json!({
             "type": "faucet",
             "user_address": user_address,
@@ -42,7 +42,7 @@ async fn place_order(
 ) -> Result<serde_json::Value, String> {
     let client = reqwest::Client::new();
     let response = client
-        .post(&format!("{}/api/trade", server_url))
+        .post(format!("{}/api/trade", server_url))
         .json(&json!({
             "type": "place_order",
             "user_address": user_address,
@@ -277,7 +277,7 @@ async fn test_cancel_order_unlocks_balance() {
     // Cancel first order
     let client = reqwest::Client::new();
     client
-        .post(&format!("{}/api/trade", server.address))
+        .post(format!("{}/api/trade", server.address))
         .json(&json!({
             "type": "cancel_order",
             "user_address": "buyer",

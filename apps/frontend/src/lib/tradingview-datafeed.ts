@@ -22,7 +22,6 @@ import { toDisplayValue } from "./format";
 type ErrorCallback = (reason: string) => void;
 
 import { exchange, getExchangeClient } from "./api";
-import type { ServerMessage } from "@exchange/sdk";
 import type { Market, Token } from "./types/exchange";
 
 // Resolution mapping from TradingView to our backend

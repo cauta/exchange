@@ -8,7 +8,7 @@ use rust_decimal::Decimal;
 use std::str::FromStr;
 
 /// Helper to setup test market with proper configuration
-async fn setup_test_market(server: &TestServer, market_id: &str) -> anyhow::Result<()> {
+async fn setup_test_market(server: &TestServer, _market_id: &str) -> anyhow::Result<()> {
     let client = ExchangeClient::new(&server.base_url);
 
     // Create BTC token

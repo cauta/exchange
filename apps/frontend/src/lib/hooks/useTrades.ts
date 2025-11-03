@@ -4,16 +4,15 @@
 
 import { useEffect } from "react";
 import { useExchangeStore, selectRecentTrades } from "../store";
-import { getExchangeClient } from "../api";
+import { useExchangeClient } from "./useExchangeClient";
 
 export function useTrades(marketId: string | null) {
+  const client = useExchangeClient();
   const addTrade = useExchangeStore((state) => state.addTrade);
   const trades = useExchangeStore(selectRecentTrades);
 
   useEffect(() => {
     if (!marketId) return;
-
-    const client = getExchangeClient();
 
     // Subscribe to trade updates using SDK convenience method
     // SDK now returns fully enhanced trades! 🎉
@@ -24,7 +23,7 @@ export function useTrades(marketId: string | null) {
 
     // Cleanup
     return unsubscribe;
-  }, [marketId, addTrade]);
+  }, [marketId, client, addTrade]);
 
   return trades;
 }

@@ -186,6 +186,7 @@ impl ExchangeClient {
     }
 
     /// Place an order
+    #[allow(clippy::too_many_arguments)]
     pub async fn place_order(
         &self,
         user_address: String,
@@ -225,6 +226,7 @@ impl ExchangeClient {
     }
 
     /// Place an order with automatic size rounding to lot_size
+    #[allow(clippy::too_many_arguments)]
     pub async fn place_order_with_rounding(
         &self,
         user_address: String,
@@ -269,6 +271,7 @@ impl ExchangeClient {
 
     /// Place an order with human-readable decimal values (e.g., "0.5" BTC, "110000" USDC)
     /// Automatically converts to atoms using token decimals from market config
+    #[allow(clippy::too_many_arguments)]
     pub async fn place_order_decimal(
         &self,
         user_address: String,
@@ -453,6 +456,7 @@ impl ExchangeClient {
     }
 
     /// Create a market (admin)
+    #[allow(clippy::too_many_arguments)]
     pub async fn admin_create_market(
         &self,
         base_ticker: String,

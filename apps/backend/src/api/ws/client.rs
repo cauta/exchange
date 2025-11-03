@@ -36,7 +36,7 @@ pub(super) async fn handle_client_messages(
 
                                 // Send acknowledgment
                                 let ack = ServerMessage::Subscribed {
-                                    channel: channel.clone(),
+                                    channel: *channel,
                                     market_id: market_id.clone(),
                                     user_address: user_address.clone(),
                                 };
@@ -65,7 +65,7 @@ pub(super) async fn handle_client_messages(
 
                                 // Send acknowledgment
                                 let ack = ServerMessage::Unsubscribed {
-                                    channel: channel.clone(),
+                                    channel: *channel,
                                     market_id: market_id.clone(),
                                     user_address: user_address.clone(),
                                 };

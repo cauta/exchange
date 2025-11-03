@@ -12,8 +12,8 @@ pub struct PriceLevel {
 /// Local orderbook state
 #[derive(Debug, Clone)]
 pub struct Orderbook {
-    pub symbol: String,
-    pub last_update_id: u64,
+    pub _symbol: String,
+    pub _last_update_id: u64,
     pub bids: BTreeMap<Decimal, Decimal>, // price -> quantity (sorted descending)
     pub asks: BTreeMap<Decimal, Decimal>, // price -> quantity (sorted ascending)
 }
@@ -21,8 +21,8 @@ pub struct Orderbook {
 impl Orderbook {
     pub fn new(symbol: String) -> Self {
         Self {
-            symbol,
-            last_update_id: 0,
+            _symbol: symbol,
+            _last_update_id: 0,
             bids: BTreeMap::new(),
             asks: BTreeMap::new(),
         }

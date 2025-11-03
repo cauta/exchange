@@ -21,7 +21,7 @@ async fn place_order_via_api(
 ) -> serde_json::Value {
     let client = reqwest::Client::new();
     let response = client
-        .post(&format!("{}/api/trade", server_url))
+        .post(format!("{}/api/trade", server_url))
         .json(&json!({
             "type": "place_order",
             "user_address": user_address,
@@ -54,7 +54,7 @@ async fn cancel_order_via_api(
 ) -> serde_json::Value {
     let client = reqwest::Client::new();
     let response = client
-        .post(&format!("{}/api/trade", server_url))
+        .post(format!("{}/api/trade", server_url))
         .json(&json!({
             "type": "cancel_order",
             "user_address": user_address,
@@ -80,7 +80,7 @@ async fn drip_tokens_via_api(
 ) -> serde_json::Value {
     let client = reqwest::Client::new();
     let response = client
-        .post(&format!("{}/api/drip", server_url))
+        .post(format!("{}/api/drip", server_url))
         .json(&json!({
             "type": "faucet",
             "user_address": user_address,
@@ -541,7 +541,7 @@ async fn test_e2e_validation_errors_via_api() {
     // Test invalid tick size (price not multiple of tick_size)
     // market.tick_size is 1000, so 50500 should fail
     let response = client
-        .post(&format!("{}/api/trade", server.address))
+        .post(format!("{}/api/trade", server.address))
         .json(&json!({
             "type": "place_order",
             "user_address": "trader",
@@ -562,7 +562,7 @@ async fn test_e2e_validation_errors_via_api() {
 
     // Test invalid lot size
     let response = client
-        .post(&format!("{}/api/trade", server.address))
+        .post(format!("{}/api/trade", server.address))
         .json(&json!({
             "type": "place_order",
             "user_address": "trader",
@@ -584,7 +584,7 @@ async fn test_e2e_validation_errors_via_api() {
     // Test below minimum size
     // Note: size 500000 is not a multiple of lot_size (1000000), so it will fail lot size validation
     let response = client
-        .post(&format!("{}/api/trade", server.address))
+        .post(format!("{}/api/trade", server.address))
         .json(&json!({
             "type": "place_order",
             "user_address": "trader",

@@ -149,9 +149,9 @@ missing production
 - refactor sdk to handle token cache and enhanced types (decimal conversions, etc)
 - refactor to bun monorepo
 - use ts-rs for ws types
+- fix ci types
 
 - add trading signatures
-- add full-fledged frontend
 - add admin page
 
 ### frontend dev

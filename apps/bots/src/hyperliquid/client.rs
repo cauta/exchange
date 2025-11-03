@@ -1,5 +1,5 @@
 use super::types::{HlMessage, L2BookData, Subscription, SubscriptionRequest, TradeData};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::mpsc;
 use tokio_tungstenite::{connect_async, tungstenite::Message};

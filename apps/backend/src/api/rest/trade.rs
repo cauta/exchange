@@ -318,7 +318,7 @@ fn validate_order_params(
     market: &Market,
 ) -> Result<(), (StatusCode, Json<TradeErrorResponse>)> {
     // Validate tick size (price must be multiple of tick_size)
-    if price % market.tick_size != 0 {
+    if !price.is_multiple_of(market.tick_size) {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(TradeErrorResponse {
@@ -332,7 +332,7 @@ fn validate_order_params(
     }
 
     // Validate lot size (size must be multiple of lot_size)
-    if size % market.lot_size != 0 {
+    if !size.is_multiple_of(market.lot_size) {
         return Err((
             StatusCode::BAD_REQUEST,
             Json(TradeErrorResponse {
