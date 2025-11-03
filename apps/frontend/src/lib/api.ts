@@ -28,6 +28,7 @@ export function getExchangeClient(): ExchangeClient {
 // For backward compatibility - export as a getter property
 export const exchange = new Proxy({} as ExchangeClient, {
   get(_target, prop) {
-    return (getExchangeClient() as Record<string, unknown>)[prop];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (getExchangeClient() as any)[prop];
   },
 });

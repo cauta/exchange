@@ -140,8 +140,8 @@ export class WebSocketClient {
       const message: ClientMessage = {
         type: "subscribe",
         channel,
-        market_id: params?.marketId,
-        user_address: params?.userAddress,
+        market_id: params?.marketId ?? null,
+        user_address: params?.userAddress ?? null,
       };
       this.send(message);
     } else {
@@ -172,8 +172,8 @@ export class WebSocketClient {
       const message: ClientMessage = {
         type: "unsubscribe",
         channel,
-        market_id: params?.marketId,
-        user_address: params?.userAddress,
+        market_id: params?.marketId ?? null,
+        user_address: params?.userAddress ?? null,
       };
       this.send(message);
       this.activeSubscriptions.delete(key);
@@ -331,8 +331,8 @@ export class WebSocketClient {
         type: "subscribe",
         channel,
         // Determine if it's a market or user subscription
-        market_id: channel === "trades" || channel === "orderbook" ? identifier : undefined,
-        user_address: channel === "user" ? identifier : undefined,
+        market_id: channel === "trades" || channel === "orderbook" ? identifier : null,
+        user_address: channel === "user" ? identifier : null,
       };
 
       this.send(message);

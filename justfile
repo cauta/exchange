@@ -7,6 +7,7 @@ backend:
   cd apps/backend && cargo run
 
 frontend:
+  just types
   bun run dev
 
 bots:

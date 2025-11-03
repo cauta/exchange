@@ -70,9 +70,9 @@ export function FaucetDialog() {
           Faucet
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:slide-out-to-bottom-4">
         <DialogHeader>
-          <DialogTitle>Token Faucet</DialogTitle>
+          <DialogTitle className="text-xl">Token Faucet</DialogTitle>
           <DialogDescription>
             {isAuthenticated
               ? "Select a token to receive 1000 tokens for testing"
@@ -100,17 +100,22 @@ export function FaucetDialog() {
             {tokens.map((token) => (
               <div
                 key={token.ticker}
-                className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors"
+                className="flex items-center justify-between p-4 rounded-lg border border-border bg-gradient-to-br from-card/50 to-muted/30 hover:from-card/70 hover:to-muted/40 hover:border-primary/30 transition-all duration-200 shadow-sm hover:shadow-md"
               >
-                <div>
-                  <div className="font-semibold">{token.ticker}</div>
-                  <div className="text-xs text-muted-foreground">{token.name}</div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                    <Droplet className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-base">{token.ticker}</div>
+                    <div className="text-xs text-muted-foreground">{token.name}</div>
+                  </div>
                 </div>
                 <Button
                   size="sm"
                   onClick={() => handleFaucet(token.ticker)}
                   disabled={loadingToken !== null}
-                  className="bg-primary hover:bg-primary/90"
+                  className="bg-primary hover:bg-primary/90 shadow-sm hover:shadow-md transition-all"
                 >
                   {loadingToken === token.ticker ? "Getting..." : "Get 1000"}
                 </Button>

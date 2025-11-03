@@ -192,30 +192,57 @@ export class ExchangeClient {
 
   /**
    * Get all markets
+   * Returns cached markets if available, otherwise fetches from API
    */
   getMarkets() {
+    const cached = this.cache.getAllMarkets();
+    if (cached.length > 0) {
+      return Promise.resolve(cached);
+    }
     return this.rest.getMarkets();
   }
 
   /**
    * Get a specific market
+   * Checks cache first, then fetches from API if not found
    */
   getMarket(marketId: string) {
+    const cached = this.cache.getMarket(marketId);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
     return this.rest.getMarket(marketId);
   }
 
   /**
    * Get all tokens
+   * Returns cached tokens if available, otherwise fetches from API
    */
   getTokens() {
+    const cached = this.cache.getAllTokens();
+    if (cached.length > 0) {
+      return Promise.resolve(cached);
+    }
     return this.rest.getTokens();
   }
 
   /**
    * Get a specific token
+   * Checks cache first, then fetches from API if not found
    */
   getToken(ticker: string) {
+    const cached = this.cache.getToken(ticker);
+    if (cached) {
+      return Promise.resolve(cached);
+    }
     return this.rest.getToken(ticker);
+  }
+
+  /**
+   * Check if cache is ready (initialized with markets and tokens)
+   */
+  isCacheReady(): boolean {
+    return this.cache.isReady();
   }
 
   /**

@@ -253,8 +253,7 @@ fn bench_worst_case_latency(c: &mut Criterion) {
                     updated_at: Utc::now(),
                 };
 
-                let matches =
-                    Matcher::match_order(black_box(&market_order), &orderbook);
+                let matches = Matcher::match_order(black_box(&market_order), &orderbook);
                 black_box(matches);
             },
             criterion::BatchSize::SmallInput,
@@ -281,8 +280,7 @@ fn bench_best_case_latency(c: &mut Criterion) {
             |orderbook| {
                 let buy_order =
                     create_order("buyer", "BTC/USDC", Side::Buy, 50_000_000_000, 5_000_000);
-                let matches =
-                    Matcher::match_order(black_box(&buy_order), &orderbook);
+                let matches = Matcher::match_order(black_box(&buy_order), &orderbook);
                 black_box(matches);
             },
             criterion::BatchSize::SmallInput,

@@ -19,8 +19,9 @@ export function AuthButton() {
     if (authState === "authenticated" && wallets.length > 0 && !isAuthenticated) {
       // User is authenticated in Turnkey but not in our store
       const firstWallet = wallets[0];
-      if (firstWallet.accounts && firstWallet.accounts.length > 0) {
-        const address = firstWallet.accounts[0].address;
+      if (firstWallet && firstWallet.accounts && firstWallet.accounts.length > 0) {
+        const address = firstWallet.accounts[0]?.address;
+        if (!address) return;
         setUser(address);
 
         // Auto-faucet for users

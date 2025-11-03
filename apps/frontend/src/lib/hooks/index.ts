@@ -6,4 +6,4 @@ export { useExchangeClient } from "./useExchangeClient";
 export { useMarkets } from "./useMarkets";
 export { useOrderbook } from "./useOrderbook";
 export { useTrades } from "./useTrades";
-export { usePriceHistory } from "./usePriceHistory";
+export { useBalances } from "./useBalances";

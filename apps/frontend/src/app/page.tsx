@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useExchangeStore } from "@/lib/store";
 import { useMarkets } from "@/lib/hooks";
-import { Orderbook } from "@/components/Orderbook";
+import { Orderbook } from "@/components/orderbook";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { TradePanel } from "@/components/TradePanel";
 import { BottomPanel } from "@/components/BottomPanel";

@@ -174,7 +174,7 @@ export class ExchangeDatafeed implements IBasicDataFeed {
     onError: ErrorCallback
   ): void {
     console.log("[TradingView Datafeed] getBars called for:", symbolInfo.name, resolution);
-    const { from, to, countBack } = periodParams;
+    const { from, to, countBack: _countBack } = periodParams;
     const interval = resolutionMap[resolution] || "1m";
 
     // Get market config
@@ -201,7 +201,6 @@ export class ExchangeDatafeed implements IBasicDataFeed {
         interval,
         from,
         to,
-        countBack,
       })
       .then((candles) => {
         if (!candles || candles.length === 0) {

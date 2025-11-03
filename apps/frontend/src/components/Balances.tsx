@@ -1,97 +1,78 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
+import { ColumnDef } from "@tanstack/react-table";
 import { useExchangeStore } from "@/lib/store";
-import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
+import { useBalances } from "@/lib/hooks";
+import { DataTable } from "@/components/ui/data-table";
 import type { Balance } from "@/lib/types/exchange";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export function Balances() {
-  const client = useExchangeClient();
   const userAddress = useExchangeStore((state) => state.userAddress);
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
-  const [balances, setBalances] = useState<Balance[]>([]);
-  const [loading, setLoading] = useState(false);
+  const balances = useBalances();
 
-  useEffect(() => {
-    if (!userAddress || !isAuthenticated) {
-      setBalances([]);
-      return;
-    }
-
-    const fetchBalances = async () => {
-      setLoading(true);
-      try {
-        const result = await client.getBalances(userAddress);
-        setBalances(result);
-      } catch (err) {
-        console.error("Failed to fetch balances:", err);
-        setBalances([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBalances();
-    const interval = setInterval(fetchBalances, 3000); // Refresh every 3 seconds
-
-    return () => clearInterval(interval);
-  }, [userAddress, isAuthenticated, client]);
-
-  return (
-    <div className="space-y-6">
-      <div className="rounded-lg border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden">
-        {loading && !balances.length ? (
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground text-sm">Loading balances...</p>
+  const columns = useMemo<ColumnDef<Balance>[]>(
+    () => [
+      {
+        accessorKey: "token_ticker",
+        header: "Token",
+        cell: ({ row }) => (
+          <div className="font-semibold text-foreground">{row.getValue("token_ticker")}</div>
+        ),
+        size: 100,
+      },
+      {
+        accessorKey: "available",
+        header: "Available",
+        cell: ({ row }) => {
+          const balance = row.original;
+          const available = balance.amountValue - balance.lockedValue;
+          return <div className="text-right font-mono text-sm">{available.toFixed(8)}</div>;
+        },
+        size: 150,
+      },
+      {
+        accessorKey: "lockedDisplay",
+        header: "In Orders",
+        cell: ({ row }) => (
+          <div className="text-right font-mono text-sm text-muted-foreground">
+            {row.getValue("lockedDisplay")}
           </div>
-        ) : !isAuthenticated || !userAddress ? (
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground text-sm">Connect your wallet to view balances</p>
+        ),
+        size: 150,
+      },
+      {
+        accessorKey: "amountDisplay",
+        header: "Total",
+        cell: ({ row }) => (
+          <div className="text-right font-mono text-sm font-semibold text-foreground">
+            {row.getValue("amountDisplay")}
           </div>
-        ) : balances.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground text-sm">
-              No balances found. Use the faucet button in the top bar to get tokens!
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-auto max-h-80">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/50 hover:bg-transparent">
-                  <TableHead className="font-semibold text-foreground">Token</TableHead>
-                  <TableHead className="text-right font-semibold text-foreground">Available</TableHead>
-                  <TableHead className="text-right font-semibold text-foreground">In Orders</TableHead>
-                  <TableHead className="text-right font-semibold text-foreground">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {balances.map((balance) => {
-                  // Calculate available (amount - locked)
-                  const available = balance.amountValue - balance.lockedValue;
-
-                  return (
-                    <TableRow
-                      key={balance.token_ticker}
-                      className="border-border/50 hover:bg-primary/5 transition-colors"
-                    >
-                      <TableCell className="font-semibold text-foreground">{balance.token_ticker}</TableCell>
-                      <TableCell className="text-right font-mono text-sm">{available.toFixed(8)}</TableCell>
-                      <TableCell className="text-right font-mono text-sm text-muted-foreground">
-                        {balance.lockedDisplay}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm font-semibold text-foreground">
-                        {balance.amountDisplay}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </div>
-    </div>
+        ),
+        size: 150,
+      },
+    ],
+    []
   );
+
+  if (!isAuthenticated || !userAddress) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground text-sm">Connect your wallet to view balances</p>
+      </div>
+    );
+  }
+
+  if (balances.length === 0) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-muted-foreground text-sm">
+          No balances found. Use the faucet button in the top bar to get tokens!
+        </p>
+      </div>
+    );
+  }
+
+  return <DataTable columns={columns} data={balances} emptyMessage="No balances found" />;
 }

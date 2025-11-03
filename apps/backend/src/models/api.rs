@@ -356,6 +356,7 @@ pub enum ServerMessage {
     },
     Candle {
         market_id: String,
+        #[ts(type = "number")]
         timestamp: i64,
         open: String,
         high: String,
@@ -399,7 +400,8 @@ pub struct TradeData {
     pub price: String,           // u128 as string
     pub size: String,            // u128 as string
     pub side: Side,              // Taker's side (determines if trade is "buy" or "sell" on tape)
-    pub timestamp: i64,          // Unix timestamp for WebSocket compatibility
+    #[ts(type = "number")]
+    pub timestamp: i64, // Unix timestamp for WebSocket compatibility
 }
 
 // ============================================================================

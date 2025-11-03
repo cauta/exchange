@@ -23,9 +23,3 @@ export interface Orderbook {
   asks: import("@exchange/sdk").EnhancedOrderbookLevel[];
   timestamp?: number;
 }
-
-// For visualization
-export interface PricePoint {
-  timestamp: number;
-  price: number;
-}

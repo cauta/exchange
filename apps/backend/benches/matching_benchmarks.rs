@@ -85,8 +85,7 @@ fn bench_match_order_against_book_sizes(c: &mut Criterion) {
                         (size as u128) * 1_000_000,
                     );
 
-                    let matches =
-                        Matcher::match_order(black_box(&buy_order), &orderbook);
+                    let matches = Matcher::match_order(black_box(&buy_order), &orderbook);
                     black_box(matches);
                 });
             },

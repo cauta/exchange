@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react";
 import { useExchangeStore, selectSelectedMarket, selectOrderbookBids, selectOrderbookAsks } from "@/lib/store";
 import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
+import { useBalances } from "@/lib/hooks";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Balance } from "@/lib/types/exchange";
 import {
   toRawValue,
   toDisplayValue,
@@ -28,36 +28,39 @@ export function TradePanel() {
   const recentTrades = useExchangeStore((state) => state.recentTrades);
   const bids = useExchangeStore(selectOrderbookBids);
   const asks = useExchangeStore(selectOrderbookAsks);
+  const selectedPrice = useExchangeStore((state) => state.selectedPrice);
+  const setSelectedPrice = useExchangeStore((state) => state.setSelectedPrice);
+  const balances = useBalances();
 
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [orderType, setOrderType] = useState<"limit" | "market">("limit");
   const [price, setPrice] = useState("");
   const [size, setSize] = useState("");
-  const [balances, setBalances] = useState<Balance[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Fetch user balances
+  // Look up tokens for the selected market
+  const baseToken = selectedMarket ? tokens.find((t) => t.ticker === selectedMarket.base_ticker) : undefined;
+  const quoteToken = selectedMarket ? tokens.find((t) => t.ticker === selectedMarket.quote_ticker) : undefined;
+
+  // Handle price selection from orderbook
   useEffect(() => {
-    if (!userAddress || !isAuthenticated) {
-      setBalances([]);
-      return;
-    }
-
-    const fetchBalances = async () => {
-      try {
-        const result = await client.getBalances(userAddress);
-        setBalances(result);
-      } catch (err) {
-        console.error("Failed to fetch balances:", err);
+    if (selectedPrice !== null && selectedMarket && baseToken && quoteToken) {
+      // Auto-switch to limit order if currently on market order
+      if (orderType === "market") {
+        setOrderType("limit");
       }
-    };
 
-    fetchBalances();
-    const interval = setInterval(fetchBalances, 3000);
-    return () => clearInterval(interval);
-  }, [userAddress, isAuthenticated, client]);
+      // Round price to tick size and set it
+      const priceDecimals = getDecimalPlaces(selectedMarket.tick_size, quoteToken.decimals);
+      const rounded = roundToTickSize(selectedPrice, selectedMarket.tick_size, quoteToken.decimals);
+      setPrice(rounded.toFixed(priceDecimals));
+
+      // Clear the selected price from store
+      setSelectedPrice(null);
+    }
+  }, [selectedPrice, selectedMarket, baseToken, quoteToken, orderType, setSelectedPrice]);
 
   if (!selectedMarketId || !selectedMarket) {
     return (
@@ -68,9 +71,6 @@ export function TradePanel() {
       </Card>
     );
   }
-
-  const baseToken = tokens.find((t) => t.ticker === selectedMarket.base_ticker);
-  const quoteToken = tokens.find((t) => t.ticker === selectedMarket.quote_ticker);
 
   if (!baseToken || !quoteToken) {
     return (
@@ -99,19 +99,7 @@ export function TradePanel() {
   const priceDecimals = getDecimalPlaces(selectedMarket.tick_size, quoteToken.decimals);
   const sizeDecimals = getDecimalPlaces(selectedMarket.lot_size, baseToken.decimals);
 
-  // Helper functions for quick actions
-  const setQuickPrice = (type: "bid" | "ask" | "last") => {
-    let targetPrice: number | null = null;
-    if (type === "bid" && bestBid !== null) targetPrice = bestBid;
-    else if (type === "ask" && bestAsk !== null) targetPrice = bestAsk;
-    else if (type === "last" && lastTradePrice !== null) targetPrice = lastTradePrice;
-
-    if (targetPrice !== null) {
-      const rounded = roundToTickSize(targetPrice, selectedMarket.tick_size, quoteToken.decimals);
-      setPrice(rounded.toFixed(priceDecimals));
-    }
-  };
-
+  // Helper function for quick size selection
   const setPercentageSize = (percentage: number) => {
     // Calculate max size based on available balance
     let maxSize = 0;
@@ -241,28 +229,32 @@ export function TradePanel() {
   const estimatedFee = (estimatedTotal * Math.abs(feeBps)) / 10000;
 
   return (
-    <Card className="h-full flex flex-col gap-0 py-0 overflow-hidden">
+    <Card className="h-full flex flex-col gap-0 py-0 overflow-hidden shadow-lg border-border/50 bg-gradient-to-b from-card to-card/80">
       <Tabs
         value={orderType}
         onValueChange={(v) => setOrderType(v as "limit" | "market")}
         className="flex-1 flex flex-col"
       >
-        <TabsList className="w-full justify-start rounded-none border-b border-border h-auto p-0 bg-card/50 backdrop-blur-sm shrink-0">
-          <TabsTrigger value="limit" className="flex-1 rounded-none">
+        <TabsList className="w-full justify-start rounded-none border-b border-border/50 h-auto p-0 bg-gradient-to-b from-muted/30 to-muted/50 backdrop-blur-sm shrink-0">
+          <TabsTrigger value="limit" className="flex-1 rounded-none data-[state=active]:bg-card/80 data-[state=active]:shadow-sm transition-all">
             Limit
           </TabsTrigger>
-          <TabsTrigger value="market" className="flex-1 rounded-none">
+          <TabsTrigger value="market" className="flex-1 rounded-none data-[state=active]:bg-card/80 data-[state=active]:shadow-sm transition-all">
             Market
           </TabsTrigger>
         </TabsList>
 
         <CardContent className="p-4 space-y-4 flex-1">
           {/* Buy/Sell Buttons */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <Button
               onClick={() => setSide("buy")}
               variant={side === "buy" ? "default" : "outline"}
-              className={side === "buy" ? "bg-green-600 hover:bg-green-700 text-white" : "hover:bg-green-600/10"}
+              className={
+                side === "buy"
+                  ? "bg-gradient-to-br from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg shadow-green-600/20 border-green-500/50"
+                  : "hover:bg-green-600/10 border-green-600/20 hover:border-green-600/40"
+              }
               size="lg"
             >
               Buy
@@ -270,7 +262,11 @@ export function TradePanel() {
             <Button
               onClick={() => setSide("sell")}
               variant={side === "sell" ? "default" : "outline"}
-              className={side === "sell" ? "bg-red-600 hover:bg-red-700 text-white" : "hover:bg-red-600/10"}
+              className={
+                side === "sell"
+                  ? "bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg shadow-red-600/20 border-red-500/50"
+                  : "hover:bg-red-600/10 border-red-600/20 hover:border-red-600/40"
+              }
               size="lg"
             >
               Sell
@@ -288,45 +284,9 @@ export function TradePanel() {
             {/* Price - Only for limit orders */}
             {orderType === "limit" && (
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label className="text-xs font-medium text-muted-foreground">Price ({quoteToken.ticker})</Label>
-                  {/* Quick price buttons */}
-                  <div className="flex gap-1">
-                    {bestBid !== null && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setQuickPrice("bid")}
-                        className="h-6 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-600/10"
-                      >
-                        Bid
-                      </Button>
-                    )}
-                    {bestAsk !== null && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setQuickPrice("ask")}
-                        className="h-6 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-600/10"
-                      >
-                        Ask
-                      </Button>
-                    )}
-                    {lastTradePrice !== null && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setQuickPrice("last")}
-                        className="h-6 px-2 text-xs hover:bg-muted"
-                      >
-                        Last
-                      </Button>
-                    )}
-                  </div>
-                </div>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Price ({quoteToken.ticker})
+                </Label>
                 <Input
                   type="number"
                   value={price}
@@ -334,7 +294,7 @@ export function TradePanel() {
                   onBlur={handlePriceBlur}
                   placeholder="0.00"
                   step={toDisplayValue(selectedMarket.tick_size, quoteToken.decimals)}
-                  className="font-mono"
+                  className="font-mono h-11 text-base border-border/50 focus:border-primary/50 focus:ring-primary/20 bg-muted/30"
                 />
               </div>
             )}
@@ -342,9 +302,11 @@ export function TradePanel() {
             {/* Size */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <Label className="text-xs font-medium text-muted-foreground">Size ({baseToken.ticker})</Label>
+                <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Size ({baseToken.ticker})
+                </Label>
                 {isAuthenticated && (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground font-medium">
                     Available: {formatNumberWithCommas(side === "buy" ? availableQuote : availableBase, 4)}{" "}
                     {side === "buy" ? quoteToken.ticker : baseToken.ticker}
                   </span>
@@ -357,48 +319,47 @@ export function TradePanel() {
                 onBlur={handleSizeBlur}
                 placeholder="0.00"
                 step={toDisplayValue(selectedMarket.lot_size, baseToken.decimals)}
-                className="font-mono"
+                className="font-mono h-11 text-base border-border/50 focus:border-primary/50 focus:ring-primary/20 bg-muted/30"
               />
 
               {/* Percentage buttons */}
-              {isAuthenticated && (
-                <div className="grid grid-cols-4 gap-1">
-                  {[25, 50, 75, 100].map((pct) => (
-                    <Button
-                      key={pct}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPercentageSize(pct)}
-                      className="h-7 text-xs"
-                    >
-                      {pct}%
-                    </Button>
-                  ))}
-                </div>
-              )}
+              <div className="grid grid-cols-4 gap-2">
+                {[25, 50, 75, 100].map((pct) => (
+                  <Button
+                    key={pct}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPercentageSize(pct)}
+                    disabled={!isAuthenticated}
+                    className="h-8 text-xs font-semibold hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-all"
+                  >
+                    {pct}%
+                  </Button>
+                ))}
+              </div>
             </div>
 
             {/* Estimated total and fees */}
             {estimatedSize > 0 && estimatedPrice > 0 && (
-              <div className="space-y-1 bg-muted/50 border border-border rounded-lg p-3 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total</span>
-                  <span className="font-mono font-medium">
+              <div className="space-y-2 bg-gradient-to-br from-muted/40 to-muted/60 border border-border/50 rounded-lg p-4 text-xs shadow-inner">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Total</span>
+                  <span className="font-mono font-semibold text-sm">
                     {formatNumberWithCommas(estimatedTotal, Math.min(priceDecimals, 4))} {quoteToken.ticker}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Est. Fee ({(Math.abs(feeBps) / 100).toFixed(2)}%)</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Est. Fee ({(Math.abs(feeBps) / 100).toFixed(2)}%)</span>
                   <span className="font-mono text-muted-foreground">
                     {formatNumberWithCommas(estimatedFee, Math.min(priceDecimals, 4))} {quoteToken.ticker}
                   </span>
                 </div>
-                <div className="flex justify-between pt-1 border-t border-border">
-                  <span className="text-muted-foreground font-medium">
+                <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                  <span className={`font-semibold ${side === "buy" ? "text-green-600" : "text-red-600"}`}>
                     {side === "buy" ? "Total Cost" : "You Receive"}
                   </span>
-                  <span className="font-mono font-semibold">
+                  <span className={`font-mono font-bold text-sm ${side === "buy" ? "text-green-600" : "text-red-600"}`}>
                     {formatNumberWithCommas(
                       side === "buy" ? estimatedTotal + estimatedFee : estimatedTotal - estimatedFee,
                       Math.min(priceDecimals, 4)
@@ -411,10 +372,12 @@ export function TradePanel() {
 
             {/* Error/Success Messages */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-600 text-xs">{error}</div>
+              <div className="bg-red-500/10 border border-red-500/40 rounded-lg p-3 text-red-600 text-xs font-medium shadow-sm">
+                {error}
+              </div>
             )}
             {success && (
-              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-green-600 text-xs">
+              <div className="bg-green-500/10 border border-green-500/40 rounded-lg p-3 text-green-600 text-xs font-medium shadow-sm">
                 {success}
               </div>
             )}
@@ -424,8 +387,10 @@ export function TradePanel() {
               type="submit"
               disabled={loading || !isAuthenticated}
               size="lg"
-              className={`w-full font-semibold ${
-                side === "buy" ? "bg-green-600 hover:bg-green-700 text-white" : "bg-red-600 hover:bg-red-700 text-white"
+              className={`w-full font-bold text-base h-12 shadow-lg transition-all ${
+                side === "buy"
+                  ? "bg-gradient-to-br from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-green-600/30 hover:shadow-green-600/50"
+                  : "bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-red-600/30 hover:shadow-red-600/50"
               }`}
             >
               {loading

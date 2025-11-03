@@ -5,7 +5,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import type { Market, Token, Orderbook, Trade, PricePoint, OrderbookLevel } from "./types/exchange";
+import type { Market, Token, Orderbook, Trade, OrderbookLevel, Balance } from "./types/exchange";
 
 // ============================================================================
 // State Interface
@@ -20,17 +20,18 @@ interface ExchangeState {
   // Orderbook
   orderbook: Orderbook | null;
 
-  // Trades & Price history
+  // Trades
   recentTrades: Trade[];
-  priceHistory: PricePoint[];
 
   // User authentication
   userAddress: string | null;
   isAuthenticated: boolean;
 
-  // Loading states
-  isLoadingMarkets: boolean;
-  isLoadingOrderbook: boolean;
+  // User balances
+  balances: Balance[];
+
+  // UI state
+  selectedPrice: number | null;
 
   // Actions - Markets
   setMarkets: (markets: Market[]) => void;
@@ -39,18 +40,21 @@ interface ExchangeState {
 
   // Actions - Orderbook
   updateOrderbook: (marketId: string, bids: OrderbookLevel[], asks: OrderbookLevel[]) => void;
-  setOrderbookLoading: (loading: boolean) => void;
 
   // Actions - Trades
   addTrade: (trade: Trade) => void;
   addTrades: (trades: Trade[]) => void;
 
-  // Actions - Price history
-  addPricePoint: (price: number) => void;
-
   // Actions - User authentication
   setUser: (address: string) => void;
   clearUser: () => void;
+
+  // Actions - Balances
+  setBalances: (balances: Balance[]) => void;
+  updateBalance: (tokenTicker: string, available: string, locked: string) => void;
+
+  // Actions - UI state
+  setSelectedPrice: (price: number | null) => void;
 
   // Utilities
   reset: () => void;
@@ -66,11 +70,10 @@ const initialState = {
   selectedMarketId: null,
   orderbook: null,
   recentTrades: [],
-  priceHistory: [],
   userAddress: null,
   isAuthenticated: false,
-  isLoadingMarkets: false,
-  isLoadingOrderbook: false,
+  balances: [],
+  selectedPrice: null,
 };
 
 // ============================================================================
@@ -86,7 +89,6 @@ export const useExchangeStore = create<ExchangeState>()(
       setMarkets: (markets) =>
         set((state) => {
           state.markets = markets;
-          state.isLoadingMarkets = false;
         }),
 
       setTokens: (tokens) =>
@@ -100,7 +102,6 @@ export const useExchangeStore = create<ExchangeState>()(
           // Clear orderbook and trades when switching markets
           state.orderbook = null;
           state.recentTrades = [];
-          state.priceHistory = [];
         }),
 
       // Orderbook actions
@@ -114,13 +115,7 @@ export const useExchangeStore = create<ExchangeState>()(
               asks,
               timestamp: Date.now(),
             };
-            state.isLoadingOrderbook = false;
           }
-        }),
-
-      setOrderbookLoading: (loading) =>
-        set((state) => {
-          state.isLoadingOrderbook = loading;
         }),
 
       // Trade actions
@@ -135,17 +130,6 @@ export const useExchangeStore = create<ExchangeState>()(
             if (state.recentTrades.length > 100) {
               state.recentTrades = state.recentTrades.slice(0, 100);
             }
-
-            // Add to price history - use pre-computed priceValue from SDK!
-            state.priceHistory.push({
-              timestamp: Date.now(),
-              price: trade.priceValue,
-            });
-
-            // Keep only last 200 price points
-            if (state.priceHistory.length > 200) {
-              state.priceHistory = state.priceHistory.slice(-200);
-            }
           }
         }),
 
@@ -155,37 +139,12 @@ export const useExchangeStore = create<ExchangeState>()(
             // Only add if this is for the selected market
             if (state.selectedMarketId === trade.market_id) {
               state.recentTrades.unshift(trade);
-
-              // Add to price history - use pre-computed priceValue from SDK!
-              state.priceHistory.push({
-                timestamp: Date.now(),
-                price: trade.priceValue,
-              });
             }
           });
 
           // Keep only last 100 trades
           if (state.recentTrades.length > 100) {
             state.recentTrades = state.recentTrades.slice(0, 100);
-          }
-
-          // Keep only last 200 price points
-          if (state.priceHistory.length > 200) {
-            state.priceHistory = state.priceHistory.slice(-200);
-          }
-        }),
-
-      // Price history
-      addPricePoint: (price) =>
-        set((state) => {
-          state.priceHistory.push({
-            timestamp: Date.now(),
-            price,
-          });
-
-          // Keep only last 200 points
-          if (state.priceHistory.length > 200) {
-            state.priceHistory = state.priceHistory.slice(-200);
           }
         }),
 
@@ -200,6 +159,50 @@ export const useExchangeStore = create<ExchangeState>()(
         set((state) => {
           state.userAddress = null;
           state.isAuthenticated = false;
+          state.balances = []; // Clear balances when user logs out
+        }),
+
+      // Balance actions
+      setBalances: (balances) =>
+        set((state) => {
+          state.balances = balances;
+        }),
+
+      updateBalance: (tokenTicker, available, locked) =>
+        set((state) => {
+          const existingIndex = state.balances.findIndex((b) => b.token_ticker === tokenTicker);
+
+          if (existingIndex >= 0 && state.balances[existingIndex]) {
+            const existing = state.balances[existingIndex];
+            const totalAmount = (BigInt(available) + BigInt(locked)).toString();
+
+            // Get token for display conversion
+            const token = state.tokens.find((t) => t.ticker === tokenTicker);
+            if (!token) return;
+
+            const divisor = Math.pow(10, token.decimals);
+            const amountValue = Number(BigInt(totalAmount)) / divisor;
+            const lockedValue = Number(BigInt(locked)) / divisor;
+
+            // Update balance with enhanced values
+            state.balances[existingIndex] = {
+              token_ticker: existing.token_ticker,
+              user_address: existing.user_address,
+              amount: totalAmount,
+              open_interest: locked,
+              updated_at: new Date(),
+              amountDisplay: amountValue.toFixed(token.decimals),
+              lockedDisplay: lockedValue.toFixed(token.decimals),
+              amountValue,
+              lockedValue,
+            };
+          }
+        }),
+
+      // UI state
+      setSelectedPrice: (price) =>
+        set((state) => {
+          state.selectedPrice = price;
         }),
 
       // Reset
@@ -224,12 +227,3 @@ export const selectOrderbookBids = (state: ExchangeState) => state.orderbook?.bi
 export const selectOrderbookAsks = (state: ExchangeState) => state.orderbook?.asks ?? EMPTY_ARRAY;
 
 export const selectRecentTrades = (state: ExchangeState) => state.recentTrades;
-
-export const selectPriceHistory = (state: ExchangeState) => state.priceHistory;
-
-export const selectCurrentPrice = (state: ExchangeState) => {
-  if (state.priceHistory.length > 0) {
-    return state.priceHistory[state.priceHistory.length - 1]?.price ?? null;
-  }
-  return null;
-};

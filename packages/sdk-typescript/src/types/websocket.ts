@@ -4,6 +4,7 @@
  */
 
 import type { components } from "./generated";
+import type { ServerMessage as WsServerMessage } from "../../../shared/websocket";
 
 // Re-export REST API types
 export type Trade = components["schemas"]["ApiTrade"];
@@ -24,4 +25,4 @@ export type {
 } from "../../../shared/websocket";
 
 // Message handler type
-export type MessageHandler<T extends ServerMessage = ServerMessage> = (message: T) => void;
+export type MessageHandler<T extends WsServerMessage = WsServerMessage> = (message: T) => void;

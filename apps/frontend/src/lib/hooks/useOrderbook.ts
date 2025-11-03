@@ -9,7 +9,6 @@ import { useExchangeClient } from "./useExchangeClient";
 export function useOrderbook(marketId: string | null) {
   const client = useExchangeClient();
   const updateOrderbook = useExchangeStore((state) => state.updateOrderbook);
-  const setOrderbookLoading = useExchangeStore((state) => state.setOrderbookLoading);
   const bids = useExchangeStore(selectOrderbookBids);
   const asks = useExchangeStore(selectOrderbookAsks);
 
@@ -17,7 +16,6 @@ export function useOrderbook(marketId: string | null) {
     if (!marketId) return;
 
     console.log("[useOrderbook] Subscribing to orderbook for", marketId);
-    setOrderbookLoading(true);
 
     // Subscribe to orderbook updates using SDK convenience method
     const unsubscribe = client.onOrderbook(marketId, ({ bids, asks }) => {
@@ -29,7 +27,7 @@ export function useOrderbook(marketId: string | null) {
       console.log("[useOrderbook] Cleaning up subscription for", marketId);
       unsubscribe();
     };
-  }, [marketId, client, updateOrderbook, setOrderbookLoading]);
+  }, [marketId, client, updateOrderbook]);
 
   // Calculate spread - use enhanced priceValue from SDK
   const spread = useMemo(() => {
@@ -42,14 +40,14 @@ export function useOrderbook(marketId: string | null) {
 
   // Calculate cumulative sizes for depth visualization - use enhanced sizeValue from SDK
   const asksWithCumulative = useMemo(() => {
-    return asks.slice(0, 10).map((ask, i, arr) => {
+    return asks.slice(0, 15).map((ask, i, arr) => {
       const cumulative = arr.slice(0, i + 1).reduce((sum, a) => sum + a.sizeValue, 0);
       return { ...ask, cumulative };
     });
   }, [asks]);
 
   const bidsWithCumulative = useMemo(() => {
-    return bids.slice(0, 10).map((bid, i, arr) => {
+    return bids.slice(0, 15).map((bid, i, arr) => {
       const cumulative = arr.slice(0, i + 1).reduce((sum, b) => sum + b.sizeValue, 0);
       return { ...bid, cumulative };
     });

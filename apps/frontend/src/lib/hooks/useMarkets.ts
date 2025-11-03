@@ -4,10 +4,11 @@
 
 import { useEffect } from "react";
 import { useExchangeStore } from "../store";
-import { exchange } from "../api";
+import { useExchangeClient } from "./useExchangeClient";
 
 export function useMarkets() {
-  const { markets, tokens, setMarkets, setTokens, isLoadingMarkets } = useExchangeStore();
+  const client = useExchangeClient();
+  const { markets, tokens, setMarkets, setTokens } = useExchangeStore();
 
   useEffect(() => {
     let mounted = true;
@@ -15,14 +16,15 @@ export function useMarkets() {
     async function fetchData() {
       try {
         console.log("[useMarkets] Fetching markets and tokens...");
-        const [marketsData, tokensData] = await Promise.all([exchange.getMarkets(), exchange.getTokens()]);
+        // getMarkets() and getTokens() now return from cache if available
+        const [marketsData, tokensData] = await Promise.all([client.getMarkets(), client.getTokens()]);
 
         if (mounted) {
           console.log("[useMarkets] Got data:", marketsData.length, "markets,", tokensData.length, "tokens");
           // Enrich markets with decimal information from tokens
-          const enrichedMarkets = marketsData.map((market: { base_ticker: string; quote_ticker: string }) => {
-            const baseToken = tokensData.find((t: { ticker: string }) => t.ticker === market.base_ticker);
-            const quoteToken = tokensData.find((t: { ticker: string }) => t.ticker === market.quote_ticker);
+          const enrichedMarkets = marketsData.map((market) => {
+            const baseToken = tokensData.find((t) => t.ticker === market.base_ticker);
+            const quoteToken = tokensData.find((t) => t.ticker === market.quote_ticker);
 
             return {
               ...market,
@@ -52,6 +54,6 @@ export function useMarkets() {
   return {
     markets,
     tokens,
-    isLoading: isLoadingMarkets,
+    isLoading: markets.length === 0,
   };
 }
