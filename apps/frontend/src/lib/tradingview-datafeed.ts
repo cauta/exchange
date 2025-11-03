@@ -16,7 +16,7 @@ import type {
   SubscribeBarsCallback,
   SearchSymbolsCallback,
 } from "../../public/vendor/trading-view/charting_library";
-import { toDisplayValue } from "./format";
+import { toDisplayValue } from "@exchange/sdk";
 
 // ErrorCallback is not exported from TradingView types, so we define it here
 type ErrorCallback = (reason: string) => void;

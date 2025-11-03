@@ -46,15 +46,15 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead
                       key={header.id}
-                      className="font-semibold text-foreground"
+                      className="font-semibold text-foreground px-2"
                       style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
                     >
                       {header.isPlaceholder ? null : (
                         <div
                           className={
                             header.column.getCanSort()
-                              ? "cursor-pointer select-none flex items-center gap-1 hover:text-primary transition-colors"
-                              : ""
+                              ? "cursor-pointer select-none flex items-center gap-1 hover:text-primary transition-colors w-full"
+                              : "w-full"
                           }
                           onClick={header.column.getToggleSortingHandler()}
                         >
@@ -84,7 +84,7 @@ export function DataTable<TData, TValue>({
                   className="border-border/50 hover:bg-primary/5 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    <TableCell key={cell.id} className="px-2">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>
               ))

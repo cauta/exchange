@@ -15,6 +15,24 @@ export function toDisplayValue(atoms: string, decimals: number): number {
 }
 
 /**
+ * Convert display value to atoms (raw value)
+ */
+export function toRawValue(displayValue: number | string, decimals: number): string {
+  const value = typeof displayValue === "string" ? parseFloat(displayValue) : displayValue;
+  if (isNaN(value)) return "0";
+
+  // Use BigInt for precision
+  const multiplier = BigInt(10 ** decimals);
+  const wholePart = Math.floor(value);
+  const fractionalPart = value - wholePart;
+
+  const wholeRaw = BigInt(wholePart) * multiplier;
+  const fractionalRaw = BigInt(Math.round(fractionalPart * Number(multiplier)));
+
+  return (wholeRaw + fractionalRaw).toString();
+}
+
+/**
  * Format a number with commas and appropriate decimals
  */
 export function formatNumber(value: number, maxDecimals: number = 8): string {

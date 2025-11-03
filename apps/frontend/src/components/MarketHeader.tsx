@@ -4,7 +4,8 @@ import { useExchangeStore } from "@/lib/store";
 import { useMarkets } from "@/lib/hooks";
 import { AuthButton } from "@/components/AuthButton";
 import { FaucetDialog } from "@/components/FaucetDialog";
-import { toDisplayValue, formatWithoutTrailingZeros } from "@/lib/format";
+import { toDisplayValue } from "@exchange/sdk";
+import { formatWithoutTrailingZeros } from "@/lib/format";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function MarketHeader() {

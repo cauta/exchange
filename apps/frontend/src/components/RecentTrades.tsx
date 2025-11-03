@@ -29,22 +29,22 @@ export function RecentTrades() {
     () => [
       {
         accessorKey: "priceDisplay",
-        header: () => <div>Price ({quoteToken?.ticker})</div>,
+        header: () => <div className="flex justify-end w-full">Price ({quoteToken?.ticker})</div>,
         cell: ({ row }) => {
           const side = row.getValue("side") as string;
           return (
-            <div className={`font-mono font-semibold ${side === "buy" ? "text-green-500" : "text-red-500"}`}>
+            <div className={`font-mono text-sm font-semibold flex justify-end w-full ${side === "buy" ? "text-green-500" : "text-red-500"}`}>
               {row.getValue("priceDisplay")}
             </div>
           );
         },
-        size: 150,
+        size: 120,
       },
       {
         accessorKey: "sizeDisplay",
-        header: () => <div>Size ({baseToken?.ticker})</div>,
-        cell: ({ row }) => <div className="font-mono text-muted-foreground">{row.getValue("sizeDisplay")}</div>,
-        size: 150,
+        header: () => <div className="flex justify-end w-full">Size ({baseToken?.ticker})</div>,
+        cell: ({ row }) => <div className="font-mono text-sm text-muted-foreground flex justify-end w-full">{row.getValue("sizeDisplay")}</div>,
+        size: 120,
       },
       {
         accessorKey: "side",

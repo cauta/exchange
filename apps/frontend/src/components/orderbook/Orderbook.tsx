@@ -8,20 +8,6 @@ import { OrderbookRow } from "./OrderbookRow";
 import { TradeRow } from "./TradeRow";
 import { SpreadIndicator } from "./SpreadIndicator";
 
-interface OrderbookHeaderProps {
-  columns: string[];
-}
-
-function OrderbookHeader({ columns }: OrderbookHeaderProps) {
-  return (
-    <div className="flex justify-between font-medium text-[10px] text-muted-foreground/70 px-3 pt-1.5 pb-1 uppercase tracking-wider shrink-0 border-b border-border/50 bg-muted/20">
-      {columns.map((col, i) => (
-        <span key={i}>{col}</span>
-      ))}
-    </div>
-  );
-}
-
 export function Orderbook() {
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
   const selectedMarket = useExchangeStore(selectSelectedMarket);
@@ -145,5 +131,28 @@ export function Orderbook() {
         </TabsContent>
       </Tabs>
     </Card>
+  );
+}
+
+function OrderbookHeader({ columns }: { columns: string[] }) {
+  const isThree = columns.length === 3;
+  return (
+    <div
+      className={
+        `${isThree ? "grid grid-cols-[1fr_0.8fr_1.2fr]" : "flex justify-between"} ` +
+        "font-medium text-[10px] text-muted-foreground/70 px-3 pt-1.5 pb-1 uppercase tracking-wider shrink-0 border-b border-border/50 bg-muted/20"
+      }
+    >
+      {columns.map((col, i) => {
+        const isLast = i === columns.length - 1;
+        const isSecond = i === 1;
+        const rightAlign = columns.length === 3 ? isSecond || isLast : isLast;
+        return (
+          <span key={i} className={rightAlign ? "text-right" : undefined}>
+            {col}
+          </span>
+        );
+      })}
+    </div>
   );
 }

@@ -373,6 +373,38 @@ export class RestClient {
     };
   }
 
+  /**
+   * Request tokens from faucet with human-readable decimal values
+   * Automatically converts to atoms using token decimals
+   */
+  async faucetDecimal(params: {
+    userAddress: string;
+    tokenTicker: string;
+    amountDecimal: string | number;
+    signature: string;
+  }): Promise<{
+    userAddress: string;
+    tokenTicker: string;
+    amount: string;
+    newBalance: string;
+  }> {
+    // Get token details to find decimals
+    const token = await this.getToken(params.tokenTicker);
+
+    // Convert amount from decimal to atoms
+    const amountDecimal = typeof params.amountDecimal === "string" ? parseFloat(params.amountDecimal) : params.amountDecimal;
+    const amountMultiplier = Math.pow(10, token.decimals);
+    const amountAtoms = BigInt(Math.floor(amountDecimal * amountMultiplier));
+
+    // Call the regular faucet with converted values
+    return this.faucet({
+      userAddress: params.userAddress,
+      tokenTicker: params.tokenTicker,
+      amount: amountAtoms.toString(),
+      signature: params.signature,
+    });
+  }
+
   // ===== Admin Endpoints =====
 
   async adminCreateToken(params: { ticker: string; decimals: number; name: string }): Promise<Token> {

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useExchangeStore } from "@/lib/store";
 import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
-import { toRawValue } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +12,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useTurnkey } from "@turnkey/react-wallet-kit";
 import { Droplet } from "lucide-react";
@@ -24,41 +31,38 @@ export function FaucetDialog() {
   const userAddress = useExchangeStore((state) => state.userAddress);
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
   const [open, setOpen] = useState(false);
-  const [loadingToken, setLoadingToken] = useState<string | null>(null);
+  const [selectedToken, setSelectedToken] = useState<string>("");
+  const [loading, setLoading] = useState(false);
 
-  const handleFaucet = async (tokenTicker: string) => {
-    if (!userAddress) {
+  const handleFaucet = async () => {
+    if (!userAddress || !selectedToken) {
       return;
     }
 
-    setLoadingToken(tokenTicker);
+    setLoading(true);
 
     try {
-      const token = tokens.find((t) => t.ticker === tokenTicker);
-      if (!token) {
-        throw new Error("Token not found");
-      }
-
-      // Faucet 1000 tokens (adjust amount with decimals)
-      const amount = toRawValue(1000, token.decimals);
-
-      await client.rest.faucet({
+      // Use SDK's faucetDecimal - it handles conversion to atoms
+      await client.rest.faucetDecimal({
         userAddress,
-        tokenTicker,
-        amount,
+        tokenTicker: selectedToken,
+        amountDecimal: 1000,
         signature: `${userAddress}:${Date.now()}`,
       });
 
-      toast.success(`Successfully received 1000 ${tokenTicker}!`, {
+      toast.success(`Successfully received 1000 ${selectedToken}!`, {
         description: "Your balance has been updated",
       });
+
+      // Reset selection after success
+      setSelectedToken("");
     } catch (err) {
       console.error("Faucet error:", err);
       toast.error("Failed to get tokens", {
         description: err instanceof Error ? err.message : "Please try again later",
       });
     } finally {
-      setLoadingToken(null);
+      setLoading(false);
     }
   };
 
@@ -70,12 +74,12 @@ export function FaucetDialog() {
           Faucet
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:slide-out-to-bottom-4">
+      <DialogContent className="sm:max-w-md bg-muted/40 backdrop-blur-xl border-border/50 dither data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:slide-out-to-bottom-4">
         <DialogHeader>
-          <DialogTitle className="text-xl">Token Faucet</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-xl text-foreground">Token Faucet</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             {isAuthenticated
-              ? "Select a token to receive 1000 tokens for testing"
+              ? "Choose a token and get 1000 tokens for testing"
               : "Connect your wallet to use the faucet"}
           </DialogDescription>
         </DialogHeader>
@@ -90,37 +94,43 @@ export function FaucetDialog() {
                 setOpen(false);
                 handleLogin();
               }}
-              className="backdrop-blur-md bg-primary/80 hover:bg-primary/90"
+              className="bg-primary/90 hover:bg-primary border border-primary/30 shadow-lg transition-all"
             >
               Connect Wallet
             </Button>
           </div>
         ) : (
-          <div className="grid gap-3 py-4">
-            {tokens.map((token) => (
-              <div
-                key={token.ticker}
-                className="flex items-center justify-between p-4 rounded-lg border border-border bg-gradient-to-br from-card/50 to-muted/30 hover:from-card/70 hover:to-muted/40 hover:border-primary/30 transition-all duration-200 shadow-sm hover:shadow-md"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
-                    <Droplet className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-base">{token.ticker}</div>
-                    <div className="text-xs text-muted-foreground">{token.name}</div>
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => handleFaucet(token.ticker)}
-                  disabled={loadingToken !== null}
-                  className="bg-primary hover:bg-primary/90 shadow-sm hover:shadow-md transition-all"
-                >
-                  {loadingToken === token.ticker ? "Getting..." : "Get 1000"}
-                </Button>
-              </div>
-            ))}
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="token-select" className="text-sm font-medium">
+                Select Token
+              </Label>
+              <Select value={selectedToken} onValueChange={setSelectedToken}>
+                <SelectTrigger id="token-select" className="w-full bg-background/60 border-border/40 hover:bg-background/80 hover:border-border/60 transition-colors">
+                  <SelectValue placeholder="Choose a token..." />
+                </SelectTrigger>
+                <SelectContent className="bg-muted/95 backdrop-blur-xl border-border/50 dither">
+                  {tokens.map((token) => (
+                    <SelectItem key={token.ticker} value={token.ticker} className="hover:bg-accent/50">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{token.ticker}</span>
+                        <span className="text-muted-foreground text-xs">- {token.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              onClick={handleFaucet}
+              disabled={!selectedToken || loading}
+              className="w-full bg-gradient-to-br from-primary/90 to-primary/70 hover:from-primary hover:to-primary/80 shadow-lg hover:shadow-xl border border-primary/30 transition-all gap-2"
+              size="lg"
+            >
+              <Droplet className="h-4 w-4" />
+              {loading ? "Getting Tokens..." : "Get 1000 Tokens"}
+            </Button>
           </div>
         )}
       </DialogContent>

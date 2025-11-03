@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  toRawValue,
   toDisplayValue,
   roundToTickSize,
   roundToLotSize,
@@ -90,10 +89,10 @@ export function TradePanel() {
   const availableBase = baseBalance ? baseBalance.amountValue - baseBalance.lockedValue : 0;
   const availableQuote = quoteBalance ? quoteBalance.amountValue - quoteBalance.lockedValue : 0;
 
-  // Get price helpers - recentTrades now has priceValue!
+  // Get price helpers - all enhanced types have priceValue!
   const lastTradePrice = recentTrades.length > 0 && recentTrades[0] ? recentTrades[0].priceValue : null;
-  const bestBid = bids.length > 0 && bids[0] ? toDisplayValue(bids[0].price, quoteToken.decimals) : null;
-  const bestAsk = asks.length > 0 && asks[0] ? toDisplayValue(asks[0].price, quoteToken.decimals) : null;
+  const bestBid = bids.length > 0 && bids[0] ? bids[0].priceValue : null;
+  const bestAsk = asks.length > 0 && asks[0] ? asks[0].priceValue : null;
 
   // Calculate decimal places based on tick/lot sizes
   const priceDecimals = getDecimalPlaces(selectedMarket.tick_size, quoteToken.decimals);
@@ -163,9 +162,9 @@ export function TradePanel() {
         throw new Error("Size is required");
       }
 
-      // Parse and round values
-      let finalPrice = orderType === "limit" ? parseFloat(price) : 0;
-      let finalSize = parseFloat(size);
+      // Parse values
+      const finalPrice = orderType === "limit" ? parseFloat(price) : 0;
+      const finalSize = parseFloat(size);
 
       if (isNaN(finalSize) || finalSize <= 0) {
         throw new Error("Invalid size");
@@ -175,34 +174,18 @@ export function TradePanel() {
         throw new Error("Invalid price");
       }
 
-      // Round to tick/lot sizes
-      if (orderType === "limit") {
-        finalPrice = roundToTickSize(finalPrice, selectedMarket.tick_size, quoteToken.decimals);
-      }
-      finalSize = roundToLotSize(finalSize, selectedMarket.lot_size, baseToken.decimals);
-
-      // Convert to raw values for API
-      const rawPrice = toRawValue(finalPrice, quoteToken.decimals);
-      const rawSize = toRawValue(finalSize, baseToken.decimals);
-
-      // Check minimum size
-      const minSize = BigInt(selectedMarket.min_size);
-      if (BigInt(rawSize) < minSize) {
-        const minSizeDisplay = toDisplayValue(selectedMarket.min_size, baseToken.decimals);
-        throw new Error(`Size must be at least ${minSizeDisplay} ${baseToken.ticker}`);
-      }
-
       // For demo purposes, using a simple signature
       // In production, this would use Turnkey to sign
       const signature = `${userAddress}:${Date.now()}`;
 
-      const result = await client.rest.placeOrder({
+      // Use SDK's placeOrderDecimal - it handles conversion to atoms and rounding
+      const result = await client.rest.placeOrderDecimal({
         userAddress,
         marketId: selectedMarketId,
         side: side,
         orderType: orderType,
-        price: rawPrice,
-        size: rawSize,
+        priceDecimal: finalPrice.toString(),
+        sizeDecimal: finalSize.toString(),
         signature,
       });
 
@@ -238,13 +221,13 @@ export function TradePanel() {
         <TabsList className="w-full justify-start rounded-none border-b border-border/50 h-auto p-0 bg-gradient-to-b from-muted/30 to-muted/50 backdrop-blur-sm shrink-0">
           <TabsTrigger
             value="limit"
-            className="flex-1 rounded-none data-[state=active]:bg-card/80 data-[state=active]:shadow-sm transition-all"
+            className="flex-1 rounded-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all"
           >
             Limit
           </TabsTrigger>
           <TabsTrigger
             value="market"
-            className="flex-1 rounded-none data-[state=active]:bg-card/80 data-[state=active]:shadow-sm transition-all"
+            className="flex-1 rounded-none data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all"
           >
             Market
           </TabsTrigger>
@@ -280,13 +263,6 @@ export function TradePanel() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Wallet Connection Status */}
-            {!isAuthenticated && (
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-yellow-600 text-xs text-center">
-                Connect your wallet to start trading
-              </div>
-            )}
-
             {/* Price - Only for limit orders */}
             {orderType === "limit" && (
               <div className="space-y-2">

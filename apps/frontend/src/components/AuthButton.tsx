@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useTurnkey } from "@turnkey/react-wallet-kit";
 import { useExchangeStore } from "@/lib/store";
-import { autoFaucet } from "@/lib/faucet";
 import { Button } from "@/components/ui/button";
 
 export function AuthButton() {
@@ -12,7 +11,6 @@ export function AuthButton() {
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
   const setUser = useExchangeStore((state) => state.setUser);
   const clearUser = useExchangeStore((state) => state.clearUser);
-  const tokens = useExchangeStore((state) => state.tokens);
 
   // Sync Turnkey auth state with our store
   useEffect(() => {
@@ -23,17 +21,12 @@ export function AuthButton() {
         const address = firstWallet.accounts[0]?.address;
         if (!address) return;
         setUser(address);
-
-        // Auto-faucet for users
-        if (tokens.length > 0) {
-          autoFaucet(address, tokens);
-        }
       }
     } else if (authState === "unauthenticated" && isAuthenticated) {
       // User logged out from Turnkey, sync our store
       clearUser();
     }
-  }, [authState, wallets, isAuthenticated, setUser, clearUser, tokens]);
+  }, [authState, wallets, isAuthenticated, setUser, clearUser]);
 
   const handleLogout = () => {
     // Call Turnkey logout and clear local state

@@ -28,7 +28,7 @@ export function OrderbookRow({ price, priceValue, size, cumulative, maxCumulativ
         style={{ width: `${depthPercentage}%` }}
       />
       <span className={`relative z-10 ${colorClass} font-semibold`}>{price}</span>
-      <span className="relative z-10 text-muted-foreground">{size}</span>
+      <span className="relative z-10 text-muted-foreground text-right">{size}</span>
     </div>
   );
 }

@@ -47,6 +47,9 @@ export { ConsoleLogger, NoopLogger } from "./logger";
 
 export { SdkError, ApiError, WebSocketError, ValidationError } from "./errors";
 
+// Export format utilities
+export { toDisplayValue, toRawValue, formatNumber, formatPrice, formatSize } from "./format";
+
 // Export types
 export type {
   Market,
