@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 import { useExchangeStore } from "@/lib/store";
 import { useMarkets } from "@/lib/hooks";
-import { Orderbook } from "@/components/orderbook";
+import { Orderbook } from "@/components/orderbook-panel";
 import { TradingViewChart } from "@/components/TradingViewChart";
-import { TradePanel } from "@/components/TradePanel";
+import { TradePanel } from "@/components/trade-panel";
 import { BottomPanel } from "@/components/bottom-panel";
 import { MarketHeader } from "@/components/MarketHeader";
 

@@ -51,7 +51,7 @@ export function MarketHeader() {
                 <SelectTrigger className="w-[130px] bg-primary/10 border-primary/40 hover:bg-primary/20 hover:border-primary/50 h-7 text-xs transition-colors">
                   <SelectValue placeholder="Select market" />
                 </SelectTrigger>
-                <SelectContent className="bg-card/100 backdrop-blur-sm">
+                <SelectContent className="bg-card backdrop-blur-sm">
                   {markets.map((market) => (
                     <SelectItem key={market.id} value={market.id}>
                       {market.base_ticker}/{market.quote_ticker}
@@ -63,7 +63,7 @@ export function MarketHeader() {
 
             {selectedMarket && baseToken && quoteToken && (
               <>
-                <div className="h-3.5 w-[1px] bg-primary/40"></div>
+                <div className="h-3.5 w-px bg-primary/40"></div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-primary/60 uppercase tracking-wider font-semibold">Price</span>
                   <span className="text-primary font-mono font-bold">
@@ -71,7 +71,7 @@ export function MarketHeader() {
                   </span>
                   <span className="text-muted-foreground/60">{selectedMarket.quote_ticker}</span>
                 </div>
-                <div className="h-3.5 w-[1px] bg-primary/40"></div>
+                <div className="h-3.5 w-px bg-primary/40"></div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground/60 uppercase tracking-wider">Tick</span>
                   <span className="text-foreground font-mono font-medium">
@@ -81,7 +81,7 @@ export function MarketHeader() {
                     )}
                   </span>
                 </div>
-                <div className="h-3.5 w-[1px] bg-primary/40"></div>
+                <div className="h-3.5 w-px bg-primary/40"></div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground/60 uppercase tracking-wider">Lot</span>
                   <span className="text-foreground font-mono font-medium">
