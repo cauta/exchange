@@ -90,6 +90,10 @@ impl OrderbookMirrorBot {
             self.config.update_interval_ms
         );
 
+        // Cancel all existing orders on startup to ensure clean state
+        info!("Cancelling any existing orders from previous runs...");
+        self.cancel_all_orders().await?;
+
         // Connect to Hyperliquid (perps by default)
         let hl_client = HyperliquidClient::new(self.market.base_ticker.clone());
 
@@ -132,45 +136,28 @@ impl OrderbookMirrorBot {
     async fn sync_orderbook(&mut self) -> Result<()> {
         let (bids, asks) = self.orderbook.get_top_levels(self.config.depth_levels);
 
-        // Store old orders before placing new ones
-        // This ensures we maintain liquidity during the transition
-        let old_orders = self.active_orders.clone();
-        self.active_orders.clear();
+        // Separate old orders by side to prevent crossing
+        let mut old_bids = Vec::new();
+        let mut old_asks = Vec::new();
 
-        // Place new bid orders FIRST (before cancelling old ones)
-        for level in bids {
-            let price = level.price.to_string();
-            let size = level.quantity.to_string();
-
-            match self
-                .exchange_client
-                .place_order_decimal(
-                    self.config.user_address.clone(),
-                    self.config.market_id.clone(),
-                    Side::Buy,
-                    OrderType::Limit,
-                    price.clone(),
-                    size.clone(),
-                    "orderbook_mirror".to_string(),
-                )
-                .await
-            {
-                Ok(result) => {
-                    let order_id = result.order.id;
-                    let key = format!("{}_{}", price, "buy");
-                    self.active_orders.insert(key, order_id);
-                }
-                Err(e) => {
-                    let err_msg = e.to_string();
-                    warn!("Failed to place bid order at {}: {}", price, err_msg);
-
-                    // Try to auto-faucet if it's a balance error
-                    self.auto_faucet_on_error(&err_msg).await;
-                }
+        for (key, order_id) in self.active_orders.drain() {
+            if key.ends_with("_buy") {
+                old_bids.push(order_id);
+            } else {
+                old_asks.push(order_id);
             }
         }
 
-        // Place new ask orders
+        // Strategy to avoid crossing while maintaining liquidity:
+        // 1. Cancel old asks first (keeps bid side liquid)
+        // 2. Place new asks (now we have bids + new asks)
+        // 3. Cancel old bids (keeps ask side liquid)
+        // 4. Place new bids (now we have complete new book)
+
+        // Step 1: Cancel old asks
+        self.cancel_orders_list(old_asks).await;
+
+        // Step 2: Place new ask orders
         for level in asks {
             let price = level.price.to_string();
             let size = level.quantity.to_string();
@@ -203,20 +190,53 @@ impl OrderbookMirrorBot {
             }
         }
 
-        // Now cancel the old orders (after new ones are placed)
-        self.cancel_old_orders(old_orders).await?;
+        // Step 3: Cancel old bids
+        self.cancel_orders_list(old_bids).await;
+
+        // Step 4: Place new bid orders
+        for level in bids {
+            let price = level.price.to_string();
+            let size = level.quantity.to_string();
+
+            match self
+                .exchange_client
+                .place_order_decimal(
+                    self.config.user_address.clone(),
+                    self.config.market_id.clone(),
+                    Side::Buy,
+                    OrderType::Limit,
+                    price.clone(),
+                    size.clone(),
+                    "orderbook_mirror".to_string(),
+                )
+                .await
+            {
+                Ok(result) => {
+                    let order_id = result.order.id;
+                    let key = format!("{}_{}", price, "buy");
+                    self.active_orders.insert(key, order_id);
+                }
+                Err(e) => {
+                    let err_msg = e.to_string();
+                    warn!("Failed to place bid order at {}: {}", price, err_msg);
+
+                    // Try to auto-faucet if it's a balance error
+                    self.auto_faucet_on_error(&err_msg).await;
+                }
+            }
+        }
 
         Ok(())
     }
 
-    /// Cancel specific old orders (used after placing new orders)
-    async fn cancel_old_orders(&self, old_orders: HashMap<String, Uuid>) -> Result<()> {
-        if old_orders.is_empty() {
-            return Ok(());
+    /// Cancel a list of orders by ID
+    async fn cancel_orders_list(&self, order_ids: Vec<Uuid>) {
+        if order_ids.is_empty() {
+            return;
         }
 
         let mut cancelled_count = 0;
-        for (_key, order_id) in old_orders {
+        for order_id in order_ids {
             match self
                 .exchange_client
                 .cancel_order(
@@ -231,16 +251,14 @@ impl OrderbookMirrorBot {
                 }
                 Err(e) => {
                     // It's okay if order is already filled/cancelled
-                    warn!("Failed to cancel old order {}: {}", order_id, e);
+                    warn!("Failed to cancel order {}: {}", order_id, e);
                 }
             }
         }
 
         if cancelled_count > 0 {
-            info!("Cancelled {} old orders", cancelled_count);
+            info!("Cancelled {} orders", cancelled_count);
         }
-
-        Ok(())
     }
 
     /// Cancel all active orders

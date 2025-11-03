@@ -79,7 +79,8 @@ types-python:
     --use-union-operator \
     --field-constraints \
     --use-standard-collections \
-    --target-python-version 3.10 && \
+    --target-python-version 3.10 \
+    --disable-timestamp && \
   echo "# Generated WebSocket types" > exchange_sdk/generated/__init__.py && \
   echo "from .websocket import *" >> exchange_sdk/generated/__init__.py
 

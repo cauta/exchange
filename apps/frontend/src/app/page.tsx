@@ -6,7 +6,7 @@ import { useMarkets } from "@/lib/hooks";
 import { Orderbook } from "@/components/orderbook";
 import { TradingViewChart } from "@/components/TradingViewChart";
 import { TradePanel } from "@/components/TradePanel";
-import { BottomPanel } from "@/components/BottomPanel";
+import { BottomPanel } from "@/components/bottom-panel";
 import { MarketHeader } from "@/components/MarketHeader";
 
 export default function Home() {
