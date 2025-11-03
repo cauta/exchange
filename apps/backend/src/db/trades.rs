@@ -81,7 +81,7 @@ impl Db {
         let query = if let Some(market) = market_id {
             sqlx::query(
                 r#"
-                SELECT id, market_id, buyer_address, seller_address, buyer_order_id, seller_order_id, price::TEXT as price, size::TEXT as size, side, timestamp
+                SELECT id, market_id, buyer_address, seller_address, buyer_order_id, seller_order_id, price::TEXT as price, size::TEXT as size, side::TEXT as side, timestamp
                 FROM trades
                 WHERE (buyer_address = $1 OR seller_address = $1) AND market_id = $2
                 ORDER BY timestamp DESC
@@ -94,7 +94,7 @@ impl Db {
         } else {
             sqlx::query(
                 r#"
-                SELECT id, market_id, buyer_address, seller_address, buyer_order_id, seller_order_id, price::TEXT as price, size::TEXT as size, side, timestamp
+                SELECT id, market_id, buyer_address, seller_address, buyer_order_id, seller_order_id, price::TEXT as price, size::TEXT as size, side::TEXT as side, timestamp
                 FROM trades
                 WHERE buyer_address = $1 OR seller_address = $1
                 ORDER BY timestamp DESC
@@ -141,7 +141,7 @@ impl Db {
 
         let rows = sqlx::query(
             r#"
-            SELECT id, market_id, buyer_address, seller_address, buyer_order_id, seller_order_id, price::TEXT as price, size::TEXT as size, side, timestamp
+            SELECT id, market_id, buyer_address, seller_address, buyer_order_id, seller_order_id, price::TEXT as price, size::TEXT as size, side::TEXT as side, timestamp
             FROM trades
             WHERE market_id = $1
             ORDER BY timestamp DESC

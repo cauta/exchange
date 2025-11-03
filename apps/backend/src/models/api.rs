@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
+#[cfg(feature = "schema")]
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -282,8 +283,8 @@ pub struct CandlesResponse {
 // WEBSOCKET MESSAGE TYPES (Client → Server)
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../../packages/shared/websocket.ts")]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClientMessage {
     Subscribe {
@@ -304,8 +305,8 @@ pub enum ClientMessage {
 }
 
 /// Channel types for WebSocket subscriptions
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, TS)]
-#[ts(export, export_to = "../../../packages/shared/websocket.ts")]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum SubscriptionChannel {
     Trades,
@@ -317,8 +318,8 @@ pub enum SubscriptionChannel {
 // WEBSOCKET MESSAGE TYPES (Server → Client)
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../../packages/shared/websocket.ts")]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ServerMessage {
     // Subscription acknowledgments
@@ -356,7 +357,6 @@ pub enum ServerMessage {
     },
     Candle {
         market_id: String,
-        #[ts(type = "number")]
         timestamp: i64,
         open: String,
         high: String,
@@ -372,15 +372,15 @@ pub enum ServerMessage {
     Pong,
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../../packages/shared/websocket.ts")]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct PriceLevel {
     pub price: String,
     pub size: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../../packages/shared/websocket.ts")]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct OrderbookData {
     pub market_id: String,
     pub bids: Vec<PriceLevel>,
@@ -388,8 +388,8 @@ pub struct OrderbookData {
 }
 
 /// Trade data for WebSocket messages (API layer with String fields)
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "../../../packages/shared/websocket.ts")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
 pub struct TradeData {
     pub id: String, // UUID as string
     pub market_id: String,
@@ -400,8 +400,7 @@ pub struct TradeData {
     pub price: String,           // u128 as string
     pub size: String,            // u128 as string
     pub side: Side,              // Taker's side (determines if trade is "buy" or "sell" on tape)
-    #[ts(type = "number")]
-    pub timestamp: i64, // Unix timestamp for WebSocket compatibility
+    pub timestamp: i64,          // Unix timestamp for WebSocket compatibility
 }
 
 // ============================================================================

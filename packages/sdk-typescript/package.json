@@ -20,5 +20,7 @@
     "openapi-typescript": "^7.4.4",
     "typescript": "^5.6.3"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@exchange/types": "workspace:*"
+  }
 }

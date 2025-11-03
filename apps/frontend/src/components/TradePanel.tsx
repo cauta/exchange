@@ -236,10 +236,16 @@ export function TradePanel() {
         className="flex-1 flex flex-col"
       >
         <TabsList className="w-full justify-start rounded-none border-b border-border/50 h-auto p-0 bg-gradient-to-b from-muted/30 to-muted/50 backdrop-blur-sm shrink-0">
-          <TabsTrigger value="limit" className="flex-1 rounded-none data-[state=active]:bg-card/80 data-[state=active]:shadow-sm transition-all">
+          <TabsTrigger
+            value="limit"
+            className="flex-1 rounded-none data-[state=active]:bg-card/80 data-[state=active]:shadow-sm transition-all"
+          >
             Limit
           </TabsTrigger>
-          <TabsTrigger value="market" className="flex-1 rounded-none data-[state=active]:bg-card/80 data-[state=active]:shadow-sm transition-all">
+          <TabsTrigger
+            value="market"
+            className="flex-1 rounded-none data-[state=active]:bg-card/80 data-[state=active]:shadow-sm transition-all"
+          >
             Market
           </TabsTrigger>
         </TabsList>
@@ -350,7 +356,9 @@ export function TradePanel() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground font-medium">Est. Fee ({(Math.abs(feeBps) / 100).toFixed(2)}%)</span>
+                  <span className="text-muted-foreground font-medium">
+                    Est. Fee ({(Math.abs(feeBps) / 100).toFixed(2)}%)
+                  </span>
                   <span className="font-mono text-muted-foreground">
                     {formatNumberWithCommas(estimatedFee, Math.min(priceDecimals, 4))} {quoteToken.ticker}
                   </span>

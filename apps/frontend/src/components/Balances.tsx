@@ -17,9 +17,7 @@ export function Balances() {
       {
         accessorKey: "token_ticker",
         header: "Token",
-        cell: ({ row }) => (
-          <div className="font-semibold text-foreground">{row.getValue("token_ticker")}</div>
-        ),
+        cell: ({ row }) => <div className="font-semibold text-foreground">{row.getValue("token_ticker")}</div>,
         size: 100,
       },
       {
@@ -36,9 +34,7 @@ export function Balances() {
         accessorKey: "lockedDisplay",
         header: "In Orders",
         cell: ({ row }) => (
-          <div className="text-right font-mono text-sm text-muted-foreground">
-            {row.getValue("lockedDisplay")}
-          </div>
+          <div className="text-right font-mono text-sm text-muted-foreground">{row.getValue("lockedDisplay")}</div>
         ),
         size: 150,
       },

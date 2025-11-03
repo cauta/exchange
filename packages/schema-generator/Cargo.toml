@@ -4,8 +4,6 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
-[workspace]
-
 [dependencies]
 backend = { path = "../../apps/backend", features = ["schema"] }
 schemars.workspace = true

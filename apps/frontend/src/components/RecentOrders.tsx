@@ -33,9 +33,7 @@ export function RecentOrders() {
         accessorKey: "order_type",
         header: "Type",
         cell: ({ row }) => (
-          <span className="text-muted-foreground">
-            {row.getValue("order_type") === "limit" ? "Limit" : "Market"}
-          </span>
+          <span className="text-muted-foreground">{row.getValue("order_type") === "limit" ? "Limit" : "Market"}</span>
         ),
         size: 80,
       },

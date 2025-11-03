@@ -63,7 +63,8 @@ bench:
 
 types:
   cd apps/backend && cargo run --bin generate_openapi
-  cd apps/backend && cargo test export_websocket_types
+  cargo run -p schema-generator
+  bun ./packages/shared/scripts/generate-types.ts
   bun run openapi
 
 fmt:

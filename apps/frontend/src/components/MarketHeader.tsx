@@ -14,7 +14,7 @@ export function MarketHeader() {
   const selectedMarket = useExchangeStore((state) => state.markets.find((m) => m.id === selectedMarketId));
   const tokens = useExchangeStore((state) => state.tokens);
   const recentTrades = useExchangeStore((state) => state.recentTrades);
-  const currentPrice = recentTrades.length > 0 ? recentTrades[0]?.priceValue ?? null : null;
+  const currentPrice = recentTrades.length > 0 ? (recentTrades[0]?.priceValue ?? null) : null;
 
   // Look up tokens for the selected market
   const baseToken = selectedMarket ? tokens.find((t) => t.ticker === selectedMarket.base_ticker) : null;

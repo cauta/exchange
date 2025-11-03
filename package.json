@@ -4,7 +4,8 @@
   "private": true,
   "workspaces": [
     "apps/frontend",
-    "packages/sdk-typescript"
+    "packages/sdk-typescript",
+    "packages/shared"
   ],
   "scripts": {
     "dev": "bun run build:sdk && bun --filter exchange dev",
