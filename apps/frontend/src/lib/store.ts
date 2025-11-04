@@ -5,7 +5,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import type { Market, Token, Orderbook, Trade, OrderbookLevel, Balance, Order } from "./types/exchange";
+import type { Market, Token, Orderbook, Trade, OrderbookLevel, Balance, Order, OrderStatus } from "./types/exchange";
 
 // ============================================================================
 // State Interface
@@ -45,7 +45,7 @@ interface ExchangeState {
   setBalances: (balances: Balance[]) => void;
   updateBalance: (tokenTicker: string, available: string, locked: string) => void;
   setOrders: (orders: Order[]) => void;
-  updateOrder: (orderId: string, status: string, filledSize: string) => void;
+  updateOrder: (orderId: string, status: OrderStatus, filledSize: string) => void;
   setUserTrades: (trades: Trade[]) => void;
   addUserTrade: (trade: Trade) => void;
 
@@ -219,7 +219,7 @@ export const useExchangeStore = create<ExchangeState>()(
               index === existingIndex
                 ? {
                     ...existing,
-                    status: status as any,
+                    status,
                     filled_size: filledSize,
                     filledDisplay: filledValue.toFixed(baseToken.decimals),
                     filledValue,

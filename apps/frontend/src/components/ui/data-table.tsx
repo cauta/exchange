@@ -25,8 +25,16 @@ export function DataTable<TData, TValue>({
   headerAction,
 }: DataTableProps<TData, TValue>) {
   const getDefaultSortColumn = () => {
-    const firstColumn = columns[0] as any;
-    return firstColumn?.accessorKey || firstColumn?.id || "";
+    const firstColumn = columns[0];
+    if (!firstColumn) return "";
+
+    // Check if column has accessorKey property (ColumnDef with accessor)
+    if ("accessorKey" in firstColumn && typeof firstColumn.accessorKey === "string") {
+      return firstColumn.accessorKey;
+    }
+
+    // Otherwise use id if available
+    return firstColumn.id || "";
   };
 
   const [sorting, setSorting] = useState<SortingState>([{ id: getDefaultSortColumn(), desc: true }]);

@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
 import { getDecimalPlaces } from "@/lib/format";
-import type { OrderSide, OrderType, TradeFormData, TradeFormErrors, OrderEstimate, TradeFormProps } from "./types";
+import type { TradeFormData, TradeFormErrors, OrderEstimate, TradeFormProps } from "./types";
 
 export function useTradeForm(params: TradeFormProps | null) {
   const client = useExchangeClient();
