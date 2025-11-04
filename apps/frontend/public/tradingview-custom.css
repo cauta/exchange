@@ -1,59 +1,57 @@
-/* Custom TradingView theme to match dark gray theme with dither effect */
+/* TradingView Custom Theme - Dark Gray with White Accents */
 
-/* Toolbar background - match card background */
+/* Toolbar and main containers */
 .chart-page .chart-container,
 .layout__area--top {
   background-color: #1a1a1a !important;
+  border-color: #262626 !important;
 }
 
-/* Toolbar buttons and controls - match muted foreground */
+/* Buttons and controls */
 .button-QtKYfKGZ,
 .button-merBkM5y,
 .item-Xp1EE8m2 {
-  color: #a295c1 !important;
+  color: #999999 !important;
   transition: all 0.15s ease;
 }
 
 .button-QtKYfKGZ:hover,
 .button-merBkM5y:hover,
 .item-Xp1EE8m2:hover {
-  background-color: rgba(157, 126, 250, 0.1) !important;
-  color: #9d7efa !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
 }
 
-/* Active button state - primary purple */
 .button-QtKYfKGZ.isActive-QtKYfKGZ,
 .button-merBkM5y.isActive-merBkM5y {
-  color: #9d7efa !important;
-  background-color: rgba(157, 126, 250, 0.15) !important;
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Dropdown menus */
 .menuWrap-Kq3ruQo8,
 .menu-Kq3ruQo8 {
   background-color: #1a1a1a !important;
-  border-color: #333333 !important;
+  border-color: #262626 !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Menu items */
 .item-WJDah4zj {
-  color: #a295c1 !important;
+  color: #999999 !important;
   transition: all 0.15s ease;
 }
 
 .item-WJDah4zj:hover {
-  background-color: rgba(157, 126, 250, 0.1) !important;
-  color: #9d7efa !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
 }
 
-/* Time axis and price axis */
-.price-axis,
-.time-axis {
-  background-color: #1a1a1a !important;
+.item-WJDah4zj.isActive-WJDah4zj {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
 }
 
-/* Scrollbar styling - match app theme */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -70,81 +68,55 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9d7efa !important;
+  background: #666666 !important;
 }
 
 /* Context menu */
 .menuBox-biWYdsXC {
   background-color: #1a1a1a !important;
-  border-color: #333333 !important;
+  border-color: #262626 !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Separators - match border color */
+/* Separators */
 .separator-Pf4rIzEt {
-  background-color: #333333 !important;
+  background-color: #262626 !important;
 }
 
-/* Input fields - match app inputs */
+/* Input fields */
 input[type="text"],
 input[type="number"] {
-  background-color: rgba(157, 126, 250, 0.05) !important;
-  color: #a295c1 !important;
-  border-color: #333333 !important;
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  color: #999999 !important;
+  border-color: #262626 !important;
   transition: all 0.15s ease;
 }
 
 input[type="text"]:focus,
 input[type="number"]:focus {
-  border-color: #9d7efa !important;
-  box-shadow: 0 0 0 2px rgba(157, 126, 250, 0.1) !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05) !important;
 }
 
-/* Remove any white backgrounds */
+/* Chart containers - remove blue borders */
 .chart-gui-wrapper,
 .chart-container-border {
   background-color: #1a1a1a !important;
+  border: none !important;
 }
 
-/* Dither effect overlay for chart canvas */
-.chart-container {
-  position: relative;
+iframe#tradingview_* {
+  border: none !important;
 }
 
-/* Legend and watermark text - improve readability */
-.pane-legend {
-  color: #a295c1 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-/* Tooltip styling */
-.tv-lightweight-charts-tooltip {
-  background-color: rgba(26, 26, 26, 0.95) !important;
-  border: 1px solid #333333 !important;
-  color: #a295c1 !important;
-  backdrop-filter: blur(8px);
-}
-
-/* Drawing tools - match gray theme */
-.drawing-toolbar {
-  background-color: #1a1a1a !important;
-  border-color: #333333 !important;
-}
-
-/* Panel background */
+/* Panel backgrounds */
 .panel-nX4VbaC0 {
   background-color: #1a1a1a !important;
 }
 
-/* Selected item highlight */
-.item-WJDah4zj.isActive-WJDah4zj {
-  background-color: rgba(157, 126, 250, 0.15) !important;
-  color: #9d7efa !important;
-}
-
-/* Tabs and navigation */
+/* Tabs */
 .tab-1ydBmW6T {
-  color: #a295c1 !important;
+  color: #999999 !important;
 }
 
 .tab-1ydBmW6T.isActive-1ydBmW6T {
@@ -152,16 +124,12 @@ input[type="number"]:focus {
   border-bottom-color: #ffffff !important;
 }
 
-/* Ensure dither effect is visible */
-.dither::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image:
-    repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255, 255, 255, 0.03) 1px, rgba(255, 255, 255, 0.03) 2px);
-  pointer-events: none;
-  z-index: 1;
+/* Remove all focus outlines and blue borders */
+* {
+  outline: none !important;
+}
+
+*:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }

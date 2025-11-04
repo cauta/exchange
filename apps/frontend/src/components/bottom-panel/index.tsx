@@ -23,15 +23,15 @@ export function BottomPanel() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="balances">
+          <TabsContent value="balances" className="overflow-hidden h-full">
             <Balances />
           </TabsContent>
 
-          <TabsContent value="orders">
+          <TabsContent value="orders" className="overflow-hidden h-full">
             <RecentOrders />
           </TabsContent>
 
-          <TabsContent value="trades">
+          <TabsContent value="trades" className="overflow-hidden h-full">
             <RecentTrades />
           </TabsContent>
         </Tabs>

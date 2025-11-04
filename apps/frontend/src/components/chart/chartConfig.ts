@@ -1,3 +1,5 @@
+import type { ExchangeDatafeed } from "@/lib/tradingview-datafeed";
+
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import type {
@@ -11,7 +13,7 @@ import type {
  */
 export function getChartConfig(
   symbol: string,
-  datafeed: any,
+  datafeed: ExchangeDatafeed,
   container: HTMLElement
 ): ChartingLibraryWidgetOptions {
   return {
@@ -30,19 +32,20 @@ export function getChartConfig(
     enabled_features: ["study_templates", "side_toolbar_in_fullscreen_mode"],
     fullscreen: false,
     autosize: true,
-    theme: "Dark",
+    theme: "dark",
     custom_css_url: "/tradingview-custom.css",
     loading_screen: {
       backgroundColor: "#1a1a1a",
-      foregroundColor: "#9d7efa",
+      foregroundColor: "#ffffff",
     },
-    settings_overrides: {
+    overrides: {
       // Background
       "paneProperties.background": "#1a1a1a",
       "paneProperties.backgroundType": "solid",
-
-      // Chart style - candlestick
-      "mainSeriesProperties.style": 1,
+      "paneProperties.vertGridProperties.color": "#262626",
+      "paneProperties.horzGridProperties.color": "#262626",
+      "paneProperties.vertGridProperties.style": 0,
+      "paneProperties.horzGridProperties.style": 0,
 
       // Candle colors
       "mainSeriesProperties.candleStyle.upColor": "#22c55e",
@@ -54,13 +57,49 @@ export function getChartConfig(
       "mainSeriesProperties.candleStyle.drawWick": true,
       "mainSeriesProperties.candleStyle.drawBorder": true,
 
+      // Hollow candles
+      "mainSeriesProperties.hollowCandleStyle.upColor": "#22c55e",
+      "mainSeriesProperties.hollowCandleStyle.downColor": "#ef4444",
+      "mainSeriesProperties.hollowCandleStyle.wickUpColor": "#22c55e",
+      "mainSeriesProperties.hollowCandleStyle.wickDownColor": "#ef4444",
+      "mainSeriesProperties.hollowCandleStyle.borderUpColor": "#22c55e",
+      "mainSeriesProperties.hollowCandleStyle.borderDownColor": "#ef4444",
+
+      // Bars
+      "mainSeriesProperties.barStyle.upColor": "#22c55e",
+      "mainSeriesProperties.barStyle.downColor": "#ef4444",
+
+      // Line
+      "mainSeriesProperties.lineStyle.color": "#ffffff",
+      "mainSeriesProperties.lineStyle.linewidth": 2,
+
+      // Area
+      "mainSeriesProperties.areaStyle.color1": "rgba(255, 255, 255, 0.1)",
+      "mainSeriesProperties.areaStyle.color2": "rgba(255, 255, 255, 0.02)",
+      "mainSeriesProperties.areaStyle.linecolor": "#ffffff",
+      "mainSeriesProperties.areaStyle.linewidth": 2,
+
+      // Baseline
+      "mainSeriesProperties.baselineStyle.topLineColor": "#22c55e",
+      "mainSeriesProperties.baselineStyle.bottomLineColor": "#ef4444",
+
+      // Scales and axes
+      "scalesProperties.backgroundColor": "#1a1a1a",
+      "scalesProperties.lineColor": "#262626",
+      "scalesProperties.textColor": "#ffffff",
+
       // Crosshair
-      "crosshairProperties.color": "#9d7efa",
+      "crosshairProperties.color": "#ffffff",
       "crosshairProperties.width": 1,
       "crosshairProperties.style": 2,
 
-      // Scales
-      "scalesProperties.backgroundColor": "#1a1a1a",
+      // Watermark
+      "paneProperties.legendProperties.showLegend": true,
+      "paneProperties.legendProperties.showStudyArguments": true,
+      "paneProperties.legendProperties.showStudyTitles": true,
+      "paneProperties.legendProperties.showStudyValues": true,
+      "paneProperties.legendProperties.showSeriesTitle": true,
+      "paneProperties.legendProperties.showSeriesOHLC": true,
     },
     studies_overrides: {
       "volume.volume.color.0": "#ef4444",

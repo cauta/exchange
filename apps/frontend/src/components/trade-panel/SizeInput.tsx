@@ -63,14 +63,15 @@ export function SizeInput({
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+      <div className="flex justify-between items-center gap-2">
+        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">
           Size ({baseToken.ticker})
         </Label>
         {isAuthenticated && (
-          <span className="text-xs text-muted-foreground font-medium">
-            Available: {formatNumberWithCommas(side === "buy" ? availableQuote : availableBase, 4)}{" "}
-            {side === "buy" ? quoteToken.ticker : baseToken.ticker}
+          <span className="text-xs text-muted-foreground font-medium text-right truncate min-w-0" title={`Available: ${formatNumberWithCommas(side === "buy" ? availableQuote : availableBase, 4)} ${side === "buy" ? quoteToken.ticker : baseToken.ticker}`}>
+            <span className="text-[10px] opacity-70">Avail: </span>
+            {formatNumberWithCommas(side === "buy" ? availableQuote : availableBase, 2)}{" "}
+            <span className="text-[10px]">{side === "buy" ? quoteToken.ticker : baseToken.ticker}</span>
           </span>
         )}
       </div>
