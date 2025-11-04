@@ -17,7 +17,7 @@ export function useOrders() {
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
   const setOrders = useExchangeStore((state) => state.setOrders);
   const updateOrder = useExchangeStore((state) => state.updateOrder);
-  const orders = useExchangeStore((state) => state.orders);
+  const orders = useExchangeStore((state) => state.userOrders);
 
   useEffect(() => {
     if (!userAddress || !isAuthenticated) {

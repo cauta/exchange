@@ -16,7 +16,7 @@ export function useBalances() {
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
   const setBalances = useExchangeStore((state) => state.setBalances);
   const updateBalance = useExchangeStore((state) => state.updateBalance);
-  const balances = useExchangeStore((state) => state.balances);
+  const balances = useExchangeStore((state) => state.userBalances);
 
   useEffect(() => {
     if (!userAddress || !isAuthenticated) {

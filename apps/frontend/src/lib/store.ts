@@ -25,8 +25,8 @@ interface ExchangeState {
   // User Data
   userAddress: string | null;
   isAuthenticated: boolean;
-  balances: Balance[];
-  orders: Order[];
+  userBalances: Balance[];
+  userOrders: Order[];
   userTrades: Trade[];
 
   // Actions - Market Data
@@ -71,8 +71,8 @@ const initialState = {
   // User Data
   userAddress: null,
   isAuthenticated: false,
-  balances: [],
-  orders: [],
+  userBalances: [],
+  userOrders: [],
   userTrades: [],
 };
 
@@ -151,22 +151,22 @@ export const useExchangeStore = create<ExchangeState>()(
         set((state) => {
           state.userAddress = null;
           state.isAuthenticated = false;
-          state.balances = [];
-          state.orders = [];
+          state.userBalances = [];
+          state.userOrders = [];
           state.userTrades = [];
         }),
 
       setBalances: (balances) =>
         set((state) => {
-          state.balances = balances;
+          state.userBalances = balances;
         }),
 
       updateBalance: (tokenTicker, available, locked) =>
         set((state) => {
-          const existingIndex = state.balances.findIndex((b) => b.token_ticker === tokenTicker);
+          const existingIndex = state.userBalances.findIndex((b) => b.token_ticker === tokenTicker);
 
-          if (existingIndex >= 0 && state.balances[existingIndex]) {
-            const existing = state.balances[existingIndex];
+          if (existingIndex >= 0 && state.userBalances[existingIndex]) {
+            const existing = state.userBalances[existingIndex];
             const totalAmount = (BigInt(available) + BigInt(locked)).toString();
             const token = state.tokens.find((t) => t.ticker === tokenTicker);
             if (!token) return;
@@ -175,7 +175,7 @@ export const useExchangeStore = create<ExchangeState>()(
             const amountValue = Number(BigInt(totalAmount)) / divisor;
             const lockedValue = Number(BigInt(locked)) / divisor;
 
-            state.balances = state.balances.map((balance, index) =>
+            state.userBalances = state.userBalances.map((balance, index) =>
               index === existingIndex
                 ? {
                     token_ticker: existing.token_ticker,
@@ -195,15 +195,15 @@ export const useExchangeStore = create<ExchangeState>()(
 
       setOrders: (orders) =>
         set((state) => {
-          state.orders = orders;
+          state.userOrders = orders;
         }),
 
       updateOrder: (orderId, status, filledSize) =>
         set((state) => {
-          const existingIndex = state.orders.findIndex((o) => o.id === orderId);
+          const existingIndex = state.userOrders.findIndex((o) => o.id === orderId);
 
           if (existingIndex >= 0) {
-            const existing = state.orders[existingIndex];
+            const existing = state.userOrders[existingIndex];
             if (!existing) return;
 
             const market = state.markets.find((m) => m.id === existing.market_id);
@@ -215,7 +215,7 @@ export const useExchangeStore = create<ExchangeState>()(
             const divisor = Math.pow(10, baseToken.decimals);
             const filledValue = Number(BigInt(filledSize)) / divisor;
 
-            state.orders = state.orders.map((order, index) =>
+            state.userOrders = state.userOrders.map((order, index) =>
               index === existingIndex
                 ? {
                     ...existing,
