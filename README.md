@@ -153,7 +153,8 @@ missing production
 - use schemars instead of ts-rs for ts/python type generation
 - frontend styling and sdk improvements
 - fix balance ws emit
-- refactor ws types
+- refactor ws types with userfills
+- try tradingview order lines
 
 - add trading signatures
 - add admin page

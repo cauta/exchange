@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useExchangeStore } from "@/lib/store";
 import { useMarkets } from "@/lib/hooks";
 import { Orderbook } from "@/components/orderbook-panel";
-import { TradingViewChart } from "@/components/TradingViewChart";
+import { TradingViewChart } from "@/components/chart";
 import { TradePanel } from "@/components/trade-panel";
 import { BottomPanel } from "@/components/bottom-panel";
 import { MarketHeader } from "@/components/MarketHeader";
