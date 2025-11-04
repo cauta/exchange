@@ -212,7 +212,8 @@ impl Executor {
 
         // Broadcast all balance updates
         for (user_address, token_ticker) in balance_updates {
-            let _ = Self::broadcast_balance_update(&db, event_tx, &user_address, &token_ticker).await;
+            let _ =
+                Self::broadcast_balance_update(&db, event_tx, &user_address, &token_ticker).await;
         }
 
         // Insert trades into ClickHouse asynchronously (after commit)

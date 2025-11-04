@@ -196,7 +196,7 @@ class WebSocketClient:
                 "type": "subscribe",
                 "channel": channel,
                 "market_id": identifier if channel in ["trades", "orderbook"] else None,
-                "user_address": identifier if channel == "user" else None,
+                "user_address": identifier if channel in ["user_fills", "user_orders", "user_balances"] else None,
             }
 
             await self._send(message)
@@ -444,12 +444,12 @@ class WebSocketClient:
                 })
 
         remove_handler = self.on("order", order_handler)
-        asyncio.create_task(self.subscribe(SubscriptionChannel.USER, user_address=user_address))
+        asyncio.create_task(self.subscribe(SubscriptionChannel.USER_ORDERS, user_address=user_address))
 
         def unsubscribe():
             self.logger.debug(f"Cleaning up user orders subscription for {user_address}")
             remove_handler()
-            asyncio.create_task(self.unsubscribe(SubscriptionChannel.USER, user_address=user_address))
+            asyncio.create_task(self.unsubscribe(SubscriptionChannel.USER_ORDERS, user_address=user_address))
 
         return unsubscribe
 
@@ -466,16 +466,10 @@ class WebSocketClient:
         Returns:
             Unsubscribe function
         """
-        self.logger.debug(f"Setting up user trades subscription for {user_address}")
+        self.logger.debug(f"Setting up user fills subscription for {user_address}")
 
         def trade_handler(msg: dict[str, Any]):
             if msg.get("type") != "trade":
-                return
-
-            trade_data = msg.get("trade", {})
-
-            # Only process trades where the user is the buyer or seller
-            if trade_data.get("buyer_address") != user_address and trade_data.get("seller_address") != user_address:
                 return
 
             if not self.cache.is_ready():
@@ -483,6 +477,7 @@ class WebSocketClient:
                 return
 
             try:
+                trade_data = msg.get("trade", {})
                 ws_trade: WsTradeData = {
                     "id": trade_data["id"],
                     "market_id": trade_data["market_id"],
@@ -501,12 +496,12 @@ class WebSocketClient:
                 self.logger.error(f"Failed to enhance user trade: {e}")
 
         remove_handler = self.on("trade", trade_handler)
-        asyncio.create_task(self.subscribe(SubscriptionChannel.USER, user_address=user_address))
+        asyncio.create_task(self.subscribe(SubscriptionChannel.USER_FILLS, user_address=user_address))
 
         def unsubscribe():
-            self.logger.debug(f"Cleaning up user trades subscription for {user_address}")
+            self.logger.debug(f"Cleaning up user fills subscription for {user_address}")
             remove_handler()
-            asyncio.create_task(self.unsubscribe(SubscriptionChannel.USER, user_address=user_address))
+            asyncio.create_task(self.unsubscribe(SubscriptionChannel.USER_FILLS, user_address=user_address))
 
         return unsubscribe
 
@@ -534,12 +529,12 @@ class WebSocketClient:
                 })
 
         remove_handler = self.on("balance", balance_handler)
-        asyncio.create_task(self.subscribe(SubscriptionChannel.USER, user_address=user_address))
+        asyncio.create_task(self.subscribe(SubscriptionChannel.USER_BALANCES, user_address=user_address))
 
         def unsubscribe():
             self.logger.debug(f"Cleaning up user balances subscription for {user_address}")
             remove_handler()
-            asyncio.create_task(self.unsubscribe(SubscriptionChannel.USER, user_address=user_address))
+            asyncio.create_task(self.unsubscribe(SubscriptionChannel.USER_BALANCES, user_address=user_address))
 
         return unsubscribe
 

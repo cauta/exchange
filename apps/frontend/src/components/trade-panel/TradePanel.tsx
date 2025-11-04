@@ -44,27 +44,22 @@ export function TradePanel() {
   const bestAsk = asks.length > 0 && asks[0] ? asks[0].priceValue : null;
 
   // Use the trade form hook - MUST be called before any early returns
-  const formHookParams = selectedMarket && baseToken && quoteToken ? {
-    selectedMarket,
-    baseToken,
-    quoteToken,
-    availableBase,
-    availableQuote,
-    bestBid,
-    bestAsk,
-    lastTradePrice,
-  } : null;
+  const formHookParams =
+    selectedMarket && baseToken && quoteToken
+      ? {
+          selectedMarket,
+          baseToken,
+          quoteToken,
+          availableBase,
+          availableQuote,
+          bestBid,
+          bestAsk,
+          lastTradePrice,
+        }
+      : null;
 
-  const {
-    formData,
-    updateField,
-    errors,
-    loading,
-    success,
-    estimate,
-    priceDecimals,
-    handleSubmit,
-  } = useTradeForm(formHookParams);
+  const { formData, updateField, errors, loading, success, estimate, priceDecimals, handleSubmit } =
+    useTradeForm(formHookParams);
 
   // Handle price selection from orderbook - MUST be before early returns
   useEffect(() => {
@@ -109,9 +104,10 @@ export function TradePanel() {
   const feeBps = formData.orderType === "market" ? selectedMarket.taker_fee_bps : selectedMarket.maker_fee_bps;
 
   // Get current price for size calculations
-  const currentPrice = formData.orderType === "limit"
-    ? parseFloat(formData.price) || null
-    : (formData.side === "buy" ? bestAsk : bestBid) || lastTradePrice;
+  const currentPrice =
+    formData.orderType === "limit"
+      ? parseFloat(formData.price) || null
+      : (formData.side === "buy" ? bestAsk : bestBid) || lastTradePrice;
 
   return (
     <Card className="h-full flex flex-col gap-0 py-0 overflow-hidden shadow-lg border-border/50 bg-gradient-to-b from-card to-card/80 min-w-0">

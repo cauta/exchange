@@ -174,9 +174,9 @@ async fn test_ws_subscribe_to_user_updates() {
         .await
         .expect("Failed to connect to WebSocket");
 
-    // Subscribe to user updates
+    // Subscribe to user balances
     let subscribe_msg = ClientMessage::Subscribe {
-        channel: SubscriptionChannel::User,
+        channel: SubscriptionChannel::UserBalances,
         market_id: None,
         user_address: Some("0x1234567890abcdef".to_string()),
     };
@@ -265,7 +265,7 @@ async fn test_ws_multiple_subscriptions_same_connection() {
             user_address: None,
         },
         ClientMessage::Subscribe {
-            channel: SubscriptionChannel::User,
+            channel: SubscriptionChannel::UserBalances,
             market_id: None,
             user_address: Some("0xuser123".to_string()),
         },
@@ -542,12 +542,32 @@ async fn test_two_users_limit_order_matching_full_events() {
     let maker = "maker_full_test".to_string();
     let taker = "taker_full_test".to_string();
 
-    server.test_db.db.create_user(maker.clone()).await.expect("Failed to create maker");
-    server.test_db.db.create_user(taker.clone()).await.expect("Failed to create taker");
+    server
+        .test_db
+        .db
+        .create_user(maker.clone())
+        .await
+        .expect("Failed to create maker");
+    server
+        .test_db
+        .db
+        .create_user(taker.clone())
+        .await
+        .expect("Failed to create taker");
 
     // Give balances
-    server.test_db.db.add_balance(&maker, "BTC", 10_000_000).await.expect("Failed to add BTC");
-    server.test_db.db.add_balance(&taker, "USDC", 100_000_000_000_000_000).await.expect("Failed to add USDC");
+    server
+        .test_db
+        .db
+        .add_balance(&maker, "BTC", 10_000_000)
+        .await
+        .expect("Failed to add BTC");
+    server
+        .test_db
+        .db
+        .add_balance(&taker, "USDC", 100_000_000_000_000_000)
+        .await
+        .expect("Failed to add USDC");
 
     // Connect WebSocket for maker - subscribe to user events
     let ws_url = server.ws_url("/ws");
@@ -558,7 +578,7 @@ async fn test_two_users_limit_order_matching_full_events() {
     send_json(
         &mut ws_maker,
         &ClientMessage::Subscribe {
-            channel: SubscriptionChannel::User,
+            channel: SubscriptionChannel::UserBalances,
             market_id: None,
             user_address: Some(maker.clone()),
         },
@@ -571,17 +591,28 @@ async fn test_two_users_limit_order_matching_full_events() {
         .await
         .expect("Failed to connect taker WebSocket");
 
-    // Taker subscribes to user events
+    // Taker subscribes to user balances and fills
     send_json(
         &mut ws_taker,
         &ClientMessage::Subscribe {
-            channel: SubscriptionChannel::User,
+            channel: SubscriptionChannel::UserBalances,
             market_id: None,
             user_address: Some(taker.clone()),
         },
     )
     .await
-    .expect("Failed to subscribe taker user");
+    .expect("Failed to subscribe taker balances");
+
+    send_json(
+        &mut ws_taker,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::UserFills,
+            market_id: None,
+            user_address: Some(taker.clone()),
+        },
+    )
+    .await
+    .expect("Failed to subscribe taker fills");
 
     // Taker subscribes to trades
     send_json(
@@ -621,11 +652,17 @@ async fn test_two_users_limit_order_matching_full_events() {
     );
 
     // Lock maker's balance and broadcast event
-    server.test_db.db.lock_balance(&maker, "BTC", 1_000_000).await.expect("Failed to lock maker balance");
+    server
+        .test_db
+        .db
+        .lock_balance(&maker, "BTC", 1_000_000)
+        .await
+        .expect("Failed to lock maker balance");
     if let Ok(balance) = server.test_db.db.get_balance(&maker, "BTC").await {
-        let _ = server.test_engine.event_tx().send(backend::models::domain::EngineEvent::BalanceUpdated {
-            balance,
-        });
+        let _ = server
+            .test_engine
+            .event_tx()
+            .send(backend::models::domain::EngineEvent::BalanceUpdated { balance });
     }
 
     server
@@ -645,11 +682,17 @@ async fn test_two_users_limit_order_matching_full_events() {
     );
 
     // Lock taker's balance (price * size) and broadcast event
-    server.test_db.db.lock_balance(&taker, "USDC", 50_000_000_000_000_000).await.expect("Failed to lock taker balance");
+    server
+        .test_db
+        .db
+        .lock_balance(&taker, "USDC", 50_000_000_000_000_000)
+        .await
+        .expect("Failed to lock taker balance");
     if let Ok(balance) = server.test_db.db.get_balance(&taker, "USDC").await {
-        let _ = server.test_engine.event_tx().send(backend::models::domain::EngineEvent::BalanceUpdated {
-            balance,
-        });
+        let _ = server
+            .test_engine
+            .event_tx()
+            .send(backend::models::domain::EngineEvent::BalanceUpdated { balance });
     }
 
     server
@@ -662,18 +705,30 @@ async fn test_two_users_limit_order_matching_full_events() {
     // Skip initial lock event and wait for post-trade event
     let maker_balance_msg = receive_message_of_type(
         &mut ws_maker,
-        |msg| matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
-            if token_ticker == "BTC" && locked == "0"),
+        |msg| {
+            matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
+            if token_ticker == "BTC" && locked == "0")
+        },
         10,
     )
     .await
     .expect("Maker should receive BTC balance update after trade");
 
-    if let ServerMessage::Balance { user_address, token_ticker, available, locked, .. } = maker_balance_msg {
+    if let ServerMessage::Balance {
+        user_address,
+        token_ticker,
+        available,
+        locked,
+        ..
+    } = maker_balance_msg
+    {
         assert_eq!(user_address, maker);
         assert_eq!(token_ticker, "BTC");
         let available_btc = available.parse::<u128>().unwrap();
-        assert!(available_btc < 10_000_000, "Maker should have less BTC after selling");
+        assert!(
+            available_btc < 10_000_000,
+            "Maker should have less BTC after selling"
+        );
         assert_eq!(locked, "0", "Maker should have no locked BTC after trade");
     }
 
@@ -695,14 +750,22 @@ async fn test_two_users_limit_order_matching_full_events() {
     // Verify taker receives balance updates for both BTC and USDC (unlocked after trade)
     let taker_btc_balance = receive_message_of_type(
         &mut ws_taker,
-        |msg| matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
-            if token_ticker == "BTC" && locked == "0"),
+        |msg| {
+            matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
+            if token_ticker == "BTC" && locked == "0")
+        },
         10,
     )
     .await
     .expect("Taker should receive BTC balance update");
 
-    if let ServerMessage::Balance { user_address, available, locked, .. } = taker_btc_balance {
+    if let ServerMessage::Balance {
+        user_address,
+        available,
+        locked,
+        ..
+    } = taker_btc_balance
+    {
         assert_eq!(user_address, taker);
         let btc = available.parse::<u128>().unwrap();
         assert!(btc > 0, "Taker should have received BTC");
@@ -711,17 +774,28 @@ async fn test_two_users_limit_order_matching_full_events() {
 
     let taker_usdc_balance = receive_message_of_type(
         &mut ws_taker,
-        |msg| matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
-            if token_ticker == "USDC" && locked == "0"),
+        |msg| {
+            matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
+            if token_ticker == "USDC" && locked == "0")
+        },
         10,
     )
     .await
     .expect("Taker should receive USDC balance update");
 
-    if let ServerMessage::Balance { user_address, available, locked, .. } = taker_usdc_balance {
+    if let ServerMessage::Balance {
+        user_address,
+        available,
+        locked,
+        ..
+    } = taker_usdc_balance
+    {
         assert_eq!(user_address, taker);
         let usdc = available.parse::<u128>().unwrap();
-        assert!(usdc < 100_000_000_000_000_000, "Taker should have spent USDC");
+        assert!(
+            usdc < 100_000_000_000_000_000,
+            "Taker should have spent USDC"
+        );
         assert_eq!(locked, "0", "Taker USDC should not be locked");
     }
 
@@ -745,37 +819,98 @@ async fn test_two_users_partial_fill_with_cancellation() {
     let maker = "maker_partial".to_string();
     let taker = "taker_partial".to_string();
 
-    server.test_db.db.create_user(maker.clone()).await.expect("Failed to create maker");
-    server.test_db.db.create_user(taker.clone()).await.expect("Failed to create taker");
+    server
+        .test_db
+        .db
+        .create_user(maker.clone())
+        .await
+        .expect("Failed to create maker");
+    server
+        .test_db
+        .db
+        .create_user(taker.clone())
+        .await
+        .expect("Failed to create taker");
 
     // Maker has 1 BTC, taker wants to buy 2 BTC
-    server.test_db.db.add_balance(&maker, "BTC", 1_000_000).await.expect("Failed to add BTC");
-    server.test_db.db.add_balance(&taker, "USDC", 200_000_000_000_000_000).await.expect("Failed to add USDC");
+    server
+        .test_db
+        .db
+        .add_balance(&maker, "BTC", 1_000_000)
+        .await
+        .expect("Failed to add BTC");
+    server
+        .test_db
+        .db
+        .add_balance(&taker, "USDC", 200_000_000_000_000_000)
+        .await
+        .expect("Failed to add USDC");
 
     // Connect WebSockets
     let ws_url = server.ws_url("/ws");
-    let (mut ws_maker, _) = tokio_tungstenite::connect_async(&ws_url).await.expect("Failed to connect");
-    let (mut ws_taker, _) = tokio_tungstenite::connect_async(&ws_url).await.expect("Failed to connect");
+    let (mut ws_maker, _) = tokio_tungstenite::connect_async(&ws_url)
+        .await
+        .expect("Failed to connect");
+    let (mut ws_taker, _) = tokio_tungstenite::connect_async(&ws_url)
+        .await
+        .expect("Failed to connect");
 
-    // Subscribe to user events
-    send_json(&mut ws_maker, &ClientMessage::Subscribe {
-        channel: SubscriptionChannel::User,
-        market_id: None,
-        user_address: Some(maker.clone()),
-    }).await.expect("Failed to subscribe");
+    // Subscribe to user events (balances, fills, orders)
+    send_json(
+        &mut ws_maker,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::UserBalances,
+            market_id: None,
+            user_address: Some(maker.clone()),
+        },
+    )
+    .await
+    .expect("Failed to subscribe");
 
-    send_json(&mut ws_taker, &ClientMessage::Subscribe {
-        channel: SubscriptionChannel::User,
-        market_id: None,
-        user_address: Some(taker.clone()),
-    }).await.expect("Failed to subscribe");
+    send_json(
+        &mut ws_taker,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::UserBalances,
+            market_id: None,
+            user_address: Some(taker.clone()),
+        },
+    )
+    .await
+    .expect("Failed to subscribe taker balances");
+
+    send_json(
+        &mut ws_taker,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::UserFills,
+            market_id: None,
+            user_address: Some(taker.clone()),
+        },
+    )
+    .await
+    .expect("Failed to subscribe taker fills");
+
+    send_json(
+        &mut ws_taker,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::UserOrders,
+            market_id: None,
+            user_address: Some(taker.clone()),
+        },
+    )
+    .await
+    .expect("Failed to subscribe taker orders");
 
     // Subscribe taker to trades
-    send_json(&mut ws_taker, &ClientMessage::Subscribe {
-        channel: SubscriptionChannel::Trades,
-        market_id: Some("BTC/USDC".to_string()),
-        user_address: None,
-    }).await.expect("Failed to subscribe");
+    send_json(
+        &mut ws_taker,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::Trades,
+            market_id: Some("BTC/USDC".to_string()),
+            user_address: None,
+        },
+    )
+    .await
+    .expect("Failed to subscribe");
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
@@ -788,13 +923,23 @@ async fn test_two_users_partial_fill_with_cancellation() {
         50_000_000_000,
         1_000_000,
     );
-    server.test_db.db.lock_balance(&maker, "BTC", 1_000_000).await.expect("Failed to lock");
+    server
+        .test_db
+        .db
+        .lock_balance(&maker, "BTC", 1_000_000)
+        .await
+        .expect("Failed to lock");
     if let Ok(balance) = server.test_db.db.get_balance(&maker, "BTC").await {
-        let _ = server.test_engine.event_tx().send(backend::models::domain::EngineEvent::BalanceUpdated {
-            balance,
-        });
+        let _ = server
+            .test_engine
+            .event_tx()
+            .send(backend::models::domain::EngineEvent::BalanceUpdated { balance });
     }
-    server.test_engine.place_order(maker_order).await.expect("Failed to place order");
+    server
+        .test_engine
+        .place_order(maker_order)
+        .await
+        .expect("Failed to place order");
 
     // Taker places buy order for 2 BTC (will partially fill with 1 BTC)
     let taker_order = utils::TestEngine::create_order(
@@ -805,13 +950,23 @@ async fn test_two_users_partial_fill_with_cancellation() {
         50_000_000_000,
         2_000_000, // Requesting 2 BTC but only 1 available
     );
-    server.test_db.db.lock_balance(&taker, "USDC", 100_000_000_000_000_000).await.expect("Failed to lock"); // Lock for 2 BTC
+    server
+        .test_db
+        .db
+        .lock_balance(&taker, "USDC", 100_000_000_000_000_000)
+        .await
+        .expect("Failed to lock"); // Lock for 2 BTC
     if let Ok(balance) = server.test_db.db.get_balance(&taker, "USDC").await {
-        let _ = server.test_engine.event_tx().send(backend::models::domain::EngineEvent::BalanceUpdated {
-            balance,
-        });
+        let _ = server
+            .test_engine
+            .event_tx()
+            .send(backend::models::domain::EngineEvent::BalanceUpdated { balance });
     }
-    let placed = server.test_engine.place_order(taker_order).await.expect("Failed to place order");
+    let placed = server
+        .test_engine
+        .place_order(taker_order)
+        .await
+        .expect("Failed to place order");
     let taker_order_id = uuid::Uuid::parse_str(&placed.order.id).expect("Invalid order ID");
 
     // Verify taker receives trade event for partial fill
@@ -830,47 +985,77 @@ async fn test_two_users_partial_fill_with_cancellation() {
     // Verify taker receives balance updates showing some BTC received
     let _btc_update = receive_message_of_type(
         &mut ws_taker,
-        |msg| matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
-            if token_ticker == "BTC" && locked == "0"),
+        |msg| {
+            matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
+            if token_ticker == "BTC" && locked == "0")
+        },
         10,
-    ).await.expect("Should receive BTC balance");
+    )
+    .await
+    .expect("Should receive BTC balance");
 
     // Wait for USDC balance update showing partial unlock and some still locked
     let usdc_update = receive_message_of_type(
         &mut ws_taker,
-        |msg| matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
-            if token_ticker == "USDC" && locked != "0" && locked != "100000000000000000"),
+        |msg| {
+            matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
+            if token_ticker == "USDC" && locked != "0" && locked != "100000000000000000")
+        },
         10,
-    ).await.expect("Should receive USDC balance with remaining order locked");
+    )
+    .await
+    .expect("Should receive USDC balance with remaining order locked");
 
     // Verify some USDC was unlocked (unfilled portion), but some still locked in remaining order
-    if let ServerMessage::Balance { available, locked, .. } = usdc_update {
+    if let ServerMessage::Balance {
+        available, locked, ..
+    } = usdc_update
+    {
         let available_usdc = available.parse::<u128>().unwrap();
         // Should have spent ~50_000_000_000_000_000 for 1 BTC, and had ~50_000_000_000_000_000 unlocked from unfilled
-        assert!(available_usdc > 100_000_000_000_000_000, "Should have unlocked USDC from unfilled portion");
-        assert_eq!(locked, "50000000000000000", "Should still have 1 BTC worth locked in remaining order");
+        assert!(
+            available_usdc > 100_000_000_000_000_000,
+            "Should have unlocked USDC from unfilled portion"
+        );
+        assert_eq!(
+            locked, "50000000000000000",
+            "Should still have 1 BTC worth locked in remaining order"
+        );
     }
 
     // Cancel the remaining order
-    server.test_engine.cancel_order(taker_order_id, taker.clone()).await.expect("Failed to cancel");
+    server
+        .test_engine
+        .cancel_order(taker_order_id, taker.clone())
+        .await
+        .expect("Failed to cancel");
 
     // Verify taker receives order cancellation
     let _cancel_msg = receive_message_of_type(
         &mut ws_taker,
         |msg| matches!(msg, ServerMessage::Order { status, .. } if status == "cancelled"),
         5,
-    ).await.expect("Should receive cancellation");
+    )
+    .await
+    .expect("Should receive cancellation");
 
     // Verify final balance unlock
     let final_usdc = receive_message_of_type(
         &mut ws_taker,
-        |msg| matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
-            if token_ticker == "USDC" && locked == "0"),
+        |msg| {
+            matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
+            if token_ticker == "USDC" && locked == "0")
+        },
         5,
-    ).await.expect("Should receive final unlock");
+    )
+    .await
+    .expect("Should receive final unlock");
 
     if let ServerMessage::Balance { locked, .. } = final_usdc {
-        assert_eq!(locked, "0", "All USDC should be unlocked after cancellation");
+        assert_eq!(
+            locked, "0",
+            "All USDC should be unlocked after cancellation"
+        );
     }
 
     ws_maker.close(None).await.ok();
@@ -893,36 +1078,75 @@ async fn test_market_order_immediate_execution_all_events() {
     let maker = "maker_market".to_string();
     let taker = "taker_market".to_string();
 
-    server.test_db.db.create_user(maker.clone()).await.expect("Failed to create maker");
-    server.test_db.db.create_user(taker.clone()).await.expect("Failed to create taker");
+    server
+        .test_db
+        .db
+        .create_user(maker.clone())
+        .await
+        .expect("Failed to create maker");
+    server
+        .test_db
+        .db
+        .create_user(taker.clone())
+        .await
+        .expect("Failed to create taker");
 
-    server.test_db.db.add_balance(&maker, "BTC", 5_000_000).await.expect("Failed to add BTC");
-    server.test_db.db.add_balance(&taker, "USDC", 200_000_000_000_000_000).await.expect("Failed to add USDC");
+    server
+        .test_db
+        .db
+        .add_balance(&maker, "BTC", 5_000_000)
+        .await
+        .expect("Failed to add BTC");
+    server
+        .test_db
+        .db
+        .add_balance(&taker, "USDC", 200_000_000_000_000_000)
+        .await
+        .expect("Failed to add USDC");
 
     // Connect WebSockets with all subscriptions
     let ws_url = server.ws_url("/ws");
-    let (mut ws_global, _) = tokio_tungstenite::connect_async(&ws_url).await.expect("Failed to connect");
-    let (mut ws_taker, _) = tokio_tungstenite::connect_async(&ws_url).await.expect("Failed to connect");
+    let (mut ws_global, _) = tokio_tungstenite::connect_async(&ws_url)
+        .await
+        .expect("Failed to connect");
+    let (mut ws_taker, _) = tokio_tungstenite::connect_async(&ws_url)
+        .await
+        .expect("Failed to connect");
 
     // Global connection subscribes to trades and orderbook
-    send_json(&mut ws_global, &ClientMessage::Subscribe {
-        channel: SubscriptionChannel::Trades,
-        market_id: Some("BTC/USDC".to_string()),
-        user_address: None,
-    }).await.expect("Failed to subscribe");
+    send_json(
+        &mut ws_global,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::Trades,
+            market_id: Some("BTC/USDC".to_string()),
+            user_address: None,
+        },
+    )
+    .await
+    .expect("Failed to subscribe");
 
-    send_json(&mut ws_global, &ClientMessage::Subscribe {
-        channel: SubscriptionChannel::Orderbook,
-        market_id: Some("BTC/USDC".to_string()),
-        user_address: None,
-    }).await.expect("Failed to subscribe");
+    send_json(
+        &mut ws_global,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::Orderbook,
+            market_id: Some("BTC/USDC".to_string()),
+            user_address: None,
+        },
+    )
+    .await
+    .expect("Failed to subscribe");
 
-    // Taker subscribes to user events
-    send_json(&mut ws_taker, &ClientMessage::Subscribe {
-        channel: SubscriptionChannel::User,
-        market_id: None,
-        user_address: Some(taker.clone()),
-    }).await.expect("Failed to subscribe");
+    // Taker subscribes to user balances
+    send_json(
+        &mut ws_taker,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::UserBalances,
+            market_id: None,
+            user_address: Some(taker.clone()),
+        },
+    )
+    .await
+    .expect("Failed to subscribe");
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
@@ -935,20 +1159,32 @@ async fn test_market_order_immediate_execution_all_events() {
         50_000_000_000,
         2_000_000,
     );
-    server.test_db.db.lock_balance(&maker, "BTC", 2_000_000).await.expect("Failed to lock");
+    server
+        .test_db
+        .db
+        .lock_balance(&maker, "BTC", 2_000_000)
+        .await
+        .expect("Failed to lock");
     if let Ok(balance) = server.test_db.db.get_balance(&maker, "BTC").await {
-        let _ = server.test_engine.event_tx().send(backend::models::domain::EngineEvent::BalanceUpdated {
-            balance,
-        });
+        let _ = server
+            .test_engine
+            .event_tx()
+            .send(backend::models::domain::EngineEvent::BalanceUpdated { balance });
     }
-    server.test_engine.place_order(maker_order).await.expect("Failed to place");
+    server
+        .test_engine
+        .place_order(maker_order)
+        .await
+        .expect("Failed to place");
 
     // Wait for orderbook update showing the ask
     let _orderbook_before = receive_message_of_type(
         &mut ws_global,
         |msg| matches!(msg, ServerMessage::Orderbook { .. }),
         5,
-    ).await.expect("Should receive orderbook with ask");
+    )
+    .await
+    .expect("Should receive orderbook with ask");
 
     // Taker places market buy order (immediate execution)
     let taker_order = utils::TestEngine::create_order(
@@ -959,20 +1195,32 @@ async fn test_market_order_immediate_execution_all_events() {
         50_000_000_000,
         2_000_000,
     );
-    server.test_db.db.lock_balance(&taker, "USDC", 100_000_000_000_000_000).await.expect("Failed to lock");
+    server
+        .test_db
+        .db
+        .lock_balance(&taker, "USDC", 100_000_000_000_000_000)
+        .await
+        .expect("Failed to lock");
     if let Ok(balance) = server.test_db.db.get_balance(&taker, "USDC").await {
-        let _ = server.test_engine.event_tx().send(backend::models::domain::EngineEvent::BalanceUpdated {
-            balance,
-        });
+        let _ = server
+            .test_engine
+            .event_tx()
+            .send(backend::models::domain::EngineEvent::BalanceUpdated { balance });
     }
-    server.test_engine.place_order(taker_order).await.expect("Failed to place");
+    server
+        .test_engine
+        .place_order(taker_order)
+        .await
+        .expect("Failed to place");
 
     // Verify global trade event is received
     let trade = receive_message_of_type(
         &mut ws_global,
         |msg| matches!(msg, ServerMessage::Trade { .. }),
         5,
-    ).await.expect("Should receive trade on global stream");
+    )
+    .await
+    .expect("Should receive trade on global stream");
 
     if let ServerMessage::Trade { trade } = trade {
         assert_eq!(trade.market_id, "BTC/USDC");
@@ -986,9 +1234,14 @@ async fn test_market_order_immediate_execution_all_events() {
         &mut ws_taker,
         |msg| matches!(msg, ServerMessage::Balance { token_ticker, .. } if token_ticker == "BTC"),
         5,
-    ).await.expect("Should receive BTC balance");
+    )
+    .await
+    .expect("Should receive BTC balance");
 
-    if let ServerMessage::Balance { available, locked, .. } = btc_balance {
+    if let ServerMessage::Balance {
+        available, locked, ..
+    } = btc_balance
+    {
         let btc = available.parse::<u128>().unwrap();
         assert!(btc > 0, "Taker should have BTC");
         assert_eq!(locked, "0", "No BTC should be locked");
@@ -998,11 +1251,19 @@ async fn test_market_order_immediate_execution_all_events() {
         &mut ws_taker,
         |msg| matches!(msg, ServerMessage::Balance { token_ticker, .. } if token_ticker == "USDC"),
         5,
-    ).await.expect("Should receive USDC balance");
+    )
+    .await
+    .expect("Should receive USDC balance");
 
-    if let ServerMessage::Balance { available, locked, .. } = usdc_balance {
+    if let ServerMessage::Balance {
+        available, locked, ..
+    } = usdc_balance
+    {
         let usdc = available.parse::<u128>().unwrap();
-        assert!(usdc < 200_000_000_000_000_000, "Taker should have spent USDC");
+        assert!(
+            usdc < 200_000_000_000_000_000,
+            "Taker should have spent USDC"
+        );
         assert_eq!(locked, "0", "No USDC should be locked");
     }
 
@@ -1024,24 +1285,57 @@ async fn test_multiple_orders_and_cancellations_event_flow() {
         .expect("Failed to create market");
 
     let user = "multi_order_user".to_string();
-    server.test_db.db.create_user(user.clone()).await.expect("Failed to create user");
-    server.test_db.db.add_balance(&user, "USDC", 20_000_000_000_000_000).await.expect("Failed to add balance");
+    server
+        .test_db
+        .db
+        .create_user(user.clone())
+        .await
+        .expect("Failed to create user");
+    server
+        .test_db
+        .db
+        .add_balance(&user, "USDC", 20_000_000_000_000_000)
+        .await
+        .expect("Failed to add balance");
 
     // Connect WebSocket
     let ws_url = server.ws_url("/ws");
-    let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url).await.expect("Failed to connect");
+    let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
+        .await
+        .expect("Failed to connect");
 
-    send_json(&mut ws, &ClientMessage::Subscribe {
-        channel: SubscriptionChannel::User,
-        market_id: None,
-        user_address: Some(user.clone()),
-    }).await.expect("Failed to subscribe");
+    send_json(
+        &mut ws,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::UserBalances,
+            market_id: None,
+            user_address: Some(user.clone()),
+        },
+    )
+    .await
+    .expect("Failed to subscribe user balances");
 
-    send_json(&mut ws, &ClientMessage::Subscribe {
-        channel: SubscriptionChannel::Orderbook,
-        market_id: Some("ETH/USDC".to_string()),
-        user_address: None,
-    }).await.expect("Failed to subscribe");
+    send_json(
+        &mut ws,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::UserOrders,
+            market_id: None,
+            user_address: Some(user.clone()),
+        },
+    )
+    .await
+    .expect("Failed to subscribe user orders");
+
+    send_json(
+        &mut ws,
+        &ClientMessage::Subscribe {
+            channel: SubscriptionChannel::Orderbook,
+            market_id: Some("ETH/USDC".to_string()),
+            user_address: None,
+        },
+    )
+    .await
+    .expect("Failed to subscribe");
 
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
@@ -1059,13 +1353,23 @@ async fn test_multiple_orders_and_cancellations_event_flow() {
         );
 
         let lock_amount = price * 1_000_000; // price * size
-        server.test_db.db.lock_balance(&user, "USDC", lock_amount).await.expect("Failed to lock");
+        server
+            .test_db
+            .db
+            .lock_balance(&user, "USDC", lock_amount)
+            .await
+            .expect("Failed to lock");
         if let Ok(balance) = server.test_db.db.get_balance(&user, "USDC").await {
-            let _ = server.test_engine.event_tx().send(backend::models::domain::EngineEvent::BalanceUpdated {
-                balance,
-            });
+            let _ = server
+                .test_engine
+                .event_tx()
+                .send(backend::models::domain::EngineEvent::BalanceUpdated { balance });
         }
-        let placed = server.test_engine.place_order(order).await.expect("Failed to place");
+        let placed = server
+            .test_engine
+            .place_order(order)
+            .await
+            .expect("Failed to place");
         order_ids.push(uuid::Uuid::parse_str(&placed.order.id).expect("Invalid ID"));
 
         // Verify balance update for each order
@@ -1081,7 +1385,9 @@ async fn test_multiple_orders_and_cancellations_event_flow() {
         &mut ws,
         |msg| matches!(msg, ServerMessage::Orderbook { .. }),
         10,
-    ).await.expect("Should receive orderbook update");
+    )
+    .await
+    .expect("Should receive orderbook update");
 
     if let ServerMessage::Orderbook { orderbook } = orderbook {
         assert_eq!(orderbook.market_id, "ETH/USDC");
@@ -1090,14 +1396,20 @@ async fn test_multiple_orders_and_cancellations_event_flow() {
 
     // Cancel all orders one by one
     for (i, order_id) in order_ids.iter().enumerate() {
-        server.test_engine.cancel_order(*order_id, user.clone()).await.expect("Failed to cancel");
+        server
+            .test_engine
+            .cancel_order(*order_id, user.clone())
+            .await
+            .expect("Failed to cancel");
 
         // Verify cancellation event
         let _cancel = receive_message_of_type(
             &mut ws,
             |msg| matches!(msg, ServerMessage::Order { status, .. } if status == "cancelled"),
             5,
-        ).await.expect(&format!("Should receive cancellation for order {}", i + 1));
+        )
+        .await
+        .expect(&format!("Should receive cancellation for order {}", i + 1));
 
         // Verify balance unlock
         let balance = receive_message_of_type(
@@ -1106,25 +1418,43 @@ async fn test_multiple_orders_and_cancellations_event_flow() {
             5,
         ).await.expect(&format!("Should receive balance unlock for order {}", i + 1));
 
-        if let ServerMessage::Balance { available, locked, .. } = balance {
+        if let ServerMessage::Balance {
+            available, locked, ..
+        } = balance
+        {
             let available_usdc = available.parse::<u128>().unwrap();
             let locked_usdc = locked.parse::<u128>().unwrap();
-            println!("After cancel {}: available={}, locked={}", i + 1, available_usdc, locked_usdc);
+            println!(
+                "After cancel {}: available={}, locked={}",
+                i + 1,
+                available_usdc,
+                locked_usdc
+            );
         }
     }
 
     // After all cancellations, should have no locked balance
     let final_balance = receive_message_of_type(
         &mut ws,
-        |msg| matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
-            if token_ticker == "USDC" && locked == "0"),
+        |msg| {
+            matches!(msg, ServerMessage::Balance { token_ticker, locked, .. }
+            if token_ticker == "USDC" && locked == "0")
+        },
         10,
-    ).await.expect("Should have all balance unlocked");
+    )
+    .await
+    .expect("Should have all balance unlocked");
 
-    if let ServerMessage::Balance { available, locked, .. } = final_balance {
+    if let ServerMessage::Balance {
+        available, locked, ..
+    } = final_balance
+    {
         assert_eq!(locked, "0", "All USDC should be unlocked");
         let available_usdc = available.parse::<u128>().unwrap();
-        assert!(available_usdc > 10_000_000_000_000_000, "Most USDC should be available");
+        assert!(
+            available_usdc > 10_000_000_000_000_000,
+            "Most USDC should be available"
+        );
     }
 
     ws.close(None).await.ok();

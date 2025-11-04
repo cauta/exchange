@@ -82,9 +82,9 @@ pub async fn trade(
 
             // Broadcast balance update after locking
             if let Ok(balance) = state.db.get_balance(&user_address, &token_to_lock).await {
-                let _ = state.event_tx.send(crate::models::domain::EngineEvent::BalanceUpdated {
-                    balance,
-                });
+                let _ = state
+                    .event_tx
+                    .send(crate::models::domain::EngineEvent::BalanceUpdated { balance });
             }
 
             // Create order

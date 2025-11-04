@@ -96,7 +96,14 @@ impl MatchingEngine {
 
             // Execute trades if we have matches (also updates order status in DB)
             let trades = if !matches.is_empty() {
-                Executor::execute(self.db.clone(), matches.clone(), &order, &market, &self.event_tx).await?
+                Executor::execute(
+                    self.db.clone(),
+                    matches.clone(),
+                    &order,
+                    &market,
+                    &self.event_tx,
+                )
+                .await?
             } else {
                 vec![]
             };
@@ -199,10 +206,12 @@ impl MatchingEngine {
                             .await?;
 
                         // Broadcast balance update after unlock
-                        if let Ok(balance) = self.db.get_balance(&order.user_address, &token_to_unlock).await {
-                            let _ = self.event_tx.send(EngineEvent::BalanceUpdated {
-                                balance,
-                            });
+                        if let Ok(balance) = self
+                            .db
+                            .get_balance(&order.user_address, &token_to_unlock)
+                            .await
+                        {
+                            let _ = self.event_tx.send(EngineEvent::BalanceUpdated { balance });
                         }
                     }
                 }
@@ -265,9 +274,7 @@ impl MatchingEngine {
 
             // Broadcast balance update after unlock
             if let Ok(balance) = self.db.get_balance(&user_address, &token_to_unlock).await {
-                let _ = self.event_tx.send(EngineEvent::BalanceUpdated {
-                    balance,
-                });
+                let _ = self.event_tx.send(EngineEvent::BalanceUpdated { balance });
             }
         }
 
@@ -329,7 +336,8 @@ impl MatchingEngine {
                         // Buy order: unlock quote tokens (price * unfilled_size)
                         match cancelled_order.price.checked_mul(unfilled_size) {
                             Some(quote_amount) => {
-                                let result = self.db
+                                let result = self
+                                    .db
                                     .unlock_balance(
                                         &user_address,
                                         &market.quote_ticker,
@@ -349,7 +357,8 @@ impl MatchingEngine {
                     }
                     crate::models::domain::Side::Sell => {
                         // Sell order: unlock base tokens (unfilled_size)
-                        let result = self.db
+                        let result = self
+                            .db
                             .unlock_balance(&user_address, &market.base_ticker, unfilled_size)
                             .await;
                         (market.base_ticker.clone(), result)
@@ -361,10 +370,9 @@ impl MatchingEngine {
                     log::error!("Failed to unlock balance for order {}: {}", order_id, e);
                 } else {
                     // Broadcast balance update after successful unlock
-                    if let Ok(balance) = self.db.get_balance(&user_address, &token_to_unlock).await {
-                        let _ = self.event_tx.send(EngineEvent::BalanceUpdated {
-                            balance,
-                        });
+                    if let Ok(balance) = self.db.get_balance(&user_address, &token_to_unlock).await
+                    {
+                        let _ = self.event_tx.send(EngineEvent::BalanceUpdated { balance });
                     }
                 }
             }

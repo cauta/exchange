@@ -389,7 +389,8 @@ export class RestClient {
     const token = await this.getToken(params.tokenTicker);
 
     // Convert amount from decimal to atoms
-    const amountDecimal = typeof params.amountDecimal === "string" ? parseFloat(params.amountDecimal) : params.amountDecimal;
+    const amountDecimal =
+      typeof params.amountDecimal === "string" ? parseFloat(params.amountDecimal) : params.amountDecimal;
     const amountMultiplier = Math.pow(10, token.decimals);
     const amountAtoms = BigInt(Math.floor(amountDecimal * amountMultiplier));
 

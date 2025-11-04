@@ -41,7 +41,9 @@ class SubscriptionChannel(str, Enum):
 
     TRADES = "trades"
     ORDERBOOK = "orderbook"
-    USER = "user"
+    USER_FILLS = "user_fills"
+    USER_ORDERS = "user_orders"
+    USER_BALANCES = "user_balances"
 
 
 # ============================================================================

@@ -94,14 +94,18 @@ export function RecentOrders() {
         accessorKey: "order_type",
         header: "Type",
         cell: ({ row }) => (
-          <span className="text-muted-foreground/80">{row.getValue("order_type") === "limit" ? "Limit" : "Market"}</span>
+          <span className="text-muted-foreground/80">
+            {row.getValue("order_type") === "limit" ? "Limit" : "Market"}
+          </span>
         ),
         size: 70,
       },
       {
         accessorKey: "priceDisplay",
         header: () => <div className="text-right">Price</div>,
-        cell: ({ row }) => <div className="text-right font-medium text-foreground/90">{row.getValue("priceDisplay")}</div>,
+        cell: ({ row }) => (
+          <div className="text-right font-medium text-foreground/90">{row.getValue("priceDisplay")}</div>
+        ),
         size: 120,
       },
       {
@@ -139,7 +143,11 @@ export function RecentOrders() {
                         : "bg-gray-500/10 text-gray-500 border border-gray-500/20"
               }`}
             >
-              {status === "pending" ? "Open" : status === "partially_filled" ? "Partial" : status.charAt(0).toUpperCase() + status.slice(1)}
+              {status === "pending"
+                ? "Open"
+                : status === "partially_filled"
+                  ? "Partial"
+                  : status.charAt(0).toUpperCase() + status.slice(1)}
             </span>
           );
         },

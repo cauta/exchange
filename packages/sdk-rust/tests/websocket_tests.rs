@@ -200,8 +200,12 @@ async fn test_websocket_user_events() {
         .expect("Failed to connect to WebSocket");
 
     alice_ws
-        .subscribe(SubscriptionChannel::User, None, Some("alice".to_string()))
-        .expect("Failed to subscribe to user updates");
+        .subscribe(
+            SubscriptionChannel::UserOrders,
+            None,
+            Some("alice".to_string()),
+        )
+        .expect("Failed to subscribe to user orders");
 
     // Wait for subscription confirmation
     tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
@@ -318,8 +322,12 @@ async fn test_websocket_multiple_subscriptions() {
         .expect("Failed to subscribe to orderbook");
 
     ws_handle
-        .subscribe(SubscriptionChannel::User, None, Some("trader".to_string()))
-        .expect("Failed to subscribe to user updates");
+        .subscribe(
+            SubscriptionChannel::UserBalances,
+            None,
+            Some("trader".to_string()),
+        )
+        .expect("Failed to subscribe to user balances");
 
     // Wait for subscription confirmations
     let mut subscriptions = 0;

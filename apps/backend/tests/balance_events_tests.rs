@@ -19,22 +19,28 @@ async fn send_json<T: serde::Serialize>(ws: &mut WsStream, msg: &T) -> anyhow::R
 
 /// Helper to receive and parse the next WebSocket message
 async fn receive_message(ws: &mut WsStream) -> anyhow::Result<ServerMessage> {
-    match timeout(Duration::from_secs(5), ws.next()).await {
-        Ok(Some(Ok(Message::Text(text)))) => {
-            let msg: ServerMessage = serde_json::from_str(&text)?;
-            Ok(msg)
-        }
-        Ok(Some(Ok(msg))) => {
-            anyhow::bail!("Unexpected message type: {:?}", msg)
-        }
-        Ok(Some(Err(e))) => {
-            anyhow::bail!("WebSocket error: {}", e)
-        }
-        Ok(None) => {
-            anyhow::bail!("Connection closed")
-        }
-        Err(_) => {
-            anyhow::bail!("Timeout waiting for message")
+    loop {
+        match timeout(Duration::from_secs(5), ws.next()).await {
+            Ok(Some(Ok(Message::Text(text)))) => {
+                let msg: ServerMessage = serde_json::from_str(&text)?;
+                return Ok(msg);
+            }
+            Ok(Some(Ok(Message::Ping(_)))) => {
+                // Skip ping messages
+                continue;
+            }
+            Ok(Some(Ok(msg))) => {
+                anyhow::bail!("Unexpected message type: {:?}", msg)
+            }
+            Ok(Some(Err(e))) => {
+                anyhow::bail!("WebSocket error: {}", e)
+            }
+            Ok(None) => {
+                anyhow::bail!("Connection closed")
+            }
+            Err(_) => {
+                anyhow::bail!("Timeout waiting for message")
+            }
         }
     }
 }
@@ -80,7 +86,7 @@ async fn test_balance_events_on_limit_order_placement() {
     send_json(
         &mut ws,
         &ClientMessage::Subscribe {
-            channel: SubscriptionChannel::User,
+            channel: SubscriptionChannel::UserBalances,
             market_id: None,
             user_address: Some(user.clone()),
         },
@@ -89,7 +95,9 @@ async fn test_balance_events_on_limit_order_placement() {
     .expect("Failed to subscribe");
 
     // Skip subscription acknowledgment message
-    let sub_msg = receive_message(&mut ws).await.expect("Failed to receive subscription ack");
+    let sub_msg = receive_message(&mut ws)
+        .await
+        .expect("Failed to receive subscription ack");
     match sub_msg {
         ServerMessage::Subscribed { .. } => {
             // Expected
@@ -106,10 +114,16 @@ async fn test_balance_events_on_limit_order_placement() {
         .expect("Failed to lock balance");
 
     // Broadcast the balance event (simulating what the REST endpoint does)
-    let balance = server.test_db.db.get_balance(&user, "USDC").await.expect("Failed to get balance");
-    let _ = server.test_engine.event_tx().send(backend::models::domain::EngineEvent::BalanceUpdated {
-        balance,
-    });
+    let balance = server
+        .test_db
+        .db
+        .get_balance(&user, "USDC")
+        .await
+        .expect("Failed to get balance");
+    let _ = server
+        .test_engine
+        .event_tx()
+        .send(backend::models::domain::EngineEvent::BalanceUpdated { balance });
 
     // Place a limit order (balance already locked)
     let order = utils::TestEngine::create_order(
@@ -203,7 +217,7 @@ async fn test_balance_events_on_limit_order_fill() {
     send_json(
         &mut ws,
         &ClientMessage::Subscribe {
-            channel: SubscriptionChannel::User,
+            channel: SubscriptionChannel::UserBalances,
             market_id: None,
             user_address: Some(taker.clone()),
         },
@@ -295,10 +309,7 @@ async fn test_balance_events_on_limit_order_fill() {
         }
     }
 
-    assert!(
-        btc_event_received,
-        "Should have received BTC balance event"
-    );
+    assert!(btc_event_received, "Should have received BTC balance event");
     assert!(
         usdc_event_received,
         "Should have received USDC balance event"
@@ -344,7 +355,7 @@ async fn test_balance_events_on_limit_order_cancellation() {
     send_json(
         &mut ws,
         &ClientMessage::Subscribe {
-            channel: SubscriptionChannel::User,
+            channel: SubscriptionChannel::UserBalances,
             market_id: None,
             user_address: Some(user.clone()),
         },
@@ -361,7 +372,11 @@ async fn test_balance_events_on_limit_order_cancellation() {
         50_000_000_000, // price
         1_000_000,      // size
     );
-    let result = server.test_engine.place_order(order).await.expect("Failed to create order");
+    let result = server
+        .test_engine
+        .place_order(order)
+        .await
+        .expect("Failed to create order");
     let order_id = uuid::Uuid::parse_str(&result.order.id).expect("Invalid order ID");
 
     // Wait for initial balance lock event
@@ -408,7 +423,10 @@ async fn test_balance_events_on_limit_order_cancellation() {
         }
     }
 
-    assert!(balance_unlocked, "Should have received balance unlock event");
+    assert!(
+        balance_unlocked,
+        "Should have received balance unlock event"
+    );
 
     ws.close(None).await.expect("Failed to close connection");
 }
@@ -484,7 +502,7 @@ async fn test_balance_events_on_market_order_partial_fill() {
     send_json(
         &mut ws,
         &ClientMessage::Subscribe {
-            channel: SubscriptionChannel::User,
+            channel: SubscriptionChannel::UserBalances,
             market_id: None,
             user_address: Some(taker.clone()),
         },

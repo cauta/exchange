@@ -332,7 +332,9 @@ export class WebSocketClient {
         channel,
         // Determine if it's a market or user subscription - only include the relevant field
         ...(channel === "trades" || channel === "orderbook" ? { market_id: identifier } : {}),
-        ...(channel === "user" ? { user_address: identifier } : {}),
+        ...(channel === "user_fills" || channel === "user_orders" || channel === "user_balances"
+          ? { user_address: identifier }
+          : {}),
       };
 
       this.send(message);
@@ -442,12 +444,12 @@ export class WebSocketClient {
       }
     });
 
-    this.subscribe("user", { userAddress });
+    this.subscribe("user_orders", { userAddress });
 
     return () => {
       this.logger.debug(`Cleaning up user orders subscription for ${userAddress}`);
       removeHandler();
-      this.unsubscribe("user", { userAddress });
+      this.unsubscribe("user_orders", { userAddress });
     };
   }
 
@@ -456,15 +458,10 @@ export class WebSocketClient {
    * @returns Unsubscribe function
    */
   onUserTrades(userAddress: string, handler: (trade: EnhancedTrade) => void): () => void {
-    this.logger.debug(`Setting up user trades subscription for ${userAddress}`);
+    this.logger.debug(`Setting up user fills subscription for ${userAddress}`);
 
     const removeHandler = this.on("trade", (msg) => {
       if (msg.type !== "trade") return;
-
-      // Only process trades where the user is the buyer or seller
-      if (msg.trade.buyer_address !== userAddress && msg.trade.seller_address !== userAddress) {
-        return;
-      }
 
       if (!this.cache.isReady()) {
         this.logger.warn("Trade received before cache initialized, skipping");
@@ -492,12 +489,12 @@ export class WebSocketClient {
       }
     });
 
-    this.subscribe("user", { userAddress });
+    this.subscribe("user_fills", { userAddress });
 
     return () => {
-      this.logger.debug(`Cleaning up user trades subscription for ${userAddress}`);
+      this.logger.debug(`Cleaning up user fills subscription for ${userAddress}`);
       removeHandler();
-      this.unsubscribe("user", { userAddress });
+      this.unsubscribe("user_fills", { userAddress });
     };
   }
 
@@ -517,12 +514,12 @@ export class WebSocketClient {
       }
     });
 
-    this.subscribe("user", { userAddress });
+    this.subscribe("user_balances", { userAddress });
 
     return () => {
       this.logger.debug(`Cleaning up user balances subscription for ${userAddress}`);
       removeHandler();
-      this.unsubscribe("user", { userAddress });
+      this.unsubscribe("user_balances", { userAddress });
     };
   }
 }

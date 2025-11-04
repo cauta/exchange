@@ -29,9 +29,7 @@ export function DataTable<TData, TValue>({
     return firstColumn?.accessorKey || firstColumn?.id || "";
   };
 
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: getDefaultSortColumn(), desc: true },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: getDefaultSortColumn(), desc: true }]);
 
   const table = useReactTable({
     data,
@@ -68,9 +66,7 @@ export function DataTable<TData, TValue>({
                         }
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        <div className="flex-1">
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                        </div>
+                        <div className="flex-1">{flexRender(header.column.columnDef.header, header.getContext())}</div>
                         {header.column.getCanSort() && header.column.getIsSorted() && (
                           <span className="relative shrink-0 w-3 h-3 flex items-center justify-center">
                             <span
@@ -89,11 +85,7 @@ export function DataTable<TData, TValue>({
                   </TableHead>
                 );
               })}
-              {headerAction && (
-                <div className="absolute right-3 top-0 h-full flex items-center">
-                  {headerAction}
-                </div>
-              )}
+              {headerAction && <div className="absolute right-3 top-0 h-full flex items-center">{headerAction}</div>}
             </TableRow>
           ))}
         </TableHeader>
@@ -106,7 +98,9 @@ export function DataTable<TData, TValue>({
                 className="border-border/30 hover:bg-primary/5 transition-colors"
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="px-3">{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                  <TableCell key={cell.id} className="px-3">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
                 ))}
               </TableRow>
             ))

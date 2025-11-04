@@ -68,11 +68,9 @@ impl SubscriptionSet {
                     user_address: trade.seller_address.clone(),
                 })
             }
-            EngineEvent::OrderPlaced { order } => {
-                self.subs.contains(&Subscription::UserOrders {
-                    user_address: order.user_address.clone(),
-                })
-            }
+            EngineEvent::OrderPlaced { order } => self.subs.contains(&Subscription::UserOrders {
+                user_address: order.user_address.clone(),
+            }),
             EngineEvent::OrderCancelled { user_address, .. } => {
                 self.subs.contains(&Subscription::UserOrders {
                     user_address: user_address.clone(),

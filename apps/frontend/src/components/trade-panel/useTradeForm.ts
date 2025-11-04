@@ -1,14 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
 import { getDecimalPlaces } from "@/lib/format";
-import type {
-  OrderSide,
-  OrderType,
-  TradeFormData,
-  TradeFormErrors,
-  OrderEstimate,
-  TradeFormProps,
-} from "./types";
+import type { OrderSide, OrderType, TradeFormData, TradeFormErrors, OrderEstimate, TradeFormProps } from "./types";
 
 export function useTradeForm(params: TradeFormProps | null) {
   const client = useExchangeClient();
@@ -33,7 +26,8 @@ export function useTradeForm(params: TradeFormProps | null) {
   const lastTradePrice = params?.lastTradePrice ?? null;
 
   // Calculate decimal places
-  const priceDecimals = selectedMarket && quoteToken ? getDecimalPlaces(selectedMarket.tick_size, quoteToken.decimals) : 2;
+  const priceDecimals =
+    selectedMarket && quoteToken ? getDecimalPlaces(selectedMarket.tick_size, quoteToken.decimals) : 2;
   const sizeDecimals = selectedMarket && baseToken ? getDecimalPlaces(selectedMarket.lot_size, baseToken.decimals) : 2;
 
   // Validate form
@@ -102,8 +96,7 @@ export function useTradeForm(params: TradeFormProps | null) {
     }
 
     const total = effectivePrice * sizeNum;
-    const feeBps =
-      formData.orderType === "market" ? selectedMarket.taker_fee_bps : selectedMarket.maker_fee_bps;
+    const feeBps = formData.orderType === "market" ? selectedMarket.taker_fee_bps : selectedMarket.maker_fee_bps;
     const fee = (total * Math.abs(feeBps)) / 10000;
     const finalAmount = formData.side === "buy" ? total + fee : total - fee;
 

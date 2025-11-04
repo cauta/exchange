@@ -328,9 +328,11 @@ impl Subscription {
                     })
                 }
                 SubscriptionChannel::UserBalances => {
-                    user_address.as_ref().map(|addr| Subscription::UserBalances {
-                        user_address: addr.clone(),
-                    })
+                    user_address
+                        .as_ref()
+                        .map(|addr| Subscription::UserBalances {
+                            user_address: addr.clone(),
+                        })
                 }
             },
             ClientMessage::Ping => None,

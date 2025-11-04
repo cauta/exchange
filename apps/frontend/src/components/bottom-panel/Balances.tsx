@@ -27,9 +27,7 @@ export function Balances() {
       {
         accessorKey: "token_ticker",
         header: "Asset",
-        cell: ({ row }) => (
-          <div className="font-medium text-foreground/90">{row.getValue("token_ticker")}</div>
-        ),
+        cell: ({ row }) => <div className="font-medium text-foreground/90">{row.getValue("token_ticker")}</div>,
         size: 100,
       },
       {
@@ -37,11 +35,7 @@ export function Balances() {
         header: () => <div className="text-right">Total Balance</div>,
         cell: ({ row }) => {
           const balance = row.original;
-          return (
-            <div className="text-right font-medium text-foreground/90">
-              {balance.amountValue.toFixed(2)}
-            </div>
-          );
+          return <div className="text-right font-medium text-foreground/90">{balance.amountValue.toFixed(2)}</div>;
         },
         size: 150,
       },
@@ -51,11 +45,7 @@ export function Balances() {
         cell: ({ row }) => {
           const balance = row.original;
           const available = balance.amountValue - balance.lockedValue;
-          return (
-            <div className="text-right text-muted-foreground/80">
-              {available.toFixed(2)}
-            </div>
-          );
+          return <div className="text-right text-muted-foreground/80">{available.toFixed(2)}</div>;
         },
         size: 150,
       },
@@ -68,7 +58,7 @@ export function Balances() {
           const usdValue = balance.amountValue * price;
           return (
             <div className="text-right font-medium text-foreground/90">
-              ${usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${usdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           );
         },

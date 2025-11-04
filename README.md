@@ -150,6 +150,10 @@ missing production
 - refactor to bun monorepo
 - use ts-rs for ws types
 - fix ci types
+- use schemars instead of ts-rs for ts/python type generation
+- frontend styling and sdk improvements
+- fix balance ws emit
+- refactor ws types
 
 - add trading signatures
 - add admin page
