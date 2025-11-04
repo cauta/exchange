@@ -11,28 +11,31 @@ export function Balances() {
   const userAddress = useExchangeStore((state) => state.userAddress);
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
   const balances = useBalances();
+  const tokens = useExchangeStore((state) => state.tokens);
 
   const columns = useMemo<ColumnDef<Balance>[]>(
     () => [
       {
         accessorKey: "token_ticker",
-        header: "Token",
+        header: "Asset",
         cell: ({ row }) => <div className="font-semibold text-foreground">{row.getValue("token_ticker")}</div>,
         size: 100,
       },
       {
         accessorKey: "available",
-        header: "Available",
+        header: () => <div className="text-right">Available</div>,
         cell: ({ row }) => {
           const balance = row.original;
           const available = balance.amountValue - balance.lockedValue;
-          return <div className="text-right font-mono text-sm">{available.toFixed(8)}</div>;
+          const token = tokens.find((t) => t.ticker === balance.token_ticker);
+          const decimals = token?.decimals ?? 8;
+          return <div className="text-right font-mono text-sm">{available.toFixed(decimals)}</div>;
         },
         size: 150,
       },
       {
         accessorKey: "lockedDisplay",
-        header: "In Orders",
+        header: () => <div className="text-right">In Orders</div>,
         cell: ({ row }) => (
           <div className="text-right font-mono text-sm text-muted-foreground">{row.getValue("lockedDisplay")}</div>
         ),
@@ -40,7 +43,7 @@ export function Balances() {
       },
       {
         accessorKey: "amountDisplay",
-        header: "Total",
+        header: () => <div className="text-right">Total</div>,
         cell: ({ row }) => (
           <div className="text-right font-mono text-sm font-semibold text-foreground">
             {row.getValue("amountDisplay")}
@@ -49,12 +52,12 @@ export function Balances() {
         size: 150,
       },
     ],
-    []
+    [tokens]
   );
 
   if (!isAuthenticated || !userAddress) {
     return (
-      <div className="p-8 text-center">
+      <div className="h-full flex items-center justify-center">
         <p className="text-muted-foreground text-sm">Connect your wallet to view balances</p>
       </div>
     );
@@ -62,7 +65,7 @@ export function Balances() {
 
   if (balances.length === 0) {
     return (
-      <div className="p-8 text-center">
+      <div className="h-full flex items-center justify-center">
         <p className="text-muted-foreground text-sm">
           No balances found. Use the faucet button in the top bar to get tokens!
         </p>
@@ -70,5 +73,9 @@ export function Balances() {
     );
   }
 
-  return <DataTable columns={columns} data={balances} emptyMessage="No balances found" />;
+  return (
+    <div className="h-full">
+      <DataTable columns={columns} data={balances} emptyMessage="No balances found" />
+    </div>
+  );
 }

@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { useExchangeStore, selectSelectedMarket } from "@/lib/store";
+import { useOrders } from "@/lib/hooks";
 import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
 import type { Order } from "@/lib/types/exchange";
 import { DataTable } from "@/components/ui/data-table";
+import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 
 export function RecentOrders() {
   const client = useExchangeClient();
@@ -13,12 +16,58 @@ export function RecentOrders() {
   const selectedMarket = useExchangeStore(selectSelectedMarket);
   const userAddress = useExchangeStore((state) => state.userAddress);
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
+  const orders = useOrders();
+  const [cancellingOrders, setCancellingOrders] = useState<Set<string>>(new Set());
+  const [cancellingAll, setCancellingAll] = useState(false);
 
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(false);
+  const handleCancelOrder = async (orderId: string) => {
+    if (!userAddress) return;
+
+    setCancellingOrders((prev) => new Set(prev).add(orderId));
+    try {
+      // TODO: Get signature from wallet
+      await client.cancelOrder({
+        userAddress,
+        orderId,
+        signature: "0x", // Placeholder - need wallet integration
+      });
+    } catch (err) {
+      console.error("Failed to cancel order:", err);
+    } finally {
+      setCancellingOrders((prev) => {
+        const next = new Set(prev);
+        next.delete(orderId);
+        return next;
+      });
+    }
+  };
+
+  const handleCancelAll = async () => {
+    if (!userAddress) return;
+
+    setCancellingAll(true);
+    try {
+      // TODO: Get signature from wallet
+      await client.cancelAllOrders({
+        userAddress,
+        marketId: selectedMarketId || undefined,
+        signature: "0x", // Placeholder - need wallet integration
+      });
+    } catch (err) {
+      console.error("Failed to cancel all orders:", err);
+    } finally {
+      setCancellingAll(false);
+    }
+  };
 
   const columns = useMemo<ColumnDef<Order>[]>(
     () => [
+      {
+        accessorKey: "market_id",
+        header: "Market",
+        cell: ({ row }) => <div className="font-semibold text-foreground">{row.getValue("market_id")}</div>,
+        size: 100,
+      },
       {
         accessorKey: "side",
         header: "Side",
@@ -27,7 +76,7 @@ export function RecentOrders() {
             {row.getValue("side") === "buy" ? "Buy" : "Sell"}
           </span>
         ),
-        size: 80,
+        size: 70,
       },
       {
         accessorKey: "order_type",
@@ -35,25 +84,29 @@ export function RecentOrders() {
         cell: ({ row }) => (
           <span className="text-muted-foreground">{row.getValue("order_type") === "limit" ? "Limit" : "Market"}</span>
         ),
-        size: 80,
+        size: 70,
       },
       {
         accessorKey: "priceDisplay",
         header: "Price",
-        cell: ({ row }) => <div className="font-mono">{row.getValue("priceDisplay")}</div>,
-        size: 120,
+        cell: ({ row }) => <div className="font-mono text-sm">{row.getValue("priceDisplay")}</div>,
+        size: 100,
       },
       {
         accessorKey: "sizeDisplay",
         header: "Size",
-        cell: ({ row }) => <div className="font-mono text-muted-foreground">{row.getValue("sizeDisplay")}</div>,
-        size: 120,
+        cell: ({ row }) => <div className="font-mono text-sm text-muted-foreground">{row.getValue("sizeDisplay")}</div>,
+        size: 100,
       },
       {
-        accessorKey: "filledDisplay",
+        id: "filled",
         header: "Filled",
-        cell: ({ row }) => <div className="font-mono text-muted-foreground">{row.getValue("filledDisplay")}</div>,
-        size: 120,
+        cell: ({ row }) => {
+          const order = row.original;
+          const filledPercent = order.sizeValue > 0 ? (order.filledValue / order.sizeValue) * 100 : 0;
+          return <div className="font-mono text-sm text-muted-foreground">{filledPercent.toFixed(1)}%</div>;
+        },
+        size: 80,
       },
       {
         accessorKey: "status",
@@ -69,14 +122,16 @@ export function RecentOrders() {
                     ? "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20"
                     : status === "cancelled"
                       ? "bg-muted text-muted-foreground border border-border"
-                      : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                      : status === "pending"
+                        ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                        : "bg-gray-500/10 text-gray-500 border border-gray-500/20"
               }`}
             >
-              {status.replace("_", " ")}
+              {status === "pending" ? "open" : status.replace("_", " ")}
             </span>
           );
         },
-        size: 120,
+        size: 110,
       },
       {
         accessorKey: "created_at",
@@ -86,60 +141,73 @@ export function RecentOrders() {
             {(row.getValue("created_at") as Date).toLocaleTimeString()}
           </div>
         ),
-        size: 100,
+        size: 90,
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: ({ row }) => {
+          const order = row.original;
+          const canCancel = order.status === "pending" || order.status === "partially_filled";
+          if (!canCancel) return null;
+
+          const isCancelling = cancellingOrders.has(order.id);
+          return (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleCancelOrder(order.id)}
+              disabled={isCancelling}
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          );
+        },
+        size: 50,
       },
     ],
-    []
+    [cancellingOrders]
   );
-
-  useEffect(() => {
-    if (!userAddress || !isAuthenticated || !selectedMarketId) {
-      setOrders([]);
-      return;
-    }
-
-    const fetchOrders = async () => {
-      setLoading(true);
-      try {
-        const result = await client.getOrders(userAddress, selectedMarketId);
-        setOrders(result);
-      } catch (err) {
-        console.error("Failed to fetch orders:", err);
-        setOrders([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
-    const interval = setInterval(fetchOrders, 2000); // Refresh every 2 seconds
-
-    return () => clearInterval(interval);
-  }, [userAddress, isAuthenticated, selectedMarketId, client]);
 
   if (!selectedMarketId || !selectedMarket) {
     return (
-      <div className="p-8 text-center">
+      <div className="h-full flex items-center justify-center">
         <p className="text-muted-foreground text-sm">Select a market to view orders</p>
-      </div>
-    );
-  }
-
-  if (loading && !orders.length) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-muted-foreground text-sm">Loading orders...</p>
       </div>
     );
   }
 
   if (!isAuthenticated || !userAddress) {
     return (
-      <div className="p-8 text-center">
+      <div className="h-full flex items-center justify-center">
         <p className="text-muted-foreground text-sm">Connect your wallet to view orders</p>
       </div>
     );
   }
 
-  return <DataTable columns={columns} data={orders} emptyMessage="No orders found" />;
+  const hasOpenOrders = orders.some((o) => o.status === "pending" || o.status === "partially_filled");
+
+  return (
+    <div className="h-full">
+      <DataTable
+        columns={columns}
+        data={orders}
+        emptyMessage="No orders found"
+        headerAction={
+          hasOpenOrders ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancelAll}
+              disabled={cancellingAll}
+              className="text-red-500 hover:text-red-600 hover:bg-red-500/10 h-7"
+            >
+              {cancellingAll ? "Cancelling..." : "Cancel All"}
+            </Button>
+          ) : null
+        }
+      />
+    </div>
+  );
 }

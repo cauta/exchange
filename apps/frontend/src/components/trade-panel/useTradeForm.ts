@@ -154,7 +154,7 @@ export function useTradeForm(params: TradeFormProps | null) {
         // Use SDK's placeOrderDecimal - it handles conversion to atoms and rounding
         const result = await client.rest.placeOrderDecimal({
           userAddress,
-          marketId: selectedMarket.market_id,
+          marketId: selectedMarket.id,
           side: formData.side,
           orderType: formData.orderType,
           priceDecimal: finalPrice.toString(),

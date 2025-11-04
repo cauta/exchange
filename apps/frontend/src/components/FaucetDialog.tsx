@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useExchangeStore } from "@/lib/store";
 import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,15 @@ export function FaucetDialog() {
   const [open, setOpen] = useState(false);
   const [selectedToken, setSelectedToken] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const waitingForAuthRef = useRef(false);
+
+  // Reopen faucet after successful wallet connection
+  useEffect(() => {
+    if (isAuthenticated && waitingForAuthRef.current) {
+      waitingForAuthRef.current = false;
+      setOpen(true);
+    }
+  }, [isAuthenticated]);
 
   const handleFaucet = async () => {
     if (!userAddress || !selectedToken) {
@@ -93,7 +102,11 @@ export function FaucetDialog() {
               You need to connect your wallet before you can use the faucet
             </p>
             <Button
-              onClick={() => handleLogin()}
+              onClick={() => {
+                waitingForAuthRef.current = true;
+                setOpen(false);
+                handleLogin();
+              }}
               className="bg-primary/90 hover:bg-primary border border-primary/30 shadow-lg transition-all"
             >
               Connect Wallet

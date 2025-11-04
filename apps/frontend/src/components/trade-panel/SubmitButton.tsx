@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import type { Token } from "@/lib/types/openapi";
+import type { Token } from "@/lib/types/exchange";
 import type { OrderSide } from "./types";
 
 interface SubmitButtonProps {
@@ -23,8 +23,8 @@ export function SubmitButton({ side, baseToken, isAuthenticated, loading }: Subm
       size="lg"
       className={`w-full font-bold text-base h-12 shadow-lg transition-all ${
         side === "buy"
-          ? "bg-gradient-to-br from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-green-600/30 hover:shadow-green-600/50"
-          : "bg-gradient-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-red-600/30 hover:shadow-red-600/50"
+          ? "bg-linear-to-br from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-green-600/30 hover:shadow-green-600/50"
+          : "bg-linear-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-red-600/30 hover:shadow-red-600/50"
       }`}
     >
       {getButtonText()}

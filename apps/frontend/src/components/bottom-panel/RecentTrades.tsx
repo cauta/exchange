@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { useExchangeStore, selectSelectedMarket } from "@/lib/store";
-import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
+import { useUserTrades } from "@/lib/hooks";
 import type { Trade } from "@/lib/types/exchange";
 import { DataTable } from "@/components/ui/data-table";
 
@@ -12,39 +12,29 @@ type EnhancedTrade = Trade & {
 };
 
 export function RecentTrades() {
-  const client = useExchangeClient();
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
   const selectedMarket = useExchangeStore(selectSelectedMarket);
-  const tokens = useExchangeStore((state) => state.tokens);
   const userAddress = useExchangeStore((state) => state.userAddress);
   const isAuthenticated = useExchangeStore((state) => state.isAuthenticated);
+  const userTrades = useUserTrades();
 
-  const [trades, setTrades] = useState<EnhancedTrade[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const baseToken = tokens.find((t) => t.ticker === selectedMarket?.base_ticker);
-  const quoteToken = tokens.find((t) => t.ticker === selectedMarket?.quote_ticker);
+  // Add side information to each trade
+  const trades: EnhancedTrade[] = useMemo(
+    () =>
+      userTrades.map((trade) => ({
+        ...trade,
+        side: trade.buyer_address === userAddress ? "buy" : "sell",
+      })),
+    [userTrades, userAddress]
+  );
 
   const columns = useMemo<ColumnDef<EnhancedTrade>[]>(
     () => [
       {
-        accessorKey: "priceDisplay",
-        header: () => <div className="flex justify-end w-full">Price ({quoteToken?.ticker})</div>,
-        cell: ({ row }) => {
-          const side = row.getValue("side") as string;
-          return (
-            <div className={`font-mono text-sm font-semibold flex justify-end w-full ${side === "buy" ? "text-green-500" : "text-red-500"}`}>
-              {row.getValue("priceDisplay")}
-            </div>
-          );
-        },
-        size: 120,
-      },
-      {
-        accessorKey: "sizeDisplay",
-        header: () => <div className="flex justify-end w-full">Size ({baseToken?.ticker})</div>,
-        cell: ({ row }) => <div className="font-mono text-sm text-muted-foreground flex justify-end w-full">{row.getValue("sizeDisplay")}</div>,
-        size: 120,
+        accessorKey: "market_id",
+        header: "Market",
+        cell: ({ row }) => <div className="font-semibold text-foreground">{row.getValue("market_id")}</div>,
+        size: 100,
       },
       {
         accessorKey: "side",
@@ -63,7 +53,26 @@ export function RecentTrades() {
             </span>
           );
         },
-        size: 100,
+        size: 90,
+      },
+      {
+        accessorKey: "priceDisplay",
+        header: "Price",
+        cell: ({ row }) => {
+          const side = row.getValue("side") as string;
+          return (
+            <div className={`font-mono text-sm font-semibold ${side === "buy" ? "text-green-500" : "text-red-500"}`}>
+              {row.getValue("priceDisplay")}
+            </div>
+          );
+        },
+        size: 110,
+      },
+      {
+        accessorKey: "sizeDisplay",
+        header: "Size",
+        cell: ({ row }) => <div className="font-mono text-sm text-muted-foreground">{row.getValue("sizeDisplay")}</div>,
+        size: 110,
       },
       {
         accessorKey: "timestamp",
@@ -73,65 +82,31 @@ export function RecentTrades() {
             {(row.getValue("timestamp") as Date).toLocaleTimeString()}
           </div>
         ),
-        size: 100,
+        size: 90,
       },
     ],
-    [baseToken?.ticker, quoteToken?.ticker]
+    []
   );
 
-  useEffect(() => {
-    if (!userAddress || !isAuthenticated || !selectedMarketId) {
-      setTrades([]);
-      return;
-    }
-
-    const fetchTrades = async () => {
-      setLoading(true);
-      try {
-        const result = await client.getTrades(userAddress, selectedMarketId);
-        // Add side information to each trade
-        const enhancedTrades: EnhancedTrade[] = result.slice(0, 50).map((trade) => ({
-          ...trade,
-          side: trade.buyer_address === userAddress ? "buy" : "sell",
-        }));
-        setTrades(enhancedTrades);
-      } catch (err) {
-        console.error("Failed to fetch trades:", err);
-        setTrades([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTrades();
-    const interval = setInterval(fetchTrades, 2000); // Refresh every 2 seconds
-
-    return () => clearInterval(interval);
-  }, [userAddress, isAuthenticated, selectedMarketId, client]);
-
-  if (!selectedMarketId || !selectedMarket || !baseToken || !quoteToken) {
+  if (!selectedMarketId || !selectedMarket) {
     return (
-      <div className="p-8 text-center">
+      <div className="h-full flex items-center justify-center">
         <p className="text-muted-foreground text-sm">Select a market to view trades</p>
-      </div>
-    );
-  }
-
-  if (loading && !trades.length) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-muted-foreground text-sm">Loading trades...</p>
       </div>
     );
   }
 
   if (!isAuthenticated || !userAddress) {
     return (
-      <div className="p-8 text-center">
+      <div className="h-full flex items-center justify-center">
         <p className="text-muted-foreground text-sm">Connect your wallet to view your trades</p>
       </div>
     );
   }
 
-  return <DataTable columns={columns} data={trades} emptyMessage="No trades found" />;
+  return (
+    <div className="h-full">
+      <DataTable columns={columns} data={trades} emptyMessage="No trades found" />
+    </div>
+  );
 }

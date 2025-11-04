@@ -5,7 +5,7 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import type { Market, Token, Orderbook, Trade, OrderbookLevel, Balance } from "./types/exchange";
+import type { Market, Token, Orderbook, Trade, OrderbookLevel, Balance, Order } from "./types/exchange";
 
 // ============================================================================
 // State Interface
@@ -15,46 +15,39 @@ interface ExchangeState {
   // Market data
   markets: Market[];
   tokens: Token[];
+
+  // UI Data
   selectedMarketId: string | null;
-
-  // Orderbook
   orderbook: Orderbook | null;
-
-  // Trades
   recentTrades: Trade[];
-
-  // User authentication
-  userAddress: string | null;
-  isAuthenticated: boolean;
-
-  // User balances
-  balances: Balance[];
-
-  // UI state
   selectedPrice: number | null;
 
-  // Actions - Markets
+  // User Data
+  userAddress: string | null;
+  isAuthenticated: boolean;
+  balances: Balance[];
+  orders: Order[];
+  userTrades: Trade[];
+
+  // Actions - Market Data
   setMarkets: (markets: Market[]) => void;
   setTokens: (tokens: Token[]) => void;
+
+  // Actions - UI Data
   selectMarket: (marketId: string) => void;
-
-  // Actions - Orderbook
+  setSelectedPrice: (price: number | null) => void;
   updateOrderbook: (marketId: string, bids: OrderbookLevel[], asks: OrderbookLevel[]) => void;
-
-  // Actions - Trades
   addTrade: (trade: Trade) => void;
-  addTrades: (trades: Trade[]) => void;
 
-  // Actions - User authentication
+  // Actions - User Data
   setUser: (address: string) => void;
   clearUser: () => void;
-
-  // Actions - Balances
   setBalances: (balances: Balance[]) => void;
   updateBalance: (tokenTicker: string, available: string, locked: string) => void;
-
-  // Actions - UI state
-  setSelectedPrice: (price: number | null) => void;
+  setOrders: (orders: Order[]) => void;
+  updateOrder: (orderId: string, status: string, filledSize: string) => void;
+  setUserTrades: (trades: Trade[]) => void;
+  addUserTrade: (trade: Trade) => void;
 
   // Utilities
   reset: () => void;
@@ -65,15 +58,22 @@ interface ExchangeState {
 // ============================================================================
 
 const initialState = {
+  // Market Data
   markets: [],
   tokens: [],
+
+  // UI Data
   selectedMarketId: null,
   orderbook: null,
   recentTrades: [],
+  selectedPrice: null,
+
+  // User Data
   userAddress: null,
   isAuthenticated: false,
   balances: [],
-  selectedPrice: null,
+  orders: [],
+  userTrades: [],
 };
 
 // ============================================================================
@@ -85,7 +85,10 @@ export const useExchangeStore = create<ExchangeState>()(
     immer((set) => ({
       ...initialState,
 
-      // Market actions
+      // ========================================================================
+      // Market Data Actions
+      // ========================================================================
+
       setMarkets: (markets) =>
         set((state) => {
           state.markets = markets;
@@ -96,18 +99,24 @@ export const useExchangeStore = create<ExchangeState>()(
           state.tokens = tokens;
         }),
 
+      // ========================================================================
+      // UI Data Actions
+      // ========================================================================
+
       selectMarket: (marketId) =>
         set((state) => {
           state.selectedMarketId = marketId;
-          // Clear orderbook and trades when switching markets
           state.orderbook = null;
           state.recentTrades = [];
         }),
 
-      // Orderbook actions
+      setSelectedPrice: (price) =>
+        set((state) => {
+          state.selectedPrice = price;
+        }),
+
       updateOrderbook: (marketId, bids, asks) =>
         set((state) => {
-          // Only update if this is for the selected market
           if (state.selectedMarketId === marketId) {
             state.orderbook = {
               market_id: marketId,
@@ -118,37 +127,20 @@ export const useExchangeStore = create<ExchangeState>()(
           }
         }),
 
-      // Trade actions
       addTrade: (trade) =>
         set((state) => {
-          // Only add if this is for the selected market
           if (state.selectedMarketId === trade.market_id) {
-            // Add to beginning
             state.recentTrades.unshift(trade);
-
-            // Keep only last 100 trades
             if (state.recentTrades.length > 100) {
               state.recentTrades = state.recentTrades.slice(0, 100);
             }
           }
         }),
 
-      addTrades: (trades) =>
-        set((state) => {
-          trades.forEach((trade) => {
-            // Only add if this is for the selected market
-            if (state.selectedMarketId === trade.market_id) {
-              state.recentTrades.unshift(trade);
-            }
-          });
+      // ========================================================================
+      // User Data Actions
+      // ========================================================================
 
-          // Keep only last 100 trades
-          if (state.recentTrades.length > 100) {
-            state.recentTrades = state.recentTrades.slice(0, 100);
-          }
-        }),
-
-      // User authentication
       setUser: (address) =>
         set((state) => {
           state.userAddress = address;
@@ -159,10 +151,11 @@ export const useExchangeStore = create<ExchangeState>()(
         set((state) => {
           state.userAddress = null;
           state.isAuthenticated = false;
-          state.balances = []; // Clear balances when user logs out
+          state.balances = [];
+          state.orders = [];
+          state.userTrades = [];
         }),
 
-      // Balance actions
       setBalances: (balances) =>
         set((state) => {
           state.balances = balances;
@@ -175,8 +168,6 @@ export const useExchangeStore = create<ExchangeState>()(
           if (existingIndex >= 0 && state.balances[existingIndex]) {
             const existing = state.balances[existingIndex];
             const totalAmount = (BigInt(available) + BigInt(locked)).toString();
-
-            // Get token for display conversion
             const token = state.tokens.find((t) => t.ticker === tokenTicker);
             if (!token) return;
 
@@ -184,7 +175,6 @@ export const useExchangeStore = create<ExchangeState>()(
             const amountValue = Number(BigInt(totalAmount)) / divisor;
             const lockedValue = Number(BigInt(locked)) / divisor;
 
-            // Immutable update: create a new array with the updated balance
             state.balances = state.balances.map((balance, index) =>
               index === existingIndex
                 ? {
@@ -203,13 +193,59 @@ export const useExchangeStore = create<ExchangeState>()(
           }
         }),
 
-      // UI state
-      setSelectedPrice: (price) =>
+      setOrders: (orders) =>
         set((state) => {
-          state.selectedPrice = price;
+          state.orders = orders;
         }),
 
-      // Reset
+      updateOrder: (orderId, status, filledSize) =>
+        set((state) => {
+          const existingIndex = state.orders.findIndex((o) => o.id === orderId);
+
+          if (existingIndex >= 0) {
+            const existing = state.orders[existingIndex];
+            if (!existing) return;
+
+            const market = state.markets.find((m) => m.id === existing.market_id);
+            if (!market) return;
+
+            const baseToken = state.tokens.find((t) => t.ticker === market.base_ticker);
+            if (!baseToken) return;
+
+            const divisor = Math.pow(10, baseToken.decimals);
+            const filledValue = Number(BigInt(filledSize)) / divisor;
+
+            state.orders = state.orders.map((order, index) =>
+              index === existingIndex
+                ? {
+                    ...existing,
+                    status: status as any,
+                    filled_size: filledSize,
+                    filledDisplay: filledValue.toFixed(baseToken.decimals),
+                    filledValue,
+                  }
+                : order
+            );
+          }
+        }),
+
+      setUserTrades: (trades) =>
+        set((state) => {
+          state.userTrades = trades;
+        }),
+
+      addUserTrade: (trade) =>
+        set((state) => {
+          state.userTrades.unshift(trade);
+          if (state.userTrades.length > 100) {
+            state.userTrades = state.userTrades.slice(0, 100);
+          }
+        }),
+
+      // ========================================================================
+      // Utilities
+      // ========================================================================
+
       reset: () => set(initialState),
     })),
     { name: "ExchangeStore" }
