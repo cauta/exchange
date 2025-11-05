@@ -722,56 +722,61 @@ async fn test_two_users_limit_order_matching_full_events() {
     }
 
     // Verify taker receives balance updates for both BTC and USDC (unlocked after trade)
-    let taker_btc_balance = receive_message_of_type(
-        &mut ws_taker,
-        |msg| {
-            matches!(msg, ServerMessage::UserBalance { token_ticker, locked, .. }
-            if token_ticker == "BTC" && locked == "0")
-        },
-        10,
-    )
-    .await
-    .expect("Taker should receive BTC balance update");
+    // Handle messages in any order since balance events may arrive non-deterministically
+    let mut btc_received = false;
+    let mut usdc_received = false;
 
-    if let ServerMessage::UserBalance {
-        user_address,
-        available,
-        locked,
-        ..
-    } = taker_btc_balance
-    {
-        assert_eq!(user_address, taker);
-        let btc = available.parse::<u128>().unwrap();
-        assert!(btc > 0, "Taker should have received BTC");
-        assert_eq!(locked, "0", "Taker BTC should not be locked");
+    for _ in 0..10 {
+        match timeout(Duration::from_secs(2), async {
+            loop {
+                match ws_taker.next().await {
+                    Some(Ok(Message::Text(text))) => {
+                        let msg: ServerMessage = serde_json::from_str(&text)?;
+                        return Ok(msg);
+                    }
+                    Some(Ok(Message::Ping(_))) => continue,
+                    Some(Ok(_)) => continue,
+                    Some(Err(e)) => return Err(anyhow::anyhow!("WebSocket error: {}", e)),
+                    None => return Err(anyhow::anyhow!("Connection closed")),
+                }
+            }
+        })
+        .await
+        {
+            Ok(Ok(ServerMessage::UserBalance {
+                user_address,
+                token_ticker,
+                available,
+                locked,
+                ..
+            })) => {
+                assert_eq!(user_address, taker);
+
+                if token_ticker == "BTC" && locked == "0" {
+                    let btc = available.parse::<u128>().unwrap();
+                    assert!(btc > 0, "Taker should have received BTC");
+                    btc_received = true;
+                } else if token_ticker == "USDC" && locked == "0" {
+                    let usdc = available.parse::<u128>().unwrap();
+                    assert!(
+                        usdc < 100_000_000_000_000_000,
+                        "Taker should have spent USDC"
+                    );
+                    usdc_received = true;
+                }
+
+                if btc_received && usdc_received {
+                    break;
+                }
+            }
+            Ok(Ok(_)) => continue,
+            Ok(Err(e)) => panic!("Error: {}", e),
+            Err(_) => break,
+        }
     }
 
-    let taker_usdc_balance = receive_message_of_type(
-        &mut ws_taker,
-        |msg| {
-            matches!(msg, ServerMessage::UserBalance { token_ticker, locked, .. }
-            if token_ticker == "USDC" && locked == "0")
-        },
-        10,
-    )
-    .await
-    .expect("Taker should receive USDC balance update");
-
-    if let ServerMessage::UserBalance {
-        user_address,
-        available,
-        locked,
-        ..
-    } = taker_usdc_balance
-    {
-        assert_eq!(user_address, taker);
-        let usdc = available.parse::<u128>().unwrap();
-        assert!(
-            usdc < 100_000_000_000_000_000,
-            "Taker should have spent USDC"
-        );
-        assert_eq!(locked, "0", "Taker USDC should not be locked");
-    }
+    assert!(btc_received, "Taker should receive BTC balance update");
+    assert!(usdc_received, "Taker should receive USDC balance update");
 
     ws_maker.close(None).await.expect("Failed to close maker");
     ws_taker.close(None).await.expect("Failed to close taker");
@@ -944,57 +949,67 @@ async fn test_two_users_partial_fill_with_cancellation() {
         assert_eq!(trade.size, "1000000", "Should have filled 0.01 BTC only");
     }
 
-    // Verify taker receives balance updates showing some BTC received
-    let _btc_update = receive_message_of_type(
-        &mut ws_taker,
-        |msg| {
-            matches!(msg, ServerMessage::UserBalance { token_ticker, locked, .. }
-            if token_ticker == "BTC" && locked == "0")
-        },
-        10,
-    )
-    .await
-    .expect("Should receive BTC balance");
-
-    // Wait for USDC balance update showing 0.5 USDC still locked for remaining order
+    // Verify taker receives balance updates for BTC and USDC after partial fill
+    // Handle messages in any order since balance events may arrive non-deterministically
     // After partial fill of 0.01 BTC at $50/BTC:
     //   - Total order: 0.02 BTC * $50 = 1 USDC locked initially
     //   - Filled: 0.01 BTC * $50 = 0.5 USDC spent
     //   - Remaining: 0.01 BTC * $50 = 0.5 USDC still locked
-    let usdc_update = receive_message_of_type(
-        &mut ws_taker,
-        |msg| {
-            matches!(msg, ServerMessage::UserBalance { token_ticker, locked, .. }
-            if token_ticker == "USDC" && locked == "500000") // 0.5 USDC = 500_000 atoms
-        },
-        10,
-    )
-    .await
-    .expect("Should receive USDC balance with remaining order locked");
+    let mut btc_received = false;
+    let mut usdc_with_lock_received = false;
 
-    // Verify balance state after partial fill
-    // Started with 200,000 USDC total
-    // Locked 1 USDC for 0.02 BTC order (199,999 available, 1 locked)
-    // After partial fill of 0.01 BTC:
-    //   - Unlocked 0.5 USDC from filled portion
-    //   - Spent 0.5 USDC (including fees)
-    //   - State: ~199,999.5 available, 0.5 locked (for remaining 0.01 BTC order)
-    if let ServerMessage::UserBalance {
-        available, locked, ..
-    } = usdc_update
-    {
-        let available_usdc = available.parse::<u128>().unwrap();
-        // Should have approximately 199,999.5 USDC (minus fees)
-        assert!(
-            available_usdc >= 199_999_000_000,
-            "Should have most USDC still available, got {}",
-            available_usdc
-        );
-        assert_eq!(
-            locked, "500000",
-            "Should have 0.5 USDC locked for remaining 0.01 BTC order"
-        );
+    for _ in 0..10 {
+        match timeout(Duration::from_secs(2), async {
+            loop {
+                match ws_taker.next().await {
+                    Some(Ok(Message::Text(text))) => {
+                        let msg: ServerMessage = serde_json::from_str(&text)?;
+                        return Ok(msg);
+                    }
+                    Some(Ok(Message::Ping(_))) => continue,
+                    Some(Ok(_)) => continue,
+                    Some(Err(e)) => return Err(anyhow::anyhow!("WebSocket error: {}", e)),
+                    None => return Err(anyhow::anyhow!("Connection closed")),
+                }
+            }
+        })
+        .await
+        {
+            Ok(Ok(ServerMessage::UserBalance {
+                token_ticker,
+                available,
+                locked,
+                ..
+            })) => {
+                if token_ticker == "BTC" && locked == "0" {
+                    btc_received = true;
+                } else if token_ticker == "USDC" && locked == "500000" {
+                    // 0.5 USDC = 500_000 atoms still locked for remaining order
+                    let available_usdc = available.parse::<u128>().unwrap();
+                    // Should have approximately 199,999.5 USDC (minus fees)
+                    assert!(
+                        available_usdc >= 199_999_000_000,
+                        "Should have most USDC still available, got {}",
+                        available_usdc
+                    );
+                    usdc_with_lock_received = true;
+                }
+
+                if btc_received && usdc_with_lock_received {
+                    break;
+                }
+            }
+            Ok(Ok(_)) => continue,
+            Ok(Err(e)) => panic!("Error: {}", e),
+            Err(_) => break,
+        }
     }
+
+    assert!(btc_received, "Should receive BTC balance");
+    assert!(
+        usdc_with_lock_received,
+        "Should receive USDC balance with 0.5 USDC locked for remaining order"
+    );
 
     // Cancel the remaining order
     // Engine automatically unlocks the remaining 0.5 USDC and broadcasts balance event
@@ -1181,51 +1196,64 @@ async fn test_market_order_immediate_execution_all_events() {
         assert_eq!(trade.seller_address, maker);
     }
 
-    // Verify taker receives balance updates
-    let btc_balance = receive_message_of_type(
-        &mut ws_taker,
-        |msg| matches!(msg, ServerMessage::UserBalance { token_ticker, .. } if token_ticker == "BTC"),
-        5,
-    )
-    .await
-    .expect("Should receive BTC balance");
+    // Verify taker receives balance updates for both BTC and USDC
+    // Handle messages in any order since balance events may arrive non-deterministically
+    let mut btc_received = false;
+    let mut usdc_unlocked = false;
 
-    if let ServerMessage::UserBalance {
-        available, locked, ..
-    } = btc_balance
-    {
-        let btc = available.parse::<u128>().unwrap();
-        assert!(btc > 0, "Taker should have BTC");
-        assert_eq!(locked, "0", "No BTC should be locked");
+    for _ in 0..10 {
+        match timeout(Duration::from_secs(2), async {
+            loop {
+                match ws_taker.next().await {
+                    Some(Ok(Message::Text(text))) => {
+                        let msg: ServerMessage = serde_json::from_str(&text)?;
+                        return Ok(msg);
+                    }
+                    Some(Ok(Message::Ping(_))) => continue,
+                    Some(Ok(_)) => continue,
+                    Some(Err(e)) => return Err(anyhow::anyhow!("WebSocket error: {}", e)),
+                    None => return Err(anyhow::anyhow!("Connection closed")),
+                }
+            }
+        })
+        .await
+        {
+            Ok(Ok(ServerMessage::UserBalance {
+                token_ticker,
+                available,
+                locked,
+                ..
+            })) => {
+                if token_ticker == "BTC" {
+                    let btc = available.parse::<u128>().unwrap();
+                    assert!(btc > 0, "Taker should have BTC");
+                    assert_eq!(locked, "0", "No BTC should be locked");
+                    btc_received = true;
+                } else if token_ticker == "USDC" && locked == "0" {
+                    let usdc = available.parse::<u128>().unwrap();
+                    assert!(
+                        usdc < 200_000_000_000,
+                        "Taker should have spent USDC, got {}",
+                        usdc
+                    );
+                    usdc_unlocked = true;
+                }
+
+                if btc_received && usdc_unlocked {
+                    break;
+                }
+            }
+            Ok(Ok(_)) => continue,
+            Ok(Err(e)) => panic!("Error: {}", e),
+            Err(_) => break,
+        }
     }
 
-    // Wait for USDC balance update showing unlocked state (after trade execution)
-    let usdc_balance = receive_message_of_type(
-        &mut ws_taker,
-        |msg| {
-            matches!(msg, ServerMessage::UserBalance { token_ticker, locked, .. }
-            if token_ticker == "USDC" && locked == "0")
-        },
-        10,
-    )
-    .await
-    .expect("Should receive USDC balance with no locked amount");
-
-    if let ServerMessage::UserBalance {
-        available, locked, ..
-    } = usdc_balance
-    {
-        let usdc = available.parse::<u128>().unwrap();
-        assert!(
-            usdc < 200_000_000_000,
-            "Taker should have spent USDC, got {}",
-            usdc
-        );
-        assert_eq!(
-            locked, "0",
-            "No USDC should be locked after market order execution"
-        );
-    }
+    assert!(btc_received, "Should have received BTC balance");
+    assert!(
+        usdc_unlocked,
+        "Should have received USDC balance with locked=0"
+    );
 
     ws_global.close(None).await.ok();
     ws_taker.close(None).await.ok();

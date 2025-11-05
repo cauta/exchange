@@ -47,49 +47,71 @@ export function getChartConfig(
       "paneProperties.vertGridProperties.style": 0,
       "paneProperties.horzGridProperties.style": 0,
 
-      // Candle colors
-      "mainSeriesProperties.candleStyle.upColor": "#22c55e",
-      "mainSeriesProperties.candleStyle.downColor": "#ef4444",
-      "mainSeriesProperties.candleStyle.wickUpColor": "#22c55e",
-      "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
+      // Candle colors - Standard style
+      "mainSeriesProperties.candleStyle.upColor": "#16a34a",
+      "mainSeriesProperties.candleStyle.downColor": "#dc2626",
+      "mainSeriesProperties.candleStyle.wickUpColor": "#16a34a",
+      "mainSeriesProperties.candleStyle.wickDownColor": "#dc2626",
       "mainSeriesProperties.candleStyle.borderUpColor": "#22c55e",
       "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
       "mainSeriesProperties.candleStyle.drawWick": true,
       "mainSeriesProperties.candleStyle.drawBorder": true,
+      "mainSeriesProperties.candleStyle.drawBody": true,
+      "mainSeriesProperties.candleStyle.barColorsOnPrevClose": false,
 
-      // Hollow candles
-      "mainSeriesProperties.hollowCandleStyle.upColor": "#22c55e",
-      "mainSeriesProperties.hollowCandleStyle.downColor": "#ef4444",
-      "mainSeriesProperties.hollowCandleStyle.wickUpColor": "#22c55e",
-      "mainSeriesProperties.hollowCandleStyle.wickDownColor": "#ef4444",
+      // Hollow candles - with proper fill colors
+      "mainSeriesProperties.hollowCandleStyle.upColor": "#16a34a",
+      "mainSeriesProperties.hollowCandleStyle.downColor": "#dc2626",
+      "mainSeriesProperties.hollowCandleStyle.wickUpColor": "#16a34a",
+      "mainSeriesProperties.hollowCandleStyle.wickDownColor": "#dc2626",
       "mainSeriesProperties.hollowCandleStyle.borderUpColor": "#22c55e",
       "mainSeriesProperties.hollowCandleStyle.borderDownColor": "#ef4444",
+      "mainSeriesProperties.hollowCandleStyle.drawWick": true,
+      "mainSeriesProperties.hollowCandleStyle.drawBorder": true,
 
-      // Bars
+      // Bars - with thicker lines
       "mainSeriesProperties.barStyle.upColor": "#22c55e",
       "mainSeriesProperties.barStyle.downColor": "#ef4444",
+      "mainSeriesProperties.barStyle.barColorsOnPrevClose": false,
+      "mainSeriesProperties.barStyle.dontDrawOpen": false,
+
+      // HeikinAshi style
+      "mainSeriesProperties.haStyle.upColor": "#16a34a",
+      "mainSeriesProperties.haStyle.downColor": "#dc2626",
+      "mainSeriesProperties.haStyle.wickUpColor": "#16a34a",
+      "mainSeriesProperties.haStyle.wickDownColor": "#dc2626",
+      "mainSeriesProperties.haStyle.borderUpColor": "#22c55e",
+      "mainSeriesProperties.haStyle.borderDownColor": "#ef4444",
+      "mainSeriesProperties.haStyle.drawWick": true,
+      "mainSeriesProperties.haStyle.drawBorder": true,
 
       // Line
       "mainSeriesProperties.lineStyle.color": "#ffffff",
       "mainSeriesProperties.lineStyle.linewidth": 2,
+      "mainSeriesProperties.lineStyle.priceSource": "close",
 
       // Area
       "mainSeriesProperties.areaStyle.color1": "rgba(255, 255, 255, 0.1)",
       "mainSeriesProperties.areaStyle.color2": "rgba(255, 255, 255, 0.02)",
       "mainSeriesProperties.areaStyle.linecolor": "#ffffff",
       "mainSeriesProperties.areaStyle.linewidth": 2,
+      "mainSeriesProperties.areaStyle.priceSource": "close",
 
       // Baseline
       "mainSeriesProperties.baselineStyle.topLineColor": "#22c55e",
       "mainSeriesProperties.baselineStyle.bottomLineColor": "#ef4444",
+      "mainSeriesProperties.baselineStyle.topFillColor1": "rgba(34, 197, 94, 0.1)",
+      "mainSeriesProperties.baselineStyle.topFillColor2": "rgba(34, 197, 94, 0.02)",
+      "mainSeriesProperties.baselineStyle.bottomFillColor1": "rgba(239, 68, 68, 0.1)",
+      "mainSeriesProperties.baselineStyle.bottomFillColor2": "rgba(239, 68, 68, 0.02)",
 
       // Scales and axes
       "scalesProperties.backgroundColor": "#1a1a1a",
       "scalesProperties.lineColor": "#262626",
-      "scalesProperties.textColor": "#ffffff",
+      "scalesProperties.textColor": "#a3a3a3",
 
       // Crosshair
-      "crosshairProperties.color": "#ffffff",
+      "crosshairProperties.color": "#737373",
       "crosshairProperties.width": 1,
       "crosshairProperties.style": 2,
 

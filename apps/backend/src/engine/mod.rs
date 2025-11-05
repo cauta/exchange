@@ -68,7 +68,8 @@ impl MatchingEngine {
                     market_id,
                     response_tx,
                 } => {
-                    let (result, affected) = self.handle_cancel_all_orders(user_address, market_id).await;
+                    let (result, affected) =
+                        self.handle_cancel_all_orders(user_address, market_id).await;
                     let _ = response_tx.send(result);
                     affected
                 }
@@ -105,12 +106,14 @@ impl MatchingEngine {
         }
 
         // Calculate and lock balance (after validation, before matching)
-        let (token_to_lock, amount_to_lock) = match self.calculate_lock_amount(&order, &market).await {
-            Ok(v) => v,
-            Err(e) => return (Err(e), affected),
-        };
+        let (token_to_lock, amount_to_lock) =
+            match self.calculate_lock_amount(&order, &market).await {
+                Ok(v) => v,
+                Err(e) => return (Err(e), affected),
+            };
 
-        if let Err(e) = self.db
+        if let Err(e) = self
+            .db
             .lock_balance(&order.user_address, &token_to_lock, amount_to_lock)
             .await
         {
@@ -140,14 +143,7 @@ impl MatchingEngine {
 
             // Execute trades if we have matches (also updates order status in DB)
             let (trades, executor_affected) = if !matches.is_empty() {
-                match Executor::execute(
-                    self.db.clone(),
-                    matches.clone(),
-                    &order,
-                    &market,
-                )
-                .await
-                {
+                match Executor::execute(self.db.clone(), matches.clone(), &order, &market).await {
                     Ok((trades, exec_affected)) => (trades, exec_affected),
                     Err(e) => {
                         // Execution failed - unlock the full order amount
@@ -236,7 +232,8 @@ impl MatchingEngine {
                     };
 
                     // Update database with final status
-                    if let Err(e) = self.db
+                    if let Err(e) = self
+                        .db
                         .update_order_fill(order.id, order.filled_size, order.status)
                         .await
                     {
@@ -248,15 +245,17 @@ impl MatchingEngine {
                     if unfilled_size > 0 {
                         let (token_to_unlock, amount_to_unlock) = match order.side {
                             crate::models::domain::Side::Buy => {
-                                match order
-                                    .price
-                                    .checked_mul(unfilled_size)
-                                {
-                                    Some(quote_amount) => (market.quote_ticker.clone(), quote_amount),
+                                match order.price.checked_mul(unfilled_size) {
+                                    Some(quote_amount) => {
+                                        (market.quote_ticker.clone(), quote_amount)
+                                    }
                                     None => {
-                                        return (Err(ExchangeError::InvalidParameter {
-                                            message: "Unlock amount overflow".to_string(),
-                                        }), affected);
+                                        return (
+                                            Err(ExchangeError::InvalidParameter {
+                                                message: "Unlock amount overflow".to_string(),
+                                            }),
+                                            affected,
+                                        );
                                     }
                                 }
                             }
@@ -265,7 +264,8 @@ impl MatchingEngine {
                             }
                         };
 
-                        if let Err(e) = self.db
+                        if let Err(e) = self
+                            .db
                             .unlock_balance(&order.user_address, &token_to_unlock, amount_to_unlock)
                             .await
                         {

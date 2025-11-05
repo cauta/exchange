@@ -438,8 +438,8 @@ export class WebSocketClient {
   ): () => void {
     this.logger.debug(`Setting up user orders subscription for ${userAddress}`);
 
-    const removeHandler = this.on("order", (msg) => {
-      if (msg.type === "order") {
+    const removeHandler = this.on("user_order", (msg) => {
+      if (msg.type === "user_order") {
         handler({ order_id: msg.order_id, status: msg.status, filled_size: msg.filled_size });
       }
     });
@@ -508,8 +508,8 @@ export class WebSocketClient {
   ): () => void {
     this.logger.debug(`Setting up user balances subscription for ${userAddress}`);
 
-    const removeHandler = this.on("balance", (msg) => {
-      if (msg.type === "balance") {
+    const removeHandler = this.on("user_balance", (msg) => {
+      if (msg.type === "user_balance") {
         handler({ token_ticker: msg.token_ticker, available: msg.available, locked: msg.locked });
       }
     });
