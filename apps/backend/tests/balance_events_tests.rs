@@ -105,27 +105,7 @@ async fn test_balance_events_on_limit_order_placement() {
         other => panic!("Expected Subscribed message, got: {:?}", other),
     }
 
-    // Lock the balance manually (simulating what the REST endpoint does)
-    server
-        .test_db
-        .db
-        .lock_balance(&user, "USDC", 50_000_000_000)
-        .await
-        .expect("Failed to lock balance");
-
-    // Broadcast the balance event (simulating what the REST endpoint does)
-    let balance = server
-        .test_db
-        .db
-        .get_balance(&user, "USDC")
-        .await
-        .expect("Failed to get balance");
-    let _ = server
-        .test_engine
-        .event_tx()
-        .send(backend::models::domain::EngineEvent::BalanceUpdated { balance });
-
-    // Place a limit order (balance already locked)
+    // Place a limit order - engine automatically locks balance and broadcasts event
     let order = utils::TestEngine::create_order(
         &user,
         "BTC/USDC",

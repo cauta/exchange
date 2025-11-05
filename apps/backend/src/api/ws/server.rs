@@ -10,9 +10,11 @@ use tokio::sync::{broadcast, RwLock};
 use tokio::time::interval;
 
 use crate::models::api::{OrderbookData, PriceLevel, ServerMessage};
-use crate::models::domain::EngineEvent;
+use crate::models::domain::{EngineEvent, Subscription};
 
-use super::{SocketState, PING_INTERVAL, PONG_TIMEOUT, UNSUBSCRIBED_TIMEOUT};
+use super::{
+    state::SubscriptionSet, SocketState, PING_INTERVAL, PONG_TIMEOUT, UNSUBSCRIBED_TIMEOUT,
+};
 
 /// Handle outgoing messages to the client and ping/pong management
 pub(super) async fn handle_server_messages(
@@ -65,9 +67,10 @@ pub(super) async fn handle_server_messages(
             // Forward engine events to client
             Ok(event) = event_rx.recv() => {
                 let state = socket_state.read().await;
-                if state.subscriptions.wants_event(&event) {
-                    drop(state); // Release lock before serialization
-                    let server_msg = engine_event_to_message(event);
+                let messages = engine_event_to_messages(&event, &state.subscriptions);
+                drop(state); // Release lock before serialization
+
+                for server_msg in messages {
                     if let Ok(json) = serde_json::to_string(&server_msg) {
                         if sender.send(Message::Text(json.into())).await.is_err() {
                             log::error!("Failed to send message to client");
@@ -80,64 +83,111 @@ pub(super) async fn handle_server_messages(
     }
 }
 
-/// Convert an EngineEvent to a ServerMessage for WebSocket transmission
-fn engine_event_to_message(event: EngineEvent) -> ServerMessage {
+/// Convert an EngineEvent to ServerMessage(s) for WebSocket transmission
+/// Returns multiple messages if the event matches multiple subscription types
+fn engine_event_to_messages(
+    event: &EngineEvent,
+    subscriptions: &SubscriptionSet,
+) -> Vec<ServerMessage> {
+    let mut messages = Vec::new();
+
     match event {
-        EngineEvent::TradeExecuted { trade } => ServerMessage::Trade {
-            trade: crate::models::api::TradeData {
+        EngineEvent::TradeExecuted { trade } => {
+            // Early return if no relevant subscriptions
+            if !subscriptions.wants_event(event) {
+                return messages;
+            }
+
+            let trade_data = crate::models::api::TradeData {
                 id: trade.id.to_string(),
-                market_id: trade.market_id,
-                buyer_address: trade.buyer_address,
-                seller_address: trade.seller_address,
+                market_id: trade.market_id.clone(),
+                buyer_address: trade.buyer_address.clone(),
+                seller_address: trade.seller_address.clone(),
                 buyer_order_id: trade.buyer_order_id.to_string(),
                 seller_order_id: trade.seller_order_id.to_string(),
                 price: trade.price.to_string(),
                 size: trade.size.to_string(),
                 side: trade.side,
                 timestamp: trade.timestamp.timestamp(),
-            },
-        },
-        EngineEvent::OrderPlaced { order } => ServerMessage::Order {
-            order_id: order.id.to_string(),
-            status: format!("{:?}", order.status).to_lowercase(),
-            filled_size: order.filled_size.to_string(),
-        },
-        EngineEvent::OrderCancelled { order_id, .. } => ServerMessage::Order {
-            order_id: order_id.to_string(),
-            status: "cancelled".to_string(),
-            filled_size: "0".to_string(),
-        },
-        EngineEvent::BalanceUpdated { balance } => ServerMessage::Balance {
-            user_address: balance.user_address,
-            token_ticker: balance.token_ticker,
-            available: balance
-                .amount
-                .checked_sub(balance.open_interest)
-                .unwrap_or(0)
-                .to_string(),
-            locked: balance.open_interest.to_string(),
-            updated_at: balance.updated_at.timestamp(),
-        },
-        EngineEvent::OrderbookSnapshot { orderbook } => ServerMessage::Orderbook {
-            orderbook: OrderbookData {
-                market_id: orderbook.market_id,
-                bids: orderbook
-                    .bids
-                    .into_iter()
-                    .map(|level| PriceLevel {
-                        price: level.price.to_string(),
-                        size: level.size.to_string(),
-                    })
-                    .collect(),
-                asks: orderbook
-                    .asks
-                    .into_iter()
-                    .map(|level| PriceLevel {
-                        price: level.price.to_string(),
-                        size: level.size.to_string(),
-                    })
-                    .collect(),
-            },
-        },
+            };
+
+            // Send Trade message if subscribed to market-wide trades
+            if subscriptions.has_subscription(&Subscription::Trades {
+                market_id: trade.market_id.clone(),
+            }) {
+                messages.push(ServerMessage::Trade {
+                    trade: trade_data.clone(),
+                });
+            }
+
+            // Send UserFill message if subscribed to user fills (buyer or seller)
+            if subscriptions.has_subscription(&Subscription::UserFills {
+                user_address: trade.buyer_address.clone(),
+            }) || subscriptions.has_subscription(&Subscription::UserFills {
+                user_address: trade.seller_address.clone(),
+            }) {
+                messages.push(ServerMessage::UserFill { trade: trade_data });
+            }
+        }
+        EngineEvent::OrderPlaced { order } => {
+            if subscriptions.wants_event(event) {
+                messages.push(ServerMessage::UserOrder {
+                    order_id: order.id.to_string(),
+                    status: format!("{:?}", order.status).to_lowercase(),
+                    filled_size: order.filled_size.to_string(),
+                });
+            }
+        }
+        EngineEvent::OrderCancelled { order_id, .. } => {
+            if subscriptions.wants_event(event) {
+                messages.push(ServerMessage::UserOrder {
+                    order_id: order_id.to_string(),
+                    status: "cancelled".to_string(),
+                    filled_size: "0".to_string(),
+                });
+            }
+        }
+        EngineEvent::BalanceUpdated { balance } => {
+            if subscriptions.wants_event(event) {
+                messages.push(ServerMessage::UserBalance {
+                    user_address: balance.user_address.clone(),
+                    token_ticker: balance.token_ticker.clone(),
+                    available: balance
+                        .amount
+                        .checked_sub(balance.open_interest)
+                        .unwrap_or(0)
+                        .to_string(),
+                    locked: balance.open_interest.to_string(),
+                    updated_at: balance.updated_at.timestamp(),
+                });
+            }
+        }
+        EngineEvent::OrderbookSnapshot { orderbook } => {
+            if subscriptions.wants_event(event) {
+                messages.push(ServerMessage::Orderbook {
+                    orderbook: OrderbookData {
+                        market_id: orderbook.market_id.clone(),
+                        bids: orderbook
+                            .bids
+                            .iter()
+                            .map(|level| PriceLevel {
+                                price: level.price.to_string(),
+                                size: level.size.to_string(),
+                            })
+                            .collect(),
+                        asks: orderbook
+                            .asks
+                            .iter()
+                            .map(|level| PriceLevel {
+                                price: level.price.to_string(),
+                                size: level.size.to_string(),
+                            })
+                            .collect(),
+                    },
+                });
+            }
+        }
     }
+
+    messages
 }

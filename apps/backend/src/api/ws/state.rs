@@ -52,6 +52,10 @@ impl SubscriptionSet {
         self.subs.remove(sub)
     }
 
+    pub(crate) fn has_subscription(&self, sub: &Subscription) -> bool {
+        self.subs.contains(sub)
+    }
+
     pub(crate) fn wants_event(&self, event: &EngineEvent) -> bool {
         match event {
             EngineEvent::TradeExecuted { trade } => {
