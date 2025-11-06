@@ -25,10 +25,8 @@ export function PriceInput({ value, onChange, market, quoteToken, error }: Price
   };
 
   return (
-    <div className="space-y-2">
-      <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-        Price ({quoteToken.ticker})
-      </Label>
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium text-muted-foreground">Price ({quoteToken.ticker})</Label>
       <Input
         type="number"
         value={value}
@@ -36,7 +34,7 @@ export function PriceInput({ value, onChange, market, quoteToken, error }: Price
         onBlur={handleBlur}
         placeholder="0.00"
         step={toDisplayValue(market.tick_size, quoteToken.decimals)}
-        className={`font-mono h-11 text-base border-border/50 focus:border-primary/50 focus:ring-primary/20 bg-muted/30 ${
+        className={`font-mono h-9 text-sm border-border/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 bg-muted/20 ${
           error ? "border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20" : ""
         }`}
       />

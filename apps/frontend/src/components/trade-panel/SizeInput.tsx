@@ -62,17 +62,15 @@ export function SizeInput({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <div className="flex justify-between items-center gap-2">
-        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide shrink-0">
-          Size ({baseToken.ticker})
-        </Label>
+        <Label className="text-xs font-medium text-muted-foreground shrink-0">Size ({baseToken.ticker})</Label>
         {isAuthenticated && (
           <span
-            className="text-xs text-muted-foreground font-medium text-right truncate min-w-0"
+            className="text-xs text-muted-foreground/80 text-right truncate min-w-0"
             title={`Available: ${formatNumberWithCommas(side === "buy" ? availableQuote : availableBase, 4)} ${side === "buy" ? quoteToken.ticker : baseToken.ticker}`}
           >
-            <span className="text-[10px] opacity-70">Available: </span>
+            <span className="text-[10px] opacity-60">Avail: </span>
             {formatNumberWithCommas(side === "buy" ? availableQuote : availableBase, 2)}{" "}
             <span className="text-[10px]">{side === "buy" ? quoteToken.ticker : baseToken.ticker}</span>
           </span>
@@ -85,14 +83,14 @@ export function SizeInput({
         onBlur={handleBlur}
         placeholder="0.00"
         step={toDisplayValue(market.lot_size, baseToken.decimals)}
-        className={`font-mono h-11 text-base border-border/50 focus:border-primary/50 focus:ring-primary/20 bg-muted/30 ${
+        className={`font-mono h-9 text-sm border-border/40 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 bg-muted/20 ${
           error ? "border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20" : ""
         }`}
       />
       {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
 
       {/* Percentage buttons */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-1.5">
         {[25, 50, 75, 100].map((pct) => (
           <Button
             key={pct}
@@ -101,7 +99,7 @@ export function SizeInput({
             size="sm"
             onClick={() => setPercentageSize(pct)}
             disabled={!isAuthenticated}
-            className="h-8 text-xs font-semibold transition-all"
+            className="h-7 text-xs font-medium"
           >
             {pct}%
           </Button>

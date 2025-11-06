@@ -110,20 +110,20 @@ export function TradePanel() {
       : (formData.side === "buy" ? bestAsk : bestBid) || lastTradePrice;
 
   return (
-    <Card className="h-full flex flex-col gap-0 py-0 overflow-hidden shadow-lg border-border/50 bg-gradient-to-b from-card to-card/80 min-w-0">
+    <Card className="h-full flex flex-col gap-0 py-0 overflow-hidden border-border/40 bg-card min-w-0">
       <OrderTypeSelector value={formData.orderType} onChange={(value) => updateField("orderType", value)} />
 
-      <CardContent className="p-4 space-y-4 flex-1">
-        {/* Buy/Sell Buttons */}
-        <SideSelector value={formData.side} onChange={(value) => updateField("side", value)} />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit(userAddress, isAuthenticated);
+        }}
+        className="flex-1 flex flex-col min-h-0"
+      >
+        <CardContent className="p-3 space-y-3 flex-1 overflow-y-auto">
+          {/* Buy/Sell Buttons */}
+          <SideSelector value={formData.side} onChange={(value) => updateField("side", value)} />
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSubmit(userAddress, isAuthenticated);
-          }}
-          className="space-y-4"
-        >
           {/* Price - Only for limit orders */}
           {formData.orderType === "limit" && (
             <PriceInput
@@ -150,6 +150,21 @@ export function TradePanel() {
             error={errors.size}
           />
 
+          {/* Error/Success Messages */}
+          {errors.general && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-md p-2 text-red-600 text-xs font-medium">
+              {errors.general}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-md p-2 text-green-600 text-xs font-medium">
+              {success}
+            </div>
+          )}
+        </CardContent>
+
+        {/* Bottom section with summary and button */}
+        <div className="border-t border-border/40 bg-muted/10 p-3 space-y-3 mt-auto">
           {/* Estimated total and fees */}
           <OrderSummary
             estimate={estimate}
@@ -159,18 +174,6 @@ export function TradePanel() {
             feeBps={feeBps}
           />
 
-          {/* Error/Success Messages */}
-          {errors.general && (
-            <div className="bg-red-500/10 border border-red-500/40 rounded-lg p-3 text-red-600 text-xs font-medium shadow-sm">
-              {errors.general}
-            </div>
-          )}
-          {success && (
-            <div className="bg-green-500/10 border border-green-500/40 rounded-lg p-3 text-green-600 text-xs font-medium shadow-sm">
-              {success}
-            </div>
-          )}
-
           {/* Submit Button */}
           <SubmitButton
             side={formData.side}
@@ -178,8 +181,8 @@ export function TradePanel() {
             isAuthenticated={isAuthenticated}
             loading={loading}
           />
-        </form>
-      </CardContent>
+        </div>
+      </form>
     </Card>
   );
 }

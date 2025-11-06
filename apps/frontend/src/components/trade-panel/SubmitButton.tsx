@@ -20,11 +20,11 @@ export function SubmitButton({ side, baseToken, isAuthenticated, loading }: Subm
     <Button
       type="submit"
       disabled={loading || !isAuthenticated}
-      size="lg"
-      className={`w-full font-bold text-base h-12 shadow-lg transition-all ${
+      size="default"
+      className={`w-full font-semibold text-sm h-10 transition-all ${
         side === "buy"
-          ? "bg-linear-to-br from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-green-600/30 hover:shadow-green-600/50"
-          : "bg-linear-to-br from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-red-600/30 hover:shadow-red-600/50"
+          ? "bg-green-600 hover:bg-green-700 text-white"
+          : "bg-red-600 hover:bg-red-700 text-white"
       }`}
     >
       {getButtonText()}

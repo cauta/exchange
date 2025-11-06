@@ -18,22 +18,22 @@ export function OrderSummary({ estimate, side, quoteToken, priceDecimals, feeBps
   const displayDecimals = Math.min(priceDecimals, 4);
 
   return (
-    <div className="space-y-1.5 bg-muted/30 border border-border/40 rounded-md p-3 text-xs">
-      <div className="flex justify-between items-center gap-2 text-muted-foreground">
+    <div className="space-y-1 bg-muted/20 border border-border/30 rounded-md p-2.5 text-xs">
+      <div className="flex justify-between items-center gap-2 text-muted-foreground/90">
         <span className="shrink-0">Total</span>
         <span className="font-mono text-right truncate min-w-0 whitespace-nowrap">
           {formatNumberWithCommas(estimate.total, displayDecimals)}{" "}
           <span className="text-[10px]">{quoteToken.ticker}</span>
         </span>
       </div>
-      <div className="flex justify-between items-center gap-2 text-muted-foreground">
+      <div className="flex justify-between items-center gap-2 text-muted-foreground/90">
         <span className="shrink-0">Fee ({(Math.abs(feeBps) / 100).toFixed(2)}%)</span>
         <span className="font-mono text-right truncate min-w-0 whitespace-nowrap">
           {formatNumberWithCommas(estimate.fee, displayDecimals)}{" "}
           <span className="text-[10px]">{quoteToken.ticker}</span>
         </span>
       </div>
-      <div className="flex justify-between items-center gap-2 pt-1.5 border-t border-border/40">
+      <div className="flex justify-between items-center gap-2 pt-1 border-t border-border/30">
         <span className="font-medium shrink-0">{side === "buy" ? "You Pay" : "You Get"}</span>
         <span className="font-mono font-semibold text-right truncate min-w-0 whitespace-nowrap">
           {formatNumberWithCommas(estimate.finalAmount, displayDecimals)}{" "}
