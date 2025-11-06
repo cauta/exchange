@@ -25,6 +25,7 @@ export function AuthButton() {
         const address = firstWallet.accounts[0]?.address;
         if (!address) return;
         setUser(address);
+        toast.success("Wallet connected successfully");
       }
     } else if (authState === "unauthenticated" && isAuthenticated) {
       // User logged out from Turnkey, sync our store
@@ -36,6 +37,7 @@ export function AuthButton() {
     // Call Turnkey logout and clear local state
     logout();
     clearUser();
+    toast.success("Wallet disconnected");
   };
 
   const handleCopyAddress = async () => {

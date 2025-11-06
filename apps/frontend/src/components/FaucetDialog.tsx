@@ -18,7 +18,23 @@ import { toast } from "sonner";
 import { useTurnkey } from "@turnkey/react-wallet-kit";
 import { Droplet } from "lucide-react";
 
-export function FaucetDialog() {
+interface FaucetDialogProps {
+  /** If true, dialog is controlled externally via open/onOpenChange */
+  controlled?: boolean;
+  /** External open state (only used when controlled=true) */
+  open?: boolean;
+  /** External open change handler (only used when controlled=true) */
+  onOpenChange?: (open: boolean) => void;
+  /** Custom trigger element (only used when controlled=false) */
+  trigger?: React.ReactNode;
+}
+
+export function FaucetDialog({
+  controlled = false,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange,
+  trigger,
+}: FaucetDialogProps) {
   const client = useExchangeClient();
   const { handleLogin } = useTurnkey();
   const tokensRecord = useExchangeStore((state) => state.tokens);
@@ -27,10 +43,14 @@ export function FaucetDialog() {
 
   // Convert Record to array with useMemo to avoid recreating on every render
   const tokens = useMemo(() => Object.values(tokensRecord), [tokensRecord]);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [selectedToken, setSelectedToken] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const waitingForAuthRef = useRef(false);
+
+  // Use controlled or internal state
+  const open = controlled ? (externalOpen ?? false) : internalOpen;
+  const setOpen = controlled ? (externalOnOpenChange ?? (() => {})) : setInternalOpen;
 
   // Reopen faucet after successful wallet connection
   useEffect(() => {
@@ -72,18 +92,21 @@ export function FaucetDialog() {
     }
   };
 
+  // Default trigger button
+  const defaultTrigger = (
+    <Button
+      size="sm"
+      variant="outline"
+      className="gap-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-md hover:bg-primary/5 hover:border-primary/50 active:scale-[0.98]"
+    >
+      <Droplet className="h-4 w-4" />
+      Faucet
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-md hover:bg-primary/5 hover:border-primary/50 active:scale-[0.98]"
-        >
-          <Droplet className="h-4 w-4" />
-          Faucet
-        </Button>
-      </DialogTrigger>
+      {!controlled && <DialogTrigger asChild>{trigger ?? defaultTrigger}</DialogTrigger>}
       <DialogContent
         className="sm:max-w-md bg-card/95 backdrop-blur-xl border-border/50"
         style={{
