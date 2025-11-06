@@ -71,10 +71,18 @@ impl TestExchange {
 
         // Setup tokens via admin API
         client
-            .admin_create_token(base.to_string(), base_decimals as u8, format!("{} Token", base))
+            .admin_create_token(
+                base.to_string(),
+                base_decimals as u8,
+                format!("{} Token", base),
+            )
             .await?;
         client
-            .admin_create_token(quote.to_string(), quote_decimals as u8, format!("{} Token", quote))
+            .admin_create_token(
+                quote.to_string(),
+                quote_decimals as u8,
+                format!("{} Token", quote),
+            )
             .await?;
 
         // Setup market via admin API

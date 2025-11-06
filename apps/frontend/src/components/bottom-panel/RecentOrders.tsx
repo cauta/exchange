@@ -146,19 +146,15 @@ export function RecentOrders() {
         id: "actions",
         header: () => (
           <div className="flex justify-center">
-            {hasOpenOrders ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelAll}
-                disabled={cancellingAll}
-                className="text-red-500 hover:text-red-600 hover:bg-red-500/10 h-7"
-              >
-                {cancellingAll ? "Cancelling..." : "Cancel All"}
-              </Button>
-            ) : (
-              <span>Cancel</span>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancelAll}
+              disabled={!hasOpenOrders || cancellingAll}
+              className="text-red-500 hover:text-red-600 hover:bg-red-500/10 h-7 disabled:text-muted-foreground disabled:hover:bg-transparent disabled:pointer-events-auto disabled:cursor-not-allowed"
+            >
+              {cancellingAll ? "Cancelling..." : "Cancel All"}
+            </Button>
           </div>
         ),
         cell: ({ row }) => {
@@ -173,7 +169,7 @@ export function RecentOrders() {
                 size="sm"
                 onClick={() => handleCancelOrder(order.id)}
                 disabled={!canCancel || isCancelling}
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 disabled:opacity-30 disabled:pointer-events-auto disabled:cursor-not-allowed cursor-pointer disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
               >
                 <X className="h-4 w-4" />
               </Button>

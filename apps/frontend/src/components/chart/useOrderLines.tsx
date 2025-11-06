@@ -74,6 +74,59 @@ export function useOrderLines(widgetRef: React.RefObject<IChartingLibraryWidget 
             .setCancelButtonIconColor("#ef4444")
             .setCancelTooltip("Cancel Order")
             .setTooltip(`${sideText} Order: ${order.sizeDisplay} @ ${order.priceDisplay}`)
+            .setEditable(true)
+            .setModifyTooltip("Drag to modify price")
+            .onMove(async function (this: { getPrice: () => number }) {
+              if (!userAddress) {
+                console.warn("[OrderLines] Cannot modify: user not authenticated");
+                return;
+              }
+
+              const newPrice = this.getPrice();
+              console.log(`[OrderLines] Moving order ${order.id} from ${order.priceValue} to ${newPrice}`);
+
+              try {
+                // Cancel the old order
+                await client.cancelOrder({
+                  userAddress,
+                  orderId: order.id,
+                  signature: "0x",
+                });
+
+                // Get market and token info for price formatting
+                const state = useExchangeStore.getState();
+                const market = state.markets[order.market_id];
+
+                if (!market) {
+                  console.error("[OrderLines] Market not found:", order.market_id);
+                  return;
+                }
+
+                const quoteToken = state.tokens[market.quote_ticker];
+                if (!quoteToken) {
+                  console.error("[OrderLines] Quote token not found:", market.quote_ticker);
+                  return;
+                }
+
+                // Calculate new price in atoms based on quote token decimals
+                const priceInAtoms = Math.round(newPrice * Math.pow(10, quoteToken.decimals));
+
+                // Place new order at the new price
+                await client.placeOrder({
+                  userAddress,
+                  marketId: order.market_id,
+                  side: order.side,
+                  orderType: order.order_type,
+                  price: priceInAtoms.toString(),
+                  size: order.size,
+                  signature: "0x",
+                });
+
+                console.log(`[OrderLines] Order modified: ${order.id} -> new price ${newPrice}`);
+              } catch (err) {
+                console.error("[OrderLines] Failed to modify order:", err);
+              }
+            })
             .onCancel(async () => {
               if (!userAddress) {
                 console.warn("[OrderLines] Cannot cancel: user not authenticated");

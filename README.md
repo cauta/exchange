@@ -155,6 +155,7 @@ missing production
 - fix balance ws emit
 - refactor ws types with userfills
 - try tradingview order lines
+- polish: fix bugs, adjust styling, refactor code
 
 - add trading signatures
 - add admin page

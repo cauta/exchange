@@ -2,14 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useExchangeStore } from "@/lib/store";
-import { useUserOrders } from "@/lib/hooks/useUserOrders";
 import { ExchangeDatafeed } from "@/components/chart/tradingview-datafeed";
 import { Card, CardContent } from "@/components/ui/card";
 import { useOrderLines } from "./useOrderLines";
 import { getChartConfig } from "./chartConfig";
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import type {
   IChartingLibraryWidget,
   ChartingLibraryWidgetOptions,
@@ -30,10 +27,7 @@ export function TradingViewChart() {
   const selectedMarketId = useExchangeStore((state) => state.selectedMarketId);
   const [isChartReady, setIsChartReady] = useState(false);
 
-  // Fetch and subscribe to orders
-  useUserOrders();
-
-  // Manage order lines overlay
+  // Manage order lines overlay (orders are subscribed to at the page level)
   useOrderLines(widgetRef, isChartReady);
 
   useEffect(() => {

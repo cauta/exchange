@@ -11,6 +11,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      closeButton
       icons={{
         success: <CircleCheckIcon className="size-4" />,
         info: <InfoIcon className="size-4" />,
@@ -20,32 +21,34 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       toastOptions={{
         classNames: {
-          toast: "bg-card/95 backdrop-blur-xl border-border/50 shadow-lg",
+          toast: "bg-zinc-900/95 backdrop-blur-xl border-zinc-700/50 shadow-2xl dither",
           title: "text-foreground",
           description: "text-muted-foreground",
-          success: "bg-card/95 border-primary/30 text-foreground",
-          error: "bg-card/95 border-destructive/50 text-foreground",
-          warning: "bg-card/95 border-yellow-500/50 text-foreground",
-          info: "bg-card/95 border-primary/30 text-foreground",
+          success: "bg-zinc-900/95 backdrop-blur-xl border-zinc-700/50 text-foreground",
+          error: "bg-zinc-900/95 backdrop-blur-xl border-red-500/30 text-foreground",
+          warning: "bg-zinc-900/95 backdrop-blur-xl border-yellow-500/30 text-foreground",
+          info: "bg-zinc-900/95 backdrop-blur-xl border-zinc-700/50 text-foreground",
+          closeButton:
+            "bg-zinc-800/80 border-zinc-700/50 text-foreground hover:bg-zinc-700/80 hover:border-zinc-600/50 transition-all",
         },
       }}
       style={
         {
-          "--normal-bg": "hsl(var(--card))",
+          "--normal-bg": "hsl(0 0% 9% / 0.95)",
           "--normal-text": "hsl(var(--foreground))",
-          "--normal-border": "hsl(var(--border))",
-          "--success-bg": "hsl(var(--card))",
+          "--normal-border": "hsl(0 0% 40% / 0.5)",
+          "--success-bg": "hsl(0 0% 9% / 0.95)",
           "--success-text": "hsl(var(--foreground))",
-          "--success-border": "hsl(var(--primary) / 0.3)",
-          "--error-bg": "hsl(var(--card))",
+          "--success-border": "hsl(0 0% 40% / 0.5)",
+          "--error-bg": "hsl(0 0% 9% / 0.95)",
           "--error-text": "hsl(var(--foreground))",
-          "--error-border": "hsl(var(--destructive) / 0.5)",
-          "--warning-bg": "hsl(var(--card))",
+          "--error-border": "hsl(0 63% 50% / 0.3)",
+          "--warning-bg": "hsl(0 0% 9% / 0.95)",
           "--warning-text": "hsl(var(--foreground))",
-          "--warning-border": "hsl(45 93% 47% / 0.5)",
-          "--info-bg": "hsl(var(--card))",
+          "--warning-border": "hsl(45 93% 47% / 0.3)",
+          "--info-bg": "hsl(0 0% 9% / 0.95)",
           "--info-text": "hsl(var(--foreground))",
-          "--info-border": "hsl(var(--primary) / 0.3)",
+          "--info-border": "hsl(0 0% 40% / 0.5)",
           "--border-radius": "var(--radius)",
         } as React.CSSProperties
       }

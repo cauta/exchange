@@ -26,9 +26,6 @@ export function useUserOrders() {
 
   // Track if this is the initial load to avoid toasting for existing data
   const isInitialLoadRef = useRef(true);
-  // Use store-level toast tracking to prevent duplicates across all hook instances
-  const markEventToasted = useExchangeStore((state) => state.markEventToasted);
-  const toastedEvents = useExchangeStore((state) => state.toastedEvents);
 
   // Refetch orders function
   const refetchOrders = useCallback(async () => {
@@ -68,7 +65,9 @@ export function useUserOrders() {
 
     // Subscribe to WebSocket order updates
     const unsubscribe = client.onUserOrders(userAddress, async (orderUpdate) => {
-      const orderExists = ordersRecord[orderUpdate.order_id];
+      // Get latest orders from store at callback time (not from stale closure)
+      const currentOrders = useExchangeStore.getState().userOrders;
+      const orderExists = currentOrders[orderUpdate.order_id];
 
       // If order doesn't exist, refetch to get the full order details
       if (!orderExists) {
@@ -78,15 +77,8 @@ export function useUserOrders() {
         updateOrder(orderUpdate.order_id, orderUpdate.status as OrderStatus, orderUpdate.filled_size);
       }
 
-      // Show toast notification for new order placements (only once per order globally)
-      const placeEventId = `order-placed-${orderUpdate.order_id}`;
-      if (
-        !isInitialLoadRef.current &&
-        orderUpdate.status === "pending" &&
-        orderUpdate.filled_size === "0" &&
-        !toastedEvents.has(placeEventId)
-      ) {
-        markEventToasted(placeEventId);
+      // Show toast notification for new order placements
+      if (!isInitialLoadRef.current && orderUpdate.status === "pending" && orderUpdate.filled_size === "0") {
         toast.info("Order placed successfully", {
           description: `Order ID: ${orderUpdate.order_id.slice(0, 8)}...`,
           duration: 3000,
@@ -94,13 +86,7 @@ export function useUserOrders() {
       }
 
       // Show toast for cancelled orders
-      const cancelEventId = `order-cancelled-${orderUpdate.order_id}`;
-      if (
-        !isInitialLoadRef.current &&
-        orderUpdate.status === "cancelled" &&
-        !toastedEvents.has(cancelEventId)
-      ) {
-        markEventToasted(cancelEventId);
+      if (!isInitialLoadRef.current && orderUpdate.status === "cancelled") {
         toast.info("Order cancelled", {
           description: `Order ID: ${orderUpdate.order_id.slice(0, 8)}...`,
           duration: 3000,
@@ -112,7 +98,7 @@ export function useUserOrders() {
       clearTimeout(timer);
       unsubscribe();
     };
-  }, [userAddress, isAuthenticated, selectedMarketId, client, setOrders, updateOrder, ordersRecord, refetchOrders, toastedEvents, markEventToasted]);
+  }, [userAddress, isAuthenticated, selectedMarketId, client, setOrders, updateOrder, refetchOrders]);
 
   // Filter orders by selected market if market is selected
   return selectedMarketId ? orders.filter((o) => o.market_id === selectedMarketId) : orders;
