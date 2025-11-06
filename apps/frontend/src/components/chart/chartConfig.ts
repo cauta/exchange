@@ -112,22 +112,25 @@ export function getChartConfig(
 
       // Chart borders and separators
       "paneProperties.separatorColor": "#262626",
-      "mainSeriesProperties.priceLineColor": "#262626",
-      "mainSeriesProperties.priceAxisBorderColor": "#262626",
-      "timeScale.borderColor": "#262626",
+      "scalesProperties.showSeriesLastValue": true,
+      "scalesProperties.showSymbolLabels": true,
 
       // Crosshair
       "crosshairProperties.color": "#737373",
       "crosshairProperties.width": 1,
       "crosshairProperties.style": 2,
 
-      // Watermark
+      // Legend
       "paneProperties.legendProperties.showLegend": true,
       "paneProperties.legendProperties.showStudyArguments": true,
       "paneProperties.legendProperties.showStudyTitles": true,
       "paneProperties.legendProperties.showStudyValues": true,
       "paneProperties.legendProperties.showSeriesTitle": true,
       "paneProperties.legendProperties.showSeriesOHLC": true,
+
+      // Margins
+      "paneProperties.topMargin": 10,
+      "paneProperties.bottomMargin": 10,
     },
     studies_overrides: {
       "volume.volume.color.0": "#ef4444",

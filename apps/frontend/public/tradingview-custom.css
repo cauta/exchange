@@ -1,13 +1,30 @@
-/* TradingView Custom Theme - Dark Gray with White Accents */
+/* TradingView UI Customization - Minimal CSS for elements not exposed in overrides */
+/* Chart elements (candles, grids, scales) are handled in chartConfig.ts overrides */
 
-/* Toolbar and main containers */
-.chart-page .chart-container,
-.layout__area--top {
+/* ========================================
+   UI CONTAINERS & BORDERS
+   ======================================== */
+
+/* Main chart container and layout */
+.chart-page,
+.chart-container,
+.layout__area--top,
+.chart-widget,
+.chart-container-border {
   background-color: #1a1a1a !important;
   border-color: #262626 !important;
 }
 
-/* Buttons and controls */
+/* Chart iframe - remove blue borders */
+iframe[id*="tradingview"] {
+  border: none !important;
+}
+
+/* ========================================
+   TOOLBAR & CONTROLS
+   ======================================== */
+
+/* Buttons and toolbar items */
 .button-QtKYfKGZ,
 .button-merBkM5y,
 .item-Xp1EE8m2 {
@@ -28,9 +45,13 @@
   background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Dropdown menus */
+/* ========================================
+   DROPDOWNS & MENUS
+   ======================================== */
+
 .menuWrap-Kq3ruQo8,
-.menu-Kq3ruQo8 {
+.menu-Kq3ruQo8,
+.menuBox-biWYdsXC {
   background-color: #1a1a1a !important;
   border-color: #262626 !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
@@ -51,7 +72,58 @@
   color: #ffffff !important;
 }
 
-/* Scrollbar */
+/* ========================================
+   SEPARATORS & DIVIDERS
+   ======================================== */
+
+.separator-Pf4rIzEt {
+  background-color: #262626 !important;
+}
+
+/* ========================================
+   INPUT FIELDS
+   ======================================== */
+
+input[type="text"],
+input[type="number"] {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  color: #999999 !important;
+  border-color: #262626 !important;
+  transition: all 0.15s ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+  border-color: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05) !important;
+  outline: none !important;
+}
+
+/* ========================================
+   PANELS & BACKGROUNDS
+   ======================================== */
+
+.panel-nX4VbaC0 {
+  background-color: #1a1a1a !important;
+}
+
+/* ========================================
+   TABS
+   ======================================== */
+
+.tab-1ydBmW6T {
+  color: #999999 !important;
+}
+
+.tab-1ydBmW6T.isActive-1ydBmW6T {
+  color: #ffffff !important;
+  border-bottom-color: #ffffff !important;
+}
+
+/* ========================================
+   SCROLLBAR
+   ======================================== */
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -71,83 +143,20 @@
   background: #666666 !important;
 }
 
-/* Context menu */
-.menuBox-biWYdsXC {
-  background-color: #1a1a1a !important;
-  border-color: #262626 !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
-}
-
-/* Separators */
-.separator-Pf4rIzEt {
-  background-color: #262626 !important;
-}
-
-/* Input fields */
-input[type="text"],
-input[type="number"] {
-  background-color: rgba(255, 255, 255, 0.02) !important;
-  color: #999999 !important;
-  border-color: #262626 !important;
-  transition: all 0.15s ease;
-}
-
-input[type="text"]:focus,
-input[type="number"]:focus {
-  border-color: #ffffff !important;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05) !important;
-}
-
-/* Chart containers - gray borders */
-.chart-gui-wrapper,
-.chart-container-border {
-  background-color: #1a1a1a !important;
-  border-color: #262626 !important;
-}
-
-iframe#tradingview_* {
-  border-color: #262626 !important;
-}
-
-/* All chart borders to gray */
-.chart-page,
-.chart-container,
-.pane,
-.pane-legend,
-.price-axis,
-.time-axis {
-  border-color: #262626 !important;
-}
-
-/* Dividers and separators */
-div[class*="separator"],
-div[class*="divider"],
-div[class*="border"] {
-  background-color: #262626 !important;
-  border-color: #262626 !important;
-}
-
-/* Panel backgrounds */
-.panel-nX4VbaC0 {
-  background-color: #1a1a1a !important;
-}
-
-/* Tabs */
-.tab-1ydBmW6T {
-  color: #999999 !important;
-}
-
-.tab-1ydBmW6T.isActive-1ydBmW6T {
-  color: #ffffff !important;
-  border-bottom-color: #ffffff !important;
-}
-
-/* Remove all focus outlines and blue borders */
-* {
-  outline: none !important;
-}
+/* ========================================
+   REMOVE ALL FOCUS OUTLINES
+   ======================================== */
 
 *:focus {
   outline: none !important;
-  box-shadow: none !important;
+}
+
+/* ========================================
+   NUCLEAR OPTION: Remove any blue (#2962ff)
+   ======================================== */
+
+/* Override TradingView's default blue anywhere it appears */
+*[style*="#2962ff"],
+*[style*="rgb(41, 98, 255)"] {
+  border-color: #262626 !important;
 }
