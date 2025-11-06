@@ -272,4 +272,18 @@
     position: relative;
     z-index: 2;
   }
+
+  /* Wave animation for torn receipt edge */
+  @keyframes wave-slide {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(12px); }
+  }
+
+  .animate-wave {
+    animation: wave-slide 1s linear infinite;
+  }
+
+  .group:hover .wave-path {
+    animation: wave-slide 1s linear infinite;
+  }
 }
