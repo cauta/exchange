@@ -1355,7 +1355,7 @@ async fn test_multiple_orders_and_cancellations_event_flow() {
             &mut ws,
             |msg| matches!(msg, ServerMessage::UserBalance { token_ticker, .. } if token_ticker == "USDC"),
             5,
-        ).await.expect(&format!("Should receive balance update for order {}", i));
+        ).await.unwrap_or_else(|_| panic!("Should receive balance update for order {}", i));
     }
 
     // Verify orderbook shows all 3 bids
@@ -1388,14 +1388,14 @@ async fn test_multiple_orders_and_cancellations_event_flow() {
             5,
         )
         .await
-        .expect(&format!("Should receive cancellation for order {}", i + 1));
+        .unwrap_or_else(|_| panic!("Should receive cancellation for order {}", i + 1));
 
         // Verify balance unlock
         let balance = receive_message_of_type(
             &mut ws,
             |msg| matches!(msg, ServerMessage::UserBalance { token_ticker, .. } if token_ticker == "USDC"),
             5,
-        ).await.expect(&format!("Should receive balance unlock for order {}", i + 1));
+        ).await.unwrap_or_else(|_| panic!("Should receive balance unlock for order {}", i + 1));
 
         if let ServerMessage::UserBalance {
             available, locked, ..

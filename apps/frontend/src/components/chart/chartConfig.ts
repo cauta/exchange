@@ -110,6 +110,12 @@ export function getChartConfig(
       "scalesProperties.lineColor": "#262626",
       "scalesProperties.textColor": "#a3a3a3",
 
+      // Chart borders and separators
+      "paneProperties.separatorColor": "#262626",
+      "mainSeriesProperties.priceLineColor": "#262626",
+      "mainSeriesProperties.priceAxisBorderColor": "#262626",
+      "timeScale.borderColor": "#262626",
+
       // Crosshair
       "crosshairProperties.color": "#737373",
       "crosshairProperties.width": 1,

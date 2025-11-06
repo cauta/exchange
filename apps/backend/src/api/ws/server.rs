@@ -154,8 +154,7 @@ fn engine_event_to_messages(
                     token_ticker: balance.token_ticker.clone(),
                     available: balance
                         .amount
-                        .checked_sub(balance.open_interest)
-                        .unwrap_or(0)
+                        .saturating_sub(balance.open_interest)
                         .to_string(),
                     locked: balance.open_interest.to_string(),
                     updated_at: balance.updated_at.timestamp(),

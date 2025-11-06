@@ -90,7 +90,7 @@ export function RecentTrades() {
 
   if (!selectedMarketId || !selectedMarket) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="h-full flex pt-20 justify-center">
         <p className="text-muted-foreground text-sm">Select a market to view trades</p>
       </div>
     );
@@ -98,7 +98,7 @@ export function RecentTrades() {
 
   if (!isAuthenticated || !userAddress) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="h-full flex pt-20 justify-center">
         <p className="text-muted-foreground text-sm">Connect your wallet to view your trades</p>
       </div>
     );

@@ -98,15 +98,33 @@ input[type="number"]:focus {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05) !important;
 }
 
-/* Chart containers - remove blue borders */
+/* Chart containers - gray borders */
 .chart-gui-wrapper,
 .chart-container-border {
   background-color: #1a1a1a !important;
-  border: none !important;
+  border-color: #262626 !important;
 }
 
 iframe#tradingview_* {
-  border: none !important;
+  border-color: #262626 !important;
+}
+
+/* All chart borders to gray */
+.chart-page,
+.chart-container,
+.pane,
+.pane-legend,
+.price-axis,
+.time-axis {
+  border-color: #262626 !important;
+}
+
+/* Dividers and separators */
+div[class*="separator"],
+div[class*="divider"],
+div[class*="border"] {
+  background-color: #262626 !important;
+  border-color: #262626 !important;
 }
 
 /* Panel backgrounds */
