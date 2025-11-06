@@ -78,7 +78,7 @@ export function Balances() {
 
   if (balances.length === 0) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="h-full flex pt-20 justify-center">
         <p className="text-muted-foreground text-sm">
           No balances found. Use the faucet button in the top bar to get tokens!
         </p>

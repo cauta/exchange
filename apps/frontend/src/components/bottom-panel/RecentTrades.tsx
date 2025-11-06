@@ -84,6 +84,20 @@ export function RecentTrades() {
         cell: ({ row }) => <div className="text-right text-muted-foreground/80">{row.getValue("sizeDisplay")}</div>,
         size: 120,
       },
+      {
+        id: "usdValue",
+        header: () => <div className="text-right">USD Value</div>,
+        cell: ({ row }) => {
+          const trade = row.original;
+          const usdValue = trade.priceValue * trade.sizeValue;
+          return (
+            <div className="text-right font-medium text-foreground/90">
+              ${usdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          );
+        },
+        size: 120,
+      },
     ],
     []
   );

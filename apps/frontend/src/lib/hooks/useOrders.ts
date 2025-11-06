@@ -2,9 +2,11 @@
  * Hook for managing user orders with WebSocket subscriptions
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { useExchangeStore } from "../store";
 import { useExchangeClient } from "./useExchangeClient";
+import { OrderStatus } from "@exchange/sdk";
 
 /**
  * Hook that fetches initial orders via REST and subscribes to WebSocket updates
@@ -19,9 +21,13 @@ export function useOrders() {
   const updateOrder = useExchangeStore((state) => state.updateOrder);
   const orders = useExchangeStore((state) => state.userOrders);
 
+  // Track if this is the initial load to avoid toasting for existing data
+  const isInitialLoadRef = useRef(true);
+
   useEffect(() => {
     if (!userAddress || !isAuthenticated) {
       setOrders([]);
+      isInitialLoadRef.current = true;
       return;
     }
 
@@ -38,12 +44,26 @@ export function useOrders() {
 
     fetchInitialOrders();
 
+    // Set a short delay to mark initial load as complete
+    const timer = setTimeout(() => {
+      isInitialLoadRef.current = false;
+    }, 2000);
+
     // Subscribe to WebSocket order updates
     const unsubscribe = client.onUserOrders(userAddress, (orderUpdate) => {
-      updateOrder(orderUpdate.order_id, orderUpdate.status, orderUpdate.filled_size);
+      updateOrder(orderUpdate.order_id, orderUpdate.status as OrderStatus, orderUpdate.filled_size);
+
+      // Show toast notification for new order placements
+      if (!isInitialLoadRef.current && orderUpdate.status === "pending" && orderUpdate.filled_size === "0") {
+        toast.info("Order placed successfully", {
+          description: `Order ID: ${orderUpdate.order_id.slice(0, 8)}...`,
+          duration: 3000,
+        });
+      }
     });
 
     return () => {
+      clearTimeout(timer);
       unsubscribe();
     };
   }, [userAddress, isAuthenticated, selectedMarketId, client, setOrders, updateOrder]);

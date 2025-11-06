@@ -2,7 +2,8 @@
  * Hook for managing user trades with WebSocket subscriptions
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { useExchangeStore } from "../store";
 import { useExchangeClient } from "./useExchangeClient";
 
@@ -19,9 +20,13 @@ export function useUserTrades() {
   const addUserTrade = useExchangeStore((state) => state.addUserTrade);
   const userTrades = useExchangeStore((state) => state.userTrades);
 
+  // Track if this is the initial load to avoid toasting for existing data
+  const isInitialLoadRef = useRef(true);
+
   useEffect(() => {
     if (!userAddress || !isAuthenticated) {
       setUserTrades([]);
+      isInitialLoadRef.current = true;
       return;
     }
 
@@ -39,12 +44,30 @@ export function useUserTrades() {
 
     fetchInitialTrades();
 
+    // Set a short delay to mark initial load as complete
+    const timer = setTimeout(() => {
+      isInitialLoadRef.current = false;
+    }, 2000);
+
     // Subscribe to WebSocket trade updates
     const unsubscribe = client.onUserFills(userAddress, (trade) => {
       addUserTrade(trade);
+
+      // Show toast notification for new fills
+      if (!isInitialLoadRef.current) {
+        const side = trade.buyer_address === userAddress ? "buy" : "sell";
+        toast.success(
+          `Fill: ${side.toUpperCase()} ${trade.sizeDisplay} ${trade.market_id.split("/")[0]} @ ${trade.priceDisplay}`,
+          {
+            description: `Market: ${trade.market_id}`,
+            duration: 4000,
+          }
+        );
+      }
     });
 
     return () => {
+      clearTimeout(timer);
       unsubscribe();
     };
   }, [userAddress, isAuthenticated, selectedMarketId, client, setUserTrades, addUserTrade]);

@@ -115,6 +115,20 @@ export function RecentOrders() {
         size: 120,
       },
       {
+        id: "usdValue",
+        header: () => <div className="text-right">USD Value</div>,
+        cell: ({ row }) => {
+          const order = row.original;
+          const usdValue = order.priceValue * order.sizeValue;
+          return (
+            <div className="text-right font-medium text-foreground/90">
+              ${usdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          );
+        },
+        size: 120,
+      },
+      {
         id: "filled",
         header: () => <div className="text-right">Filled</div>,
         cell: ({ row }) => {
@@ -175,17 +189,16 @@ export function RecentOrders() {
         cell: ({ row }) => {
           const order = row.original;
           const canCancel = order.status === "pending" || order.status === "partially_filled";
-          if (!canCancel) return null;
-
           const isCancelling = cancellingOrders.has(order.id);
+
           return (
             <div className="flex justify-center">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => handleCancelOrder(order.id)}
-                disabled={isCancelling}
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500"
+                disabled={!canCancel || isCancelling}
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 <X className="h-4 w-4" />
               </Button>
