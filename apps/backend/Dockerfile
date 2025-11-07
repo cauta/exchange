@@ -48,6 +48,7 @@ COPY --from=builder /app/target/release/init_exchange /usr/local/bin/init_exchan
 # Copy config to the path expected by CARGO_MANIFEST_DIR (compiled into binary)
 COPY --from=builder /app/apps/backend/config.toml /app/apps/backend/config.toml
 
+ENV HOST=0.0.0.0
 ENV PORT=8888
 EXPOSE 8888
 
