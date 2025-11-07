@@ -15,6 +15,7 @@ interface ExchangeState {
   // Market data (Records for O(1) lookup/insert/update)
   markets: Record<string, Market>;
   tokens: Record<string, Token>;
+  latestPrices: Record<string, number>; // Latest trade price per token (e.g., BTC -> 95000)
 
   // UI Data
   selectedMarketId: string | null;
@@ -61,6 +62,7 @@ const initialState = {
   // Market Data
   markets: {} as Record<string, Market>,
   tokens: {} as Record<string, Token>,
+  latestPrices: { USDC: 1.0 } as Record<string, number>,
 
   // UI Data
   selectedMarketId: null,
@@ -148,6 +150,12 @@ export const useExchangeStore = create<ExchangeState>()(
             if (state.recentTrades.length > 100) {
               state.recentTrades = state.recentTrades.slice(0, 100);
             }
+          }
+
+          // Update latest price for this market's base token
+          const market = state.markets[trade.market_id];
+          if (market && market.quote_ticker === "USDC") {
+            state.latestPrices[market.base_ticker] = trade.priceValue;
           }
         }),
 
@@ -257,6 +265,12 @@ export const useExchangeStore = create<ExchangeState>()(
           state.userTrades.unshift(trade);
           if (state.userTrades.length > 100) {
             state.userTrades = state.userTrades.slice(0, 100);
+          }
+
+          // Update latest price for this market's base token
+          const market = state.markets[trade.market_id];
+          if (market && market.quote_ticker === "USDC") {
+            state.latestPrices[market.base_ticker] = trade.priceValue;
           }
         }),
 
