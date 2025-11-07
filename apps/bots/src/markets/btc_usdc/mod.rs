@@ -1,3 +1,4 @@
+pub mod hyperliquid;
 pub mod orderbook_mirror;
 pub mod trade_mirror;
 

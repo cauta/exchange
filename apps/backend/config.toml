@@ -5,9 +5,9 @@ decimals = 8                 # Standard Bitcoin: 1 BTC = 100,000,000 satoshis
 name = "Bitcoin"
 
 [[tokens]]
-ticker = "ETH"
-decimals = 18                # Standard Ethereum: 1 ETH = 10^18 wei
-name = "Ethereum"
+ticker = "BP"
+decimals = 6                 # Binary Prediction token: 1 BP = 1,000,000 base units (like USDC)
+name = "Binary Prediction"
 
 [[tokens]]
 ticker = "USDC"
@@ -25,10 +25,10 @@ maker_fee_bps = 5                        # 0.05% maker fee
 taker_fee_bps = 10                       # 0.10% taker fee
 
 [[markets]]
-base_ticker = "ETH"
+base_ticker = "BP"
 quote_ticker = "USDC"
-tick_size = "10000"                      # 0.01 USDC - $0.01 price increments
-lot_size = "1000000000000000"            # 0.001 ETH (18 decimals) - ~$3 at $3k ETH
-min_size = "1000000000000000"            # 0.001 ETH minimum order (~$3 at $3k ETH)
+tick_size = "1000"                       # 0.001 USDC (6 decimals) - $0.001 price increments for [0,1] range
+lot_size = "1000000"                     # 1 BP (6 decimals) - minimum 1 BP
+min_size = "1000000"                     # 1 BP minimum order
 maker_fee_bps = 5
 taker_fee_bps = 10

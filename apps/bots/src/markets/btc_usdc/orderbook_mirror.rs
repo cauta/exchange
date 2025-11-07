@@ -1,4 +1,5 @@
-use crate::hyperliquid::{HlMessage, HyperliquidClient, Orderbook};
+use super::hyperliquid::{HlMessage, HyperliquidClient, Orderbook};
+use crate::utils::bot_helpers;
 use anyhow::Result;
 use backend::models::domain::{Market, OrderType, Side};
 use exchange_sdk::ExchangeClient;
@@ -32,39 +33,18 @@ impl OrderbookMirrorBot {
         config: OrderbookMirrorConfig,
         exchange_client: ExchangeClient,
     ) -> Result<Self> {
-        // Fetch market configuration from backend
-        let market = exchange_client.get_market(&config.market_id).await?;
-
         info!(
             "Orderbook mirror bot initialized for market {}",
             config.market_id
         );
-        info!(
-            "Market: {} (base) / {} (quote)",
-            market.base_ticker, market.quote_ticker
-        );
 
-        // Auto-faucet initial funds (large amounts for testing)
-        // Bots will auto-faucet more if they run out during operation
-        info!(
-            "💰 Auto-fauceting initial funds for {}",
-            config.user_address
-        );
-        let faucet_amount = "10000000000000000000000000"; // Large amount for testing
-
-        for token in [&market.base_ticker, &market.quote_ticker] {
-            match exchange_client
-                .admin_faucet(
-                    config.user_address.clone(),
-                    token.to_string(),
-                    faucet_amount.to_string(),
-                )
-                .await
-            {
-                Ok(_) => info!("✓ Fauceted {} for {}", token, config.user_address),
-                Err(e) => info!("Note: Faucet {} for {}: {}", token, config.user_address, e),
-            }
-        }
+        // Fetch market configuration and auto-faucet initial funds
+        let market = bot_helpers::fetch_market_and_faucet(
+            &exchange_client,
+            &config.market_id,
+            &config.user_address,
+        )
+        .await?;
 
         // Use base ticker as coin symbol for Hyperliquid (e.g., "BTC" from "BTC/USDC")
         let coin = market.base_ticker.clone();
@@ -290,46 +270,12 @@ impl OrderbookMirrorBot {
 
     /// Auto-faucet funds if we detect insufficient balance error
     async fn auto_faucet_on_error(&self, error_msg: &str) -> bool {
-        // Check if error is about insufficient balance
-        if error_msg.contains("Insufficient balance") || error_msg.contains("insufficient") {
-            // Extract token from error message if possible
-            let token = if error_msg.contains("BTC") {
-                Some("BTC")
-            } else if error_msg.contains("USDC") {
-                Some("USDC")
-            } else {
-                None
-            };
-
-            if let Some(token_name) = token {
-                info!(
-                    "💰 Detected insufficient {}, auto-fauceting more...",
-                    token_name
-                );
-                let faucet_amount = "10000000000000000000000000";
-
-                match self
-                    .exchange_client
-                    .admin_faucet(
-                        self.config.user_address.clone(),
-                        token_name.to_string(),
-                        faucet_amount.to_string(),
-                    )
-                    .await
-                {
-                    Ok(_) => {
-                        info!(
-                            "✓ Auto-fauceted {} for {}",
-                            token_name, self.config.user_address
-                        );
-                        return true;
-                    }
-                    Err(e) => {
-                        warn!("Failed to auto-faucet {}: {}", token_name, e);
-                    }
-                }
-            }
-        }
-        false
+        bot_helpers::auto_faucet_on_error(
+            &self.exchange_client,
+            &self.config.user_address,
+            &self.market,
+            error_msg,
+        )
+        .await
     }
 }

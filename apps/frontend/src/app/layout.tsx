@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Exchange",
+  title: "*",
   description: "Trading exchange application",
 };
 

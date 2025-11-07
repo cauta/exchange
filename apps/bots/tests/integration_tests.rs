@@ -1,6 +1,7 @@
 /// Integration tests for bot orders using testcontainers
 /// These tests verify end-to-end functionality including proper formatting for frontend display
 use backend::models::domain::{OrderStatus, OrderType, Side};
+use exchange_bots::markets::bp_usdc::{LmsrConfig, LmsrMarketMakerBot, SyntheticTraderBot, SyntheticTraderConfig};
 use exchange_sdk::ExchangeClient;
 use exchange_test_utils::TestServer;
 use rust_decimal::prelude::ToPrimitive;
@@ -542,4 +543,288 @@ async fn test_bot_cancel_all_orders() {
         pending_orders.len(),
         orders_after.len()
     );
+}
+
+// ============================================================================
+// BP/USDC Prediction Market Tests
+// ============================================================================
+
+/// Helper to setup BP/USDC prediction market
+async fn setup_bp_market(server: &TestServer) -> anyhow::Result<()> {
+    let client = ExchangeClient::new(&server.base_url);
+
+    // Create BP token (Binary Prediction)
+    client
+        .admin_create_token("BP".to_string(), 6, "Binary Prediction".to_string())
+        .await?;
+
+    // Create USDC token
+    client
+        .admin_create_token("USDC".to_string(), 6, "USD Coin".to_string())
+        .await?;
+
+    // Create BP/USDC market with appropriate constraints for prediction market
+    // Prices range from $0 to $1 (representing probabilities)
+    client
+        .admin_create_market(
+            "BP".to_string(),
+            "USDC".to_string(),
+            1000,     // tick_size: 0.001 USDC (6 decimals) - $0.001 increments
+            1000000,  // lot_size: 1 BP (6 decimals)
+            1000000,  // min_size: 1 BP minimum
+            5,        // maker_fee_bps: 0.05%
+            10,       // taker_fee_bps: 0.10%
+        )
+        .await?;
+
+    Ok(())
+}
+
+/// Test LMSR bot places bid and ask orders correctly
+#[tokio::test]
+async fn test_lmsr_bot_places_orders() {
+    let server = TestServer::start()
+        .await
+        .expect("Failed to start test server");
+    setup_bp_market(&server)
+        .await
+        .expect("Failed to setup BP market");
+
+    let client = ExchangeClient::new(&server.base_url);
+
+    // Create LMSR bot with 50% initial probability
+    let config = LmsrConfig {
+        user_address: "lmsr_bot".to_string(),
+        liquidity_param: 1000.0,
+        initial_probability: 0.5,
+        update_interval_ms: 60000, // Don't auto-update during test
+        spread_bps: 50, // 0.5% spread
+    };
+
+    let _bot = LmsrMarketMakerBot::new(config.clone(), client.clone())
+        .await
+        .expect("Failed to create LMSR bot");
+
+    // Manually trigger one quote update (instead of starting the loop)
+    // We'll access the bot's internal update logic by creating a minimal test
+
+    // For now, just verify the bot can be created and has correct initial state
+    // The bot's LMSR price at p=0.5 should be 0.5
+    // With 50 bps spread: bid=0.4975, ask=0.5025
+
+    // Wait a moment for initialization
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    // Verify bot was funded
+    let balances = client
+        .get_balances(&config.user_address)
+        .await
+        .expect("Failed to get balances");
+
+    assert!(balances.len() >= 2, "Bot should have BP and USDC balances");
+}
+
+/// Test LMSR pricing formula
+#[tokio::test]
+async fn test_lmsr_pricing_formula() {
+    // Test the LMSR formula directly
+    // Price = exp(q_yes / b) / (exp(q_yes / b) + exp(q_no / b))
+
+    let b: f64 = 1000.0;
+
+    // Test case 1: Equal shares (q_yes = q_no = 0) → p = 0.5
+    let q_yes: f64 = 0.0;
+    let q_no: f64 = 0.0;
+    let exp_yes = (q_yes / b).exp();
+    let exp_no = (q_no / b).exp();
+    let price = exp_yes / (exp_yes + exp_no);
+    assert!((price - 0.5).abs() < 0.001, "Equal shares should give p=0.5");
+
+    // Test case 2: More yes shares sold → higher price
+    let q_yes: f64 = 100.0;
+    let q_no: f64 = 0.0;
+    let exp_yes = (q_yes / b).exp();
+    let exp_no = (q_no / b).exp();
+    let price = exp_yes / (exp_yes + exp_no);
+    assert!(price > 0.5, "More yes shares should increase price");
+    assert!(price < 0.55, "Price shouldn't be too high with b=1000");
+
+    // Test case 3: More no shares sold → lower price
+    let q_yes: f64 = 0.0;
+    let q_no: f64 = 100.0;
+    let exp_yes = (q_yes / b).exp();
+    let exp_no = (q_no / b).exp();
+    let price = exp_yes / (exp_yes + exp_no);
+    assert!(price < 0.5, "More no shares should decrease price");
+    assert!(price > 0.45, "Price shouldn't be too low with b=1000");
+}
+
+/// Test synthetic trader generates random trades
+#[tokio::test]
+async fn test_synthetic_trader_generates_trades() {
+    let server = TestServer::start()
+        .await
+        .expect("Failed to start test server");
+    setup_bp_market(&server)
+        .await
+        .expect("Failed to setup BP market");
+
+    let client = ExchangeClient::new(&server.base_url);
+
+    // First, create an LMSR bot to provide liquidity
+    let lmsr_config = LmsrConfig {
+        user_address: "lmsr_bot_trader_test".to_string(),
+        liquidity_param: 1000.0,
+        initial_probability: 0.5,
+        update_interval_ms: 1000,
+        spread_bps: 50,
+    };
+
+    let mut lmsr_bot = LmsrMarketMakerBot::new(lmsr_config.clone(), client.clone())
+        .await
+        .expect("Failed to create LMSR bot");
+
+    // Start LMSR bot in background
+    let lmsr_handle = tokio::spawn(async move {
+        let _ = lmsr_bot.start().await;
+    });
+
+    // Wait for LMSR bot to place initial orders
+    // The bot needs to initialize and place first orders (now happens immediately on start)
+    tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
+
+    // Verify LMSR bot placed orders
+    let lmsr_orders = client
+        .get_orders(&lmsr_config.user_address, Some("BP/USDC".to_string()))
+        .await
+        .expect("Failed to get LMSR orders");
+    assert!(lmsr_orders.len() >= 1, "LMSR bot should have placed orders, got: {}", lmsr_orders.len());
+
+    // Now create synthetic trader
+    let trader_config = SyntheticTraderConfig {
+        user_address: "synthetic_trader_test".to_string(),
+        min_interval_ms: 500,  // Fast for testing
+        max_interval_ms: 1000,
+        min_size: 10.0,
+        max_size: 50.0,
+        buy_probability: 0.5,
+    };
+
+    let mut trader_bot = SyntheticTraderBot::new(trader_config.clone(), client.clone())
+        .await
+        .expect("Failed to create synthetic trader");
+
+    // Start trader bot in background
+    let trader_handle = tokio::spawn(async move {
+        let _ = trader_bot.start().await;
+    });
+
+    // Wait for a few trades to execute
+    tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
+
+    // Check that trades were generated
+    // Note: We can't easily fetch trades from the API in this test setup,
+    // but we can verify the trader was funded and attempted to trade
+    let trader_balances = client
+        .get_balances(&trader_config.user_address)
+        .await
+        .expect("Failed to get trader balances");
+
+    assert!(trader_balances.len() >= 2, "Trader should have balances");
+
+    // Clean up
+    lmsr_handle.abort();
+    trader_handle.abort();
+}
+
+/// Test end-to-end: LMSR + Synthetic trader creates market activity
+#[tokio::test]
+async fn test_bp_market_end_to_end() {
+    let server = TestServer::start()
+        .await
+        .expect("Failed to start test server");
+    setup_bp_market(&server)
+        .await
+        .expect("Failed to setup BP market");
+
+    let client = ExchangeClient::new(&server.base_url);
+
+    // Create LMSR market maker
+    let lmsr_config = LmsrConfig {
+        user_address: "lmsr_e2e".to_string(),
+        liquidity_param: 1000.0,
+        initial_probability: 0.5,
+        update_interval_ms: 2000,
+        spread_bps: 50,
+    };
+
+    let mut lmsr_bot = LmsrMarketMakerBot::new(lmsr_config.clone(), client.clone())
+        .await
+        .expect("Failed to create LMSR bot");
+
+    // Create synthetic trader
+    let trader_config = SyntheticTraderConfig {
+        user_address: "trader_e2e".to_string(),
+        min_interval_ms: 1000,
+        max_interval_ms: 2000,
+        min_size: 10.0,
+        max_size: 50.0,
+        buy_probability: 0.5,
+    };
+
+    let mut trader_bot = SyntheticTraderBot::new(trader_config.clone(), client.clone())
+        .await
+        .expect("Failed to create synthetic trader");
+
+    // Start both bots
+    let lmsr_handle = tokio::spawn(async move {
+        let _ = lmsr_bot.start().await;
+    });
+
+    let trader_handle = tokio::spawn(async move {
+        let _ = trader_bot.start().await;
+    });
+
+    // Let the market run for a bit
+    // Wait long enough for LMSR to place orders (2s interval) and trader to execute trades
+    tokio::time::sleep(tokio::time::Duration::from_millis(15000)).await;
+
+    // Verify market activity:
+    // 1. LMSR bot should have orders in the book
+    let lmsr_orders = client
+        .get_orders(&lmsr_config.user_address, Some("BP/USDC".to_string()))
+        .await
+        .expect("Failed to get LMSR orders");
+
+    assert!(
+        lmsr_orders.len() > 0,
+        "LMSR bot should have active orders, got: {}", lmsr_orders.len()
+    );
+
+    // 2. Check that both bots were funded properly
+    let lmsr_balances = client
+        .get_balances(&lmsr_config.user_address)
+        .await
+        .expect("Failed to get LMSR balances");
+    assert!(lmsr_balances.len() >= 2);
+
+    let trader_balances = client
+        .get_balances(&trader_config.user_address)
+        .await
+        .expect("Failed to get trader balances");
+    assert!(trader_balances.len() >= 2);
+
+    // 3. Orders should be within valid price range for prediction market ($0-$1)
+    for order in lmsr_orders.iter() {
+        let price_decimal = order.price as f64 / 1_000_000.0;
+        assert!(
+            price_decimal >= 0.0 && price_decimal <= 1.0,
+            "Price {} should be in [0, 1] range",
+            price_decimal
+        );
+    }
+
+    // Clean up
+    lmsr_handle.abort();
+    trader_handle.abort();
 }

@@ -25,8 +25,12 @@ RUN apt-get update && apt-get install -y \
     libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy binary
+# Copy binary and config
 COPY --from=builder /app/target/release/bots /usr/local/bin/bots
+COPY --from=builder /app/apps/bots/config.toml /app/config.toml
+
+# Set config path
+ENV BOTS_CONFIG=/app/config.toml
 
 # Run
 CMD ["bots"]

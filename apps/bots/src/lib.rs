@@ -1,3 +1,3 @@
-pub mod bots;
 pub mod config;
-pub mod hyperliquid;
+pub mod markets;
+pub mod utils;

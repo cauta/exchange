@@ -4,22 +4,46 @@
 # Override with EXCHANGE_URL env var for different environments
 url = "http://localhost:8888"
 
-[accounts]
-maker_address = "maker_bot"
-taker_address = "taker_bot"
+# ===========================
+# BTC/USDC Market - Hyperliquid Mirror
+# ===========================
 
-# Orderbook mirror bot - copies Hyperliquid's orderbook
-[orderbook_mirror]
+[markets.btc_usdc]
 enabled = true
-market_id = "BTC/USDC"          # Your exchange market to mirror to
+
+[markets.btc_usdc.orderbook_mirror]
+enabled = true
+user_address = "maker_bot"
 depth_levels = 15               # Number of price levels to mirror
 update_interval_ms = 2000       # Only sync orders every 2000ms (throttling)
 
-# Trade mirror bot - executes trades based on Hyperliquid
-[trade_mirror]
+[markets.btc_usdc.trade_mirror]
 enabled = true
-market_id = "BTC/USDC"          # Your exchange market
+user_address = "taker_bot"
 
-# Hyperliquid connection
-[hyperliquid]
+[markets.btc_usdc.hyperliquid]
 ws_url = "wss://api.hyperliquid.xyz/ws"
+
+# ===========================
+# BP/USDC Market - Prediction Market with LMSR
+# ===========================
+
+[markets.bp_usdc]
+enabled = true
+
+[markets.bp_usdc.lmsr]
+enabled = true
+user_address = "lmsr_bot"
+liquidity_param = 1000.0        # b parameter - controls market depth and max loss
+initial_probability = 0.5       # Starting at 50% probability
+update_interval_ms = 5000       # Update quotes every 5 seconds
+spread_bps = 50                 # 0.5% spread around LMSR price
+
+[markets.bp_usdc.synthetic_trader]
+enabled = true
+user_address = "synthetic_trader"
+min_interval_ms = 10000         # Min 10 seconds between trades
+max_interval_ms = 30000         # Max 30 seconds between trades
+min_size = 10.0                 # Min 10 BP per trade
+max_size = 100.0                # Max 100 BP per trade
+buy_probability = 0.5           # 50% chance of buy vs sell

@@ -1,4 +1,4 @@
-use exchange_bots::hyperliquid::{HlMessage, HyperliquidClient};
+use exchange_bots::markets::btc_usdc::hyperliquid::{HlMessage, HyperliquidClient};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

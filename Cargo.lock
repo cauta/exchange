@@ -1174,6 +1174,7 @@ dependencies = [
  "exchange-sdk",
  "exchange-test-utils",
  "futures-util",
+ "rand 0.8.5",
  "rust_decimal",
  "serde",
  "serde_json",
