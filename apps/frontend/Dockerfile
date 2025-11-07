@@ -3,16 +3,24 @@ FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
-# Copy workspace package files
+# Copy workspace root package files first
 COPY package.json bun.lockb* ./
+
+# Copy workspace member package files
 COPY apps/frontend/package.json ./apps/frontend/
 COPY packages/sdk-typescript/package.json ./packages/sdk-typescript/
 
 # Install dependencies (workspace aware)
 RUN bun install --frozen-lockfile
 
-# Copy workspace packages
+# Copy shared schemas (needed for SDK generation)
+COPY packages/shared ./packages/shared
+
+# Copy SDK source
 COPY packages/sdk-typescript ./packages/sdk-typescript
+
+# Build the SDK first (generates types and compiles)
+RUN cd packages/sdk-typescript && bun run build
 
 # Copy frontend source
 COPY apps/frontend ./apps/frontend
