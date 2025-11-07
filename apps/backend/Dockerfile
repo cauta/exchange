@@ -9,12 +9,14 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy manifests
+# Copy workspace manifests
 COPY Cargo.toml Cargo.lock ./
 
-# Copy source
-COPY src ./src
-COPY scripts ./scripts
+# Copy all workspace members (needed for workspace dependencies)
+COPY apps/backend ./apps/backend
+COPY packages/sdk-rust ./packages/sdk-rust
+COPY packages/test-utils ./packages/test-utils
+COPY packages/schema-generator ./packages/schema-generator
 
 # get environment variables from Railway
 ARG PG_URL
@@ -24,7 +26,7 @@ ARG CH_URL
 ENV PG_URL=$PG_URL
 ENV CH_URL=$CH_URL
 
-# Build
+# Build from workspace root
 RUN cargo build --release --bin backend
 
 # Stage 2: Runtime

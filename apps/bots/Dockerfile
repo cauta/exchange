@@ -1,4 +1,3 @@
-
 # Stage 1: Builder
 FROM rust:1.90-slim AS builder
 WORKDIR /app
@@ -9,8 +8,15 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy source
-COPY . .
+# Copy workspace manifests
+COPY Cargo.toml Cargo.lock ./
+
+# Copy all workspace members (needed for workspace dependencies)
+COPY apps/backend ./apps/backend
+COPY apps/bots ./apps/bots
+COPY packages/sdk-rust ./packages/sdk-rust
+COPY packages/test-utils ./packages/test-utils
+COPY packages/schema-generator ./packages/schema-generator
 
 # get environment variables from Railway
 ARG EXCHANGE_URL
@@ -18,7 +24,7 @@ ARG EXCHANGE_URL
 # set environment variables from Railway
 ENV EXCHANGE_URL=$EXCHANGE_URL
 
-# Build
+# Build from workspace root
 RUN cargo build --release --bin bots
 
 # Stage 2: Runtime

@@ -3,14 +3,22 @@ FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy workspace package files
 COPY package.json bun.lockb* ./
+COPY apps/frontend/package.json ./apps/frontend/
+COPY packages/sdk-typescript/package.json ./packages/sdk-typescript/
 
-# Install dependencies
+# Install dependencies (workspace aware)
 RUN bun install --frozen-lockfile
 
-# Copy source
-COPY . .
+# Copy workspace packages
+COPY packages/sdk-typescript ./packages/sdk-typescript
+
+# Copy frontend source
+COPY apps/frontend ./apps/frontend
+
+# Set working directory to frontend app
+WORKDIR /app/apps/frontend
 
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_WS_URL
@@ -28,9 +36,9 @@ FROM oven/bun:1-slim
 WORKDIR /app
 
 # Copy built application from builder
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+COPY --from=builder /app/apps/frontend/.next/standalone ./
+COPY --from=builder /app/apps/frontend/.next/static ./.next/static
+COPY --from=builder /app/apps/frontend/public ./public
 
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
