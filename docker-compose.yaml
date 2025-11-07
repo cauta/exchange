@@ -45,12 +45,19 @@ services:
   # Backend
   backend:
     build:
-      context: ./apps/backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/backend/Dockerfile
     container_name: exchange-backend
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8888
+      PG_URL: postgresql://postgres:password@postgres:5432/exchange
+      CH_URL: http://clickhouse:8123
+      CH_USER: default
+      CH_PASSWORD: password
     env_file:
       - path: ./apps/backend/.env.defaults
-        required: true
+        required: false
       - path: .env
         required: false
     ports:
@@ -64,28 +71,31 @@ services:
       - exchange-network
     restart: unless-stopped
 
-  # Bots (disabled until implemented)
-  # bots:
-  #   build:
-  #     context: ./apps/bots
-  #     dockerfile: Dockerfile
-  #   container_name: exchange-bots
-  #   env_file:
-  #     - path: ./apps/bots/.env.defaults
-  #       required: true
-  #     - path: .env
-  #       required: false
-  #   depends_on:
-  #     - backend
-  #   networks:
-  #     - exchange-network
-  #   restart: unless-stopped
+  # Bots
+  bots:
+    build:
+      context: .
+      dockerfile: apps/bots/Dockerfile
+    container_name: exchange-bots
+    environment:
+      EXCHANGE_URL: http://backend:8888
+    env_file:
+      - path: ./apps/bots/.env.defaults
+        required: false
+      - path: .env
+        required: false
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - exchange-network
+    restart: unless-stopped
 
   # Frontend
   frontend:
     build:
-      context: ./apps/frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/frontend/Dockerfile
     container_name: exchange-frontend
     env_file:
       - path: ./apps/frontend/.env.example

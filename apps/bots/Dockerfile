@@ -19,13 +19,7 @@ COPY packages/sdk-rust ./packages/sdk-rust
 COPY packages/test-utils ./packages/test-utils
 COPY packages/schema-generator ./packages/schema-generator
 
-# get environment variables from Railway
-ARG EXCHANGE_URL
-
-# set environment variables from Railway
-ENV EXCHANGE_URL=$EXCHANGE_URL
-
-# Build from workspace root
+# Build from workspace root (env vars injected at runtime by Railway)
 RUN cargo build --release --bin bots
 
 # Stage 2: Runtime

@@ -19,15 +19,7 @@ COPY packages/sdk-rust ./packages/sdk-rust
 COPY packages/test-utils ./packages/test-utils
 COPY packages/schema-generator ./packages/schema-generator
 
-# get environment variables from Railway
-ARG PG_URL
-ARG CH_URL
-
-# set environment variables from Railway
-ENV PG_URL=$PG_URL
-ENV CH_URL=$CH_URL
-
-# Build from workspace root
+# Build from workspace root (env vars injected at runtime by Railway)
 RUN cargo build --release --bin backend --bin init_exchange
 
 # Stage 2: Runtime
