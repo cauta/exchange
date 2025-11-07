@@ -87,7 +87,6 @@ types-python:
 fmt:
   bun run format
   cargo fmt --all
-  just sort
 
 lint:
   bun run lint
