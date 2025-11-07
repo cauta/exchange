@@ -66,6 +66,7 @@ types:
   cargo run -p schema-generator
   bun --filter @exchange/sdk generate
   just types-python
+  just fmt
 
 types-python:
   #!/usr/bin/env bash

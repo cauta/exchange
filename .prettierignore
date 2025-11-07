@@ -24,8 +24,11 @@ target
 
 # Generated files
 packages/shared/openapi.json
+packages/shared/websocket.json
 packages/sdk-typescript/src/types/generated.ts
+packages/sdk-typescript/src/types/generated/**/*.ts
 apps/frontend/src/lib/types/openapi.ts
+packages/sdk-python/exchange_sdk/generated/**/*.py
 **/.sqlx
 .sqlx
 *.sqlx
