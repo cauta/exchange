@@ -22,7 +22,6 @@ import { toDisplayValue } from "@exchange/sdk";
 type ErrorCallback = (reason: string) => void;
 
 import { exchange, getExchangeClient } from "@/lib/api";
-import type { Market, Token } from "@/lib/types/exchange";
 
 // Resolution mapping from TradingView to our backend
 const resolutionMap: Record<string, string> = {
@@ -61,8 +60,6 @@ export class ExchangeDatafeed implements IBasicDataFeed {
   };
   private subscriptions = new Map<string, BarSubscription>();
   private client = getExchangeClient();
-  private marketsCache: Market[] = [];
-  private tokensCache: Token[] = [];
   private tradeUnsubscribers = new Map<string, () => void>();
 
   /**
@@ -78,81 +75,68 @@ export class ExchangeDatafeed implements IBasicDataFeed {
    * Search for symbols (markets)
    */
   searchSymbols(userInput: string, _exchange: string, _symbolType: string, onResult: SearchSymbolsCallback): void {
-    exchange
-      .getMarkets()
-      .then((markets) => {
-        const symbols = markets
-          .filter((m) => m.id.toLowerCase().includes(userInput.toLowerCase()))
-          .map((m) => ({
-            symbol: m.id,
-            full_name: m.id,
-            description: `${m.base_ticker}/${m.quote_ticker}`,
-            exchange: "Exchange",
-            type: "crypto",
-          }));
-        onResult(symbols);
-      })
-      .catch((error) => {
-        console.error("Error searching symbols:", error);
-        onResult([]);
-      });
+    // Use SDK cache if available
+    const markets = this.client.cache.getAllMarkets();
+
+    const symbols = markets
+      .filter((m) => m.id.toLowerCase().includes(userInput.toLowerCase()))
+      .map((m) => ({
+        symbol: m.id,
+        full_name: m.id,
+        description: `${m.base_ticker}/${m.quote_ticker}`,
+        exchange: "Exchange",
+        type: "crypto",
+      }));
+    onResult(symbols);
   }
 
   /**
    * Resolve symbol info
    */
   resolveSymbol(symbolName: string, onResolve: ResolveCallback, onError: ErrorCallback): void {
-    Promise.all([exchange.getMarkets(), exchange.getTokens()])
-      .then(([markets, tokens]) => {
-        this.marketsCache = markets; // Cache markets for later use
-        this.tokensCache = tokens; // Cache tokens for later use
-        const market = markets.find((m) => m.id === symbolName);
+    // Use SDK cache directly
+    const market = this.client.cache.getMarket(symbolName);
 
-        if (!market) {
-          onError("Symbol not found");
-          return;
-        }
+    if (!market) {
+      onError("Symbol not found");
+      return;
+    }
 
-        // Look up token decimals
-        const quoteToken = tokens.find((t) => t.ticker === market.quote_ticker);
-        const baseToken = tokens.find((t) => t.ticker === market.base_ticker);
+    // Look up token decimals from cache
+    const quoteToken = this.client.cache.getToken(market.quote_ticker);
+    const baseToken = this.client.cache.getToken(market.base_ticker);
 
-        if (!quoteToken || !baseToken) {
-          onError("Token not found");
-          return;
-        }
+    if (!quoteToken || !baseToken) {
+      onError("Token not found");
+      return;
+    }
 
-        // Calculate pricescale based on quote decimals
-        // Limit to 2 decimals for better readability (can show prices like 1234.56)
-        // pricescale is 10^decimals (e.g., 2 decimals = 100)
-        const priceDecimals = 2;
-        const pricescale = Math.pow(10, priceDecimals);
+    // Calculate pricescale based on quote decimals
+    // Limit to 2 decimals for better readability (can show prices like 1234.56)
+    // pricescale is 10^decimals (e.g., 2 decimals = 100)
+    const priceDecimals = 2;
+    const pricescale = Math.pow(10, priceDecimals);
 
-        const symbolInfo: LibrarySymbolInfo = {
-          name: market.id,
-          ticker: market.id,
-          description: `${market.base_ticker}/${market.quote_ticker}`,
-          type: "crypto",
-          session: "24x7",
-          timezone: "Etc/UTC",
-          exchange: "Exchange",
-          minmov: 1,
-          pricescale: pricescale,
-          has_intraday: true,
-          listed_exchange: "Exchange",
-          has_weekly_and_monthly: false,
-          supported_resolutions: this.configurationData.supported_resolutions,
-          volume_precision: 2,
-          data_status: "streaming",
-          format: "price",
-        };
+    const symbolInfo: LibrarySymbolInfo = {
+      name: market.id,
+      ticker: market.id,
+      description: `${market.base_ticker}/${market.quote_ticker}`,
+      type: "crypto",
+      session: "24x7",
+      timezone: "Etc/UTC",
+      exchange: "Exchange",
+      minmov: 1,
+      pricescale: pricescale,
+      has_intraday: true,
+      listed_exchange: "Exchange",
+      has_weekly_and_monthly: false,
+      supported_resolutions: this.configurationData.supported_resolutions,
+      volume_precision: 2,
+      data_status: "streaming",
+      format: "price",
+    };
 
-        onResolve(symbolInfo);
-      })
-      .catch((error) => {
-        console.error("[TradingView Datafeed] Error resolving symbol:", error);
-        onError("Error resolving symbol");
-      });
+    onResolve(symbolInfo);
   }
 
   /**
@@ -173,17 +157,17 @@ export class ExchangeDatafeed implements IBasicDataFeed {
     const { from, to, countBack: _countBack } = periodParams;
     const interval = resolutionMap[resolution] || "1m";
 
-    // Get market config
-    const market = this.marketsCache.find((m) => m.id === symbolInfo.name);
+    // Get market config from SDK cache
+    const market = this.client.cache.getMarket(symbolInfo.name);
     if (!market) {
       console.error("[TradingView Datafeed] Market not found in cache");
       onError("Market not found in cache");
       return;
     }
 
-    // Look up token decimals
-    const quoteToken = this.tokensCache.find((t) => t.ticker === market.quote_ticker);
-    const baseToken = this.tokensCache.find((t) => t.ticker === market.base_ticker);
+    // Look up token decimals from SDK cache
+    const quoteToken = this.client.cache.getToken(market.quote_ticker);
+    const baseToken = this.client.cache.getToken(market.base_ticker);
 
     if (!quoteToken || !baseToken) {
       onError("Token not found in cache");
