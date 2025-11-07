@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { UseFormSetValue } from "react-hook-form";
 import { useExchangeStore } from "@/lib/store";
 import { roundToTickSize } from "@exchange/sdk";
+import type { Market, Token } from "@/lib/types/exchange";
 
 interface TradeFormData {
   side: "buy" | "sell";
@@ -13,9 +14,9 @@ interface TradeFormData {
 interface UsePriceSelectionParams {
   orderType: "limit" | "market";
   priceDecimals: number;
-  selectedMarket: any;
-  baseToken: any;
-  quoteToken: any;
+  selectedMarket: Market | null;
+  baseToken: Token | null;
+  quoteToken: Token | null;
   setValue: UseFormSetValue<TradeFormData>;
 }
 

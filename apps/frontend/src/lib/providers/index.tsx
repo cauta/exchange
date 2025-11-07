@@ -16,7 +16,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       setMinTimeElapsed(true);
-    }, 600);
+    }, 800);
     return () => clearTimeout(timer);
   }, []);
 

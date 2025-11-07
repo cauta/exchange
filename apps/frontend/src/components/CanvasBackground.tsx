@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface CanvasBackgroundProps {
   dotSize?: number;
   dotColor?: string;
   spacing?: number;
   animationSpeed?: number;
+  initialDelay?: number;
 }
 
 export function CanvasBackground({
@@ -14,8 +15,18 @@ export function CanvasBackground({
   dotColor = "rgba(168, 139, 250, 0.3)", // purple
   spacing = 30,
   animationSpeed = 0.0005,
+  initialDelay = 200,
 }: CanvasBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  // Start animation after initial delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsAnimating(true);
+    }, initialDelay);
+    return () => clearTimeout(timer);
+  }, [initialDelay]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -44,9 +55,7 @@ export function CanvasBackground({
       for (let x = 0; x < canvas.width; x += spacing) {
         for (let y = 0; y < canvas.height; y += spacing) {
           // Calculate wave effect
-          const distance = Math.sqrt(
-            Math.pow(x - canvas.width / 2, 2) + Math.pow(y - canvas.height / 2, 2)
-          );
+          const distance = Math.sqrt(Math.pow(x - canvas.width / 2, 2) + Math.pow(y - canvas.height / 2, 2));
 
           const wave = Math.sin(distance * 0.01 - time) * 0.5 + 0.5;
           const opacity = parseFloat(dotColor.match(/[\d.]+\)$/)?.[0].slice(0, -1) || "0.3");
@@ -66,7 +75,10 @@ export function CanvasBackground({
         }
       }
 
-      time += animationSpeed * 100;
+      // Only increment time if animation has started
+      if (isAnimating) {
+        time += animationSpeed * 100;
+      }
       animationFrameId = requestAnimationFrame(animate);
     };
 
@@ -76,7 +88,7 @@ export function CanvasBackground({
       window.removeEventListener("resize", resize);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [dotSize, dotColor, spacing, animationSpeed]);
+  }, [dotSize, dotColor, spacing, animationSpeed, isAnimating]);
 
   return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />;
 }

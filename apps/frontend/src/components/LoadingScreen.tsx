@@ -9,19 +9,22 @@ interface LoadingScreenProps {
 }
 
 export function LoadingScreen({ isLoading }: LoadingScreenProps) {
-  const [isVisible, setIsVisible] = useState(isLoading);
+  const [isVisible, setIsVisible] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && isVisible) {
-      // Start fade out animation
-      setIsFadingOut(true);
-      const timer = setTimeout(() => {
+    if (!isLoading) {
+      // Start fade out animation after a microtask to avoid cascading render
+      const fadeTimer = setTimeout(() => setIsFadingOut(true), 0);
+      const hideTimer = setTimeout(() => {
         setIsVisible(false);
       }, 400); // Match the animation duration
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(fadeTimer);
+        clearTimeout(hideTimer);
+      };
     }
-  }, [isLoading, isVisible]);
+  }, [isLoading]);
 
   if (!isVisible) return null;
 
@@ -38,7 +41,7 @@ export function LoadingScreen({ isLoading }: LoadingScreenProps) {
       <div className="absolute inset-0 backdrop-blur-2xl bg-background/90" />
 
       {/* Animated canvas background */}
-      <CanvasBackground dotSize={1.5} spacing={12} animationSpeed={0.003} dotColor="rgba(150, 150, 150, 0.3)" />
+      <CanvasBackground dotSize={1.5} spacing={12} animationSpeed={0.0015} dotColor="rgba(150, 150, 150, 0.3)" />
 
       {/* Logo and star */}
       <div className="relative z-10">

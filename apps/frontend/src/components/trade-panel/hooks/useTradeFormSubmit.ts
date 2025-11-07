@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useExchangeStore } from "@/lib/store";
 import { useExchangeClient } from "@/lib/hooks/useExchangeClient";
+import type { Market, Token } from "@/lib/types/exchange";
 
 interface TradeFormData {
   side: "buy" | "sell";
@@ -10,12 +11,11 @@ interface TradeFormData {
 }
 
 interface UseTradeFormSubmitParams {
-  selectedMarket: any;
-  baseToken: any;
-  quoteToken: any;
+  selectedMarket: Market | null;
+  baseToken: Token | null;
+  quoteToken: Token | null;
   availableBase: number;
   availableQuote: number;
-  bestBid: number | null;
   bestAsk: number | null;
   lastTradePrice: number | null;
   onSuccess?: () => void;
@@ -27,7 +27,6 @@ export function useTradeFormSubmit({
   quoteToken,
   availableBase,
   availableQuote,
-  bestBid,
   bestAsk,
   lastTradePrice,
   onSuccess,
@@ -127,7 +126,6 @@ export function useTradeFormSubmit({
       quoteToken,
       availableBase,
       availableQuote,
-      bestBid,
       bestAsk,
       lastTradePrice,
       isAuthenticated,

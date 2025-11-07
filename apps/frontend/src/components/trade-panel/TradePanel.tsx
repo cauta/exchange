@@ -77,7 +77,6 @@ export function TradePanel() {
     quoteToken,
     availableBase,
     availableQuote,
-    bestBid,
     bestAsk,
     lastTradePrice,
     onSuccess: () => {
