@@ -91,26 +91,12 @@ pub struct ClickHouseTradeRow {
     pub timestamp: u32, // Unix timestamp
 }
 
-// Used for inserting candles into ClickHouse (includes trade_time)
-#[derive(Debug, Clone, Row, Serialize, Deserialize)]
-pub struct CandleInsertRow {
-    pub market_id: String,
-    pub timestamp: u32, // ClickHouse DateTime is stored as Unix timestamp (u32) - bucket start
-    pub trade_time: u32, // Original trade timestamp - used for ordering open/close
-    pub interval: String, // '1m', '5m', '15m', '1h', '1d'
-    pub open: u128,
-    pub high: u128,
-    pub low: u128,
-    pub close: u128,
-    pub volume: u128,
-}
-
-// Used for querying aggregated candles from ClickHouse (excludes trade_time)
+// Used for querying aggregated candles from ClickHouse
+// The candles table uses AggregatingMergeTree, so queries must use -Merge combinators
+// to finalize the aggregate states into concrete values
 #[derive(Debug, Clone, Row, Serialize, Deserialize)]
 pub struct CandleRow {
-    pub market_id: String,
-    pub timestamp: u32, // ClickHouse DateTime is stored as Unix timestamp (u32) - bucket start
-    pub interval: String, // '1m', '5m', '15m', '1h', '1d'
+    pub timestamp: u32, // ClickHouse DateTime as Unix timestamp (u32) - bucket start
     pub open: u128,
     pub high: u128,
     pub low: u128,

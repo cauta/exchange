@@ -2,14 +2,15 @@ use crate::db::Db;
 use crate::errors::{ExchangeError, Result};
 use crate::models::{
     api::ApiCandle,
-    db::{CandleInsertRow, CandleRow, ClickHouseTradeRow},
+    db::{CandleRow, ClickHouseTradeRow},
     domain::{Candle, Trade},
 };
 use chrono::{DateTime, Utc};
 
 impl Db {
     /// Insert a trade into ClickHouse for tick data
-    /// This will automatically trigger the materialized view to create 1m candles
+    /// This will automatically trigger the materialized views to aggregate into candles
+    /// The AggregatingMergeTree will handle merging and pre-aggregating the data
     pub async fn insert_trade_to_clickhouse(&self, trade: &Trade) -> Result<()> {
         let trade_row = ClickHouseTradeRow {
             id: trade.id.to_string(),
@@ -37,34 +38,8 @@ impl Db {
         Ok(())
     }
 
-    /// Insert a candle directly (for backfilling or manual inserts)
-    pub async fn insert_candle(
-        &self,
-        market_id: String,
-        timestamp: DateTime<Utc>,
-        interval: String,
-        ohlcv: (u128, u128, u128, u128, u128), // (open, high, low, close, volume)
-    ) -> Result<()> {
-        let candle_row = CandleInsertRow {
-            market_id,
-            timestamp: timestamp.timestamp() as u32,
-            trade_time: timestamp.timestamp() as u32, // Use same timestamp for manual inserts
-            interval,
-            open: ohlcv.0,
-            high: ohlcv.1,
-            low: ohlcv.2,
-            close: ohlcv.3,
-            volume: ohlcv.4,
-        };
-
-        let mut insert = self.clickhouse.insert::<CandleInsertRow>("candles").await?;
-        insert.write(&candle_row).await?;
-        insert.end().await?;
-
-        Ok(())
-    }
-
     /// Get candles for a market at a specific interval
+    /// Uses -Merge combinators to finalize aggregate states from AggregatingMergeTree
     pub async fn get_candles(
         &self,
         market_id: &str,
@@ -72,23 +47,21 @@ impl Db {
         start: DateTime<Utc>,
         end: DateTime<Utc>,
     ) -> Result<Vec<Candle>> {
-        // Aggregate candles from multiple trade rows
-        // Use trade_time to determine first (open) and last (close) trades
+        // Query with -Merge combinators to finalize aggregate states
+        // GROUP BY ensures proper aggregation of any unmerged parts
         let candles = self
             .clickhouse
             .query(
                 "SELECT
-                market_id,
                 timestamp,
-                interval,
-                argMin(open, trade_time) as open,
-                max(high) as high,
-                min(low) as low,
-                argMax(close, trade_time) as close,
-                sum(volume) as volume
-            FROM candles
+                argMinMerge(open_state) as open,
+                maxMerge(high_state) as high,
+                minMerge(low_state) as low,
+                argMaxMerge(close_state) as close,
+                sumMerge(volume_state) as volume
+            FROM exchange.candles
             WHERE market_id = ? AND interval = ? AND timestamp >= ? AND timestamp < ?
-            GROUP BY market_id, timestamp, interval
+            GROUP BY timestamp
             ORDER BY timestamp ASC",
             )
             .bind(market_id)
@@ -101,7 +74,7 @@ impl Db {
         Ok(candles
             .into_iter()
             .map(|row| Candle {
-                market_id: row.market_id,
+                market_id: market_id.to_string(),
                 timestamp: DateTime::from_timestamp(row.timestamp as i64, 0)
                     .unwrap_or(DateTime::UNIX_EPOCH),
                 open: row.open,
@@ -115,6 +88,7 @@ impl Db {
 
     /// Get candles for API with support for countBack parameter
     /// Returns candles as ApiCandle with timestamp aggregation and optional limit
+    /// Uses -Merge combinators to finalize aggregate states
     pub async fn get_candles_for_api(
         &self,
         market_id: &str,
@@ -123,21 +97,23 @@ impl Db {
         to: i64,
         count_back: Option<usize>,
     ) -> Result<Vec<ApiCandle>> {
-        // Build the base query with aggregation
+        // Build the base query with -Merge combinators
+        // Note: We GROUP BY all three key columns even though market_id and interval
+        // are in WHERE clause, to ensure proper aggregation of unmerged parts
         let mut query = format!(
             "SELECT
                 toUnixTimestamp(timestamp) as timestamp,
-                argMin(open, trade_time) as open,
-                max(high) as high,
-                min(low) as low,
-                argMax(close, trade_time) as close,
-                sum(volume) as volume
+                argMinMerge(open_state) as open,
+                maxMerge(high_state) as high,
+                minMerge(low_state) as low,
+                argMaxMerge(close_state) as close,
+                sumMerge(volume_state) as volume
             FROM exchange.candles
             WHERE market_id = '{}'
               AND interval = '{}'
               AND timestamp >= toDateTime({})
               AND timestamp <= toDateTime({})
-            GROUP BY timestamp
+            GROUP BY market_id, interval, timestamp
             ORDER BY timestamp",
             market_id, interval, from, to
         );
@@ -164,6 +140,34 @@ impl Db {
         // If we used DESC for countBack, reverse to get ascending order
         if count_back.is_some() && count_back.unwrap() > 0 {
             candles.reverse();
+        }
+
+        // Debug: Log last few candles to diagnose flat candle issue
+        if candles.len() > 0 {
+            let last_candles: Vec<_> = candles
+                .iter()
+                .rev()
+                .take(3)
+                .map(|c| {
+                    format!(
+                        "ts={} O={} H={} L={} C={} V={} flat={}",
+                        c.timestamp,
+                        c.open,
+                        c.high,
+                        c.low,
+                        c.close,
+                        c.volume,
+                        c.open == c.high && c.high == c.low && c.low == c.close
+                    )
+                })
+                .collect();
+            log::info!(
+                "Fetched {} candles for {} @ {}, last 3: {:?}",
+                candles.len(),
+                market_id,
+                interval,
+                last_candles
+            );
         }
 
         Ok(candles)

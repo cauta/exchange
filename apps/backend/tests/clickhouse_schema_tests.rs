@@ -1,6 +1,6 @@
 /// Tests to verify ClickHouse schema matches Rust structs
 /// These tests catch schema mismatches that cause runtime panics
-use backend::models::db::{CandleInsertRow, ClickHouseTradeRow};
+use backend::models::db::ClickHouseTradeRow;
 use exchange_test_utils::TestContainers;
 
 #[tokio::test]
@@ -41,38 +41,24 @@ async fn test_clickhouse_trades_schema_matches_struct() {
 }
 
 #[tokio::test]
-async fn test_clickhouse_candles_schema_matches_struct() {
+async fn test_candles_table_uses_aggregating_merge_tree() {
     let containers = TestContainers::setup()
         .await
         .expect("Failed to setup containers");
     let db = containers.db_clone();
 
-    // Try to insert a dummy candle row using CandleInsertRow
-    let candle = CandleInsertRow {
-        market_id: "BTC/USDC".to_string(),
-        timestamp: 1234567890,
-        trade_time: 1234567890,
-        interval: "1m".to_string(),
-        open: 95000000000,
-        high: 95100000000,
-        low: 94900000000,
-        close: 95050000000,
-        volume: 10000000,
-    };
-
-    // This will panic if schema doesn't match struct
-    let result = db
+    // Verify the candles table uses AggregatingMergeTree engine
+    let query = "SELECT engine FROM system.tables WHERE database = 'exchange' AND name = 'candles'";
+    let engine: String = db
         .clickhouse
-        .insert::<CandleInsertRow>("candles")
+        .query(query)
+        .fetch_one::<String>()
         .await
-        .unwrap()
-        .write(&candle)
-        .await;
+        .expect("Failed to query table engine");
 
-    assert!(
-        result.is_ok(),
-        "Failed to insert candle - schema mismatch! Error: {:?}",
-        result.err()
+    assert_eq!(
+        engine, "AggregatingMergeTree",
+        "Candles table should use AggregatingMergeTree engine"
     );
 }
 
@@ -131,16 +117,16 @@ async fn test_candles_table_has_all_required_columns() {
         .await
         .expect("Failed to query table schema");
 
-    // Check all required columns exist
+    // Check all required columns exist (now using aggregate state columns)
     let required = vec![
         "market_id",
-        "timestamp",
         "interval",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
+        "timestamp",
+        "open_state",
+        "high_state",
+        "low_state",
+        "close_state",
+        "volume_state",
     ];
 
     for col in required {
@@ -149,6 +135,153 @@ async fn test_candles_table_has_all_required_columns() {
             "Missing required column: {}. Available columns: {:?}",
             col,
             columns
+        );
+    }
+}
+
+/// Test that the optimized schema reduces storage by aggregating trades into single candles
+#[tokio::test]
+async fn test_candles_aggregation_reduces_storage() {
+    let containers = TestContainers::setup()
+        .await
+        .expect("Failed to setup containers");
+    let db = containers.db_clone();
+
+    // Insert multiple trades in the same minute bucket (but with different seconds)
+    let base_timestamp = 1700000000u32; // 2023-11-15 02:13:20 UTC
+    let num_trades = 10u32;
+
+    for i in 0..num_trades {
+        let trade = ClickHouseTradeRow {
+            id: format!("trade-{}", i),
+            market_id: "BTC/USDC".to_string(),
+            buyer_address: "buyer".to_string(),
+            seller_address: "seller".to_string(),
+            buyer_order_id: format!("buyer-order-{}", i),
+            seller_order_id: format!("seller-order-{}", i),
+            price: 95000000000 + (i as u128 * 1000000), // Varying prices
+            size: 1000000,
+            side: "buy".to_string(),
+            timestamp: base_timestamp + i, // Different seconds within same minute
+        };
+
+        let mut insert = db
+            .clickhouse
+            .insert::<ClickHouseTradeRow>("trades")
+            .await
+            .unwrap();
+        insert.write(&trade).await.unwrap();
+        insert.end().await.unwrap();
+    }
+
+    // Wait for materialized view to aggregate
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+
+    // Count rows in trades table (should be num_trades)
+    let trade_count: u64 = db
+        .clickhouse
+        .query("SELECT COUNT(*) FROM exchange.trades WHERE market_id = 'BTC/USDC'")
+        .fetch_one()
+        .await
+        .expect("Failed to count trades");
+
+    assert_eq!(
+        trade_count, num_trades as u64,
+        "Should have {} trades in trades table",
+        num_trades
+    );
+
+    // Count rows in candles table for 1m interval
+    // With AggregatingMergeTree, should be 1 row (or very few if not yet merged)
+    let candle_count: u64 = db
+        .clickhouse
+        .query("SELECT COUNT(*) FROM exchange.candles WHERE market_id = 'BTC/USDC' AND interval = '1m'")
+        .fetch_one()
+        .await
+        .expect("Failed to count candles");
+
+    assert!(
+        candle_count <= 3,
+        "Candles should be aggregated into very few rows (got {}), much less than {} trades",
+        candle_count,
+        num_trades
+    );
+
+    // Verify the aggregated candle data is correct using -Merge combinators
+    let query = "SELECT
+        argMinMerge(open_state) as open,
+        maxMerge(high_state) as high,
+        minMerge(low_state) as low,
+        argMaxMerge(close_state) as close,
+        sumMerge(volume_state) as volume
+    FROM exchange.candles
+    WHERE market_id = 'BTC/USDC' AND interval = '1m'
+    GROUP BY timestamp";
+
+    let candle: (u128, u128, u128, u128, u128) = db
+        .clickhouse
+        .query(query)
+        .fetch_one()
+        .await
+        .expect("Failed to fetch aggregated candle");
+
+    let (open, high, low, close, volume) = candle;
+
+    // Verify OHLCV is correct
+    // argMin(price, timestamp) returns price of trade with earliest timestamp
+    assert_eq!(
+        open, 95000000000,
+        "Open should be first trade price (earliest timestamp)"
+    );
+    assert_eq!(
+        high,
+        95000000000 + ((num_trades - 1) as u128 * 1000000),
+        "High should be highest price"
+    );
+    assert_eq!(low, 95000000000, "Low should be lowest price");
+    // argMax(price, timestamp) returns price of trade with latest timestamp
+    assert_eq!(
+        close,
+        95000000000 + ((num_trades - 1) as u128 * 1000000),
+        "Close should be last trade price"
+    );
+    assert_eq!(
+        volume,
+        1000000 * num_trades as u128,
+        "Volume should be sum of all trades"
+    );
+}
+
+/// Test that materialized views are created for all intervals
+#[tokio::test]
+async fn test_materialized_views_exist() {
+    let containers = TestContainers::setup()
+        .await
+        .expect("Failed to setup containers");
+    let db = containers.db_clone();
+
+    let query =
+        "SELECT name FROM system.tables WHERE database = 'exchange' AND name LIKE 'candles_%_mv'";
+    let views: Vec<String> = db
+        .clickhouse
+        .query(query)
+        .fetch_all::<String>()
+        .await
+        .expect("Failed to query views");
+
+    let required_views = vec![
+        "candles_1m_mv",
+        "candles_5m_mv",
+        "candles_15m_mv",
+        "candles_1h_mv",
+        "candles_1d_mv",
+    ];
+
+    for view in required_views {
+        assert!(
+            views.contains(&view.to_string()),
+            "Missing materialized view: {}",
+            view
         );
     }
 }

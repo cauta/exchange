@@ -221,23 +221,59 @@ impl TestDb {
         self.create_test_market(base_ticker, quote_ticker).await
     }
 
-    /// Helper function to create test candle
+    /// Helper function to create test candle by inserting trades
+    /// This generates candles via materialized views (the real production flow)
     pub async fn create_test_candle(
         self: &TestDb,
         market_id: &str,
         timestamp: chrono::DateTime<chrono::Utc>,
-        interval: &str,                        // '1m', '5m', '15m', '1h', '1d'
         ohlcv: (u128, u128, u128, u128, u128), // (open, high, low, close, volume)
     ) -> anyhow::Result<()> {
-        self.db
-            .insert_candle(
-                market_id.to_string(),
-                timestamp,
-                interval.to_string(),
-                ohlcv,
-            )
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to create test candle: {}", e))
+        let (open, high, low, close, volume) = ohlcv;
+
+        // Insert 4 trades to create OHLCV pattern:
+        // - First trade at timestamp (open)
+        // - Trade with high price at timestamp + 1s
+        // - Trade with low price at timestamp + 2s
+        // - Last trade at timestamp + 3s (close)
+
+        use backend::models::domain::Trade;
+        use uuid::Uuid;
+
+        let trades = vec![
+            (open, timestamp.timestamp() as u32),      // Open
+            (high, timestamp.timestamp() as u32 + 1),  // High
+            (low, timestamp.timestamp() as u32 + 2),   // Low
+            (close, timestamp.timestamp() as u32 + 3), // Close
+        ];
+
+        let trade_size = volume / 4; // Divide volume across 4 trades
+
+        for (i, (price, ts)) in trades.iter().enumerate() {
+            let trade = Trade {
+                id: Uuid::new_v4(),
+                market_id: market_id.to_string(),
+                buyer_address: format!("test_buyer_{}", i),
+                seller_address: format!("test_seller_{}", i),
+                buyer_order_id: Uuid::new_v4(),
+                seller_order_id: Uuid::new_v4(),
+                price: *price,
+                size: trade_size,
+                side: backend::models::domain::Side::Buy,
+                timestamp: chrono::DateTime::from_timestamp(*ts as i64, 0)
+                    .unwrap_or(chrono::DateTime::UNIX_EPOCH),
+            };
+
+            self.db
+                .insert_trade_to_clickhouse(&trade)
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to insert trade for candle: {}", e))?;
+        }
+
+        // Give ClickHouse time to process the materialized views
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+        Ok(())
     }
 }
 

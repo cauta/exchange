@@ -141,8 +141,8 @@ async fn test_candles_generated_from_trades() {
     // Wait for ClickHouse materialized view to aggregate
     tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
 
-    // Query candles table
-    let query = "SELECT COUNT(*) FROM exchange.candles WHERE market_id = ? AND interval = '1m'";
+    // Query candles table - count distinct timestamps (one per candle bucket)
+    let query = "SELECT COUNT(DISTINCT timestamp) FROM exchange.candles WHERE market_id = ? AND interval = '1m'";
     let count: u64 = test_db
         .db
         .clickhouse
@@ -158,8 +158,18 @@ async fn test_candles_generated_from_trades() {
         count
     );
 
-    // Query the actual candle data to verify OHLCV
-    let query = "SELECT open, high, low, close, volume FROM exchange.candles WHERE market_id = ? AND interval = '1m' ORDER BY timestamp DESC LIMIT 1";
+    // Query the actual candle data to verify OHLCV using -Merge combinators
+    let query = "SELECT
+        argMinMerge(open_state) as open,
+        maxMerge(high_state) as high,
+        minMerge(low_state) as low,
+        argMaxMerge(close_state) as close,
+        sumMerge(volume_state) as volume
+    FROM exchange.candles
+    WHERE market_id = ? AND interval = '1m'
+    GROUP BY timestamp
+    ORDER BY timestamp DESC
+    LIMIT 1";
     let candle: Option<(u128, u128, u128, u128, u128)> = test_db
         .db
         .clickhouse
