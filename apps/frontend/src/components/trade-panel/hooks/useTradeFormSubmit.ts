@@ -11,9 +11,9 @@ interface TradeFormData {
 }
 
 interface UseTradeFormSubmitParams {
-  selectedMarket: Market | null;
-  baseToken: Token | null;
-  quoteToken: Token | null;
+  selectedMarket: Market | undefined;
+  baseToken: Token | undefined;
+  quoteToken: Token | undefined;
   availableBase: number;
   availableQuote: number;
   bestAsk: number | null;

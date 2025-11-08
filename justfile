@@ -65,6 +65,7 @@ types:
   cd apps/backend && cargo run --bin generate_openapi
   cargo run -p schema-generator
   bun --filter @exchange/sdk generate
+  cd packages/sdk-typescript && bunx tsc
   just types-python
   just fmt
 

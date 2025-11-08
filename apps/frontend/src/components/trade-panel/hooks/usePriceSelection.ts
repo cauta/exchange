@@ -14,9 +14,9 @@ interface TradeFormData {
 interface UsePriceSelectionParams {
   orderType: "limit" | "market";
   priceDecimals: number;
-  selectedMarket: Market | null;
-  baseToken: Token | null;
-  quoteToken: Token | null;
+  selectedMarket: Market | undefined;
+  baseToken: Token | undefined;
+  quoteToken: Token | undefined;
   setValue: UseFormSetValue<TradeFormData>;
 }
 

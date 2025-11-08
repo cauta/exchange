@@ -43,7 +43,7 @@ export function PixelatedCanvas({
   const [dots, setDots] = useState<Dot[]>([]);
   const [imageLoaded, setImageLoaded] = useState(false);
   const mousePos = useRef({ x: -1000, y: -1000 });
-  const animationFrameId = useRef<number>();
+  const animationFrameId = useRef<number | undefined>(undefined);
 
   // Load and process image
   useEffect(() => {
@@ -73,10 +73,10 @@ export function PixelatedCanvas({
       for (let y = 0; y < height; y += cellSize) {
         for (let x = 0; x < width; x += cellSize) {
           const i = (y * width + x) * 4;
-          const r = pixels[i];
-          const g = pixels[i + 1];
-          const b = pixels[i + 2];
-          const a = pixels[i + 3];
+          const r = pixels[i] ?? 0;
+          const g = pixels[i + 1] ?? 0;
+          const b = pixels[i + 2] ?? 0;
+          const a = pixels[i + 3] ?? 0;
 
           // Skip transparent pixels
           if (a < 10) continue;
