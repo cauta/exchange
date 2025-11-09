@@ -3,7 +3,7 @@ use schemars::schema_for;
 use std::{fs, path::Path};
 
 fn main() {
-    // Get the workspace root (2 levels up from this crate)
+    // Get the workspace root (3 levels up from this binary: bin -> src -> backend -> apps -> workspace)
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let workspace_root = Path::new(manifest_dir).parent().unwrap().parent().unwrap();
     let output_dir = workspace_root.join("packages/shared");

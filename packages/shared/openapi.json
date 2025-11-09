@@ -64,11 +64,11 @@
     "/api/candles": {
       "post": {
         "tags": [
-          "market-data"
+          "candles"
         ],
         "summary": "Get OHLCV candles for a market",
         "description": "POST /api/candles",
-        "operationId": "get_candles",
+        "operationId": "candles",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1487,8 +1487,8 @@
       "description": "Admin operations (test/dev only)"
     },
     {
-      "name": "market-data",
-      "description": "Market data and candles"
+      "name": "candles",
+      "description": "OHLCV candle data"
     }
   ]
 }

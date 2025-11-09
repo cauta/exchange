@@ -66,7 +66,7 @@ bench:
 
 types:
   cd apps/backend && cargo run --bin generate_openapi
-  cargo run -p schema-generator
+  cd apps/backend && cargo run --bin generate_websocket_schema --features schema
   bun --filter @exchange/sdk generate
   just types-python
   just fmt

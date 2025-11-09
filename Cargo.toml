@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "apps/backend",
     "apps/bots",
-    "packages/schema-generator",
     "packages/sdk-rust",
     "packages/test-utils",
 ]

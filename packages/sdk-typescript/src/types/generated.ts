@@ -40,7 +40,7 @@ export interface paths {
          * Get OHLCV candles for a market
          * @description POST /api/candles
          */
-        post: operations["get_candles"];
+        post: operations["candles"];
         delete?: never;
         options?: never;
         head?: never;
@@ -455,7 +455,7 @@ export interface operations {
             };
         };
     };
-    get_candles: {
+    candles: {
         parameters: {
             query?: never;
             header?: never;

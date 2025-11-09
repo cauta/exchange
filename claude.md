@@ -19,6 +19,7 @@ exchange/
 │   │   │   │   └── ws/       # WebSocket handlers
 │   │   │   ├── bin/          # Binary utilities
 │   │   │   │   ├── generate_openapi.rs
+│   │   │   │   ├── generate_websocket_schema.rs
 │   │   │   │   └── setup_db.rs
 │   │   │   ├── models.rs     # Data structures
 │   │   │   ├── lib.rs        # Library entry point
@@ -31,8 +32,8 @@ exchange/
 │       └── public/vendor/trading-view/  # TradingView integration
 ├── packages/
 │   └── shared/           # Shared schemas and types
-│       ├── openapi.json  # REST API schema (auto-generated)
-│       └── websocket.ts  # WebSocket types (auto-generated from Rust via ts-rs)
+│       ├── openapi.json      # REST API schema (auto-generated)
+│       └── websocket.json    # WebSocket schema (auto-generated from Rust via schemars)
 └── justfile             # Build commands
 ```
 
@@ -68,10 +69,10 @@ exchange/
 
 ### Adding WebSocket Messages
 
-1. **Define message types** in `apps/backend/src/models/api.rs` with `#[derive(TS)]`
+1. **Define message types** in `apps/backend/src/models/api.rs` with `#[derive(JsonSchema)]`
 2. **Create handler** in `apps/backend/src/api/ws/`
 3. **Regenerate types**: `just types`
-4. TypeScript types are auto-generated from Rust via ts-rs!
+4. TypeScript types are auto-generated from Rust via schemars JSON Schema!
 
 ### Database Operations
 
