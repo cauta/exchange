@@ -17,7 +17,6 @@ COPY apps/backend ./apps/backend
 COPY apps/bots ./apps/bots
 COPY packages/sdk-rust ./packages/sdk-rust
 COPY packages/test-utils ./packages/test-utils
-COPY packages/schema-generator ./packages/schema-generator
 
 # Build from workspace root (env vars injected at runtime by Railway)
 RUN cargo build --release --bin bots
