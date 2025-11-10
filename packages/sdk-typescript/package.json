@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "generate:openapi": "openapi-typescript ../../packages/shared/openapi.json -o src/types/generated.ts",
+    "generate:openapi": "openapi-typescript ../../packages/shared/openapi.json -o src/types/rest.ts",
     "generate:websocket": "bun ./scripts/generate-types.ts",
     "generate": "bun run generate:openapi && bun run generate:websocket",
     "build": "bun run generate && tsc",

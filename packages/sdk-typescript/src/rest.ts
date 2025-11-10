@@ -2,7 +2,7 @@
  * REST API client for the exchange
  */
 
-import type { components } from "./types/generated";
+import type { components } from "./types/rest";
 import { ApiError } from "./errors";
 import type { CacheService, Market, Token } from "./cache";
 import type {

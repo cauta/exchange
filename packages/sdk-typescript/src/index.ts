@@ -90,7 +90,7 @@ export type {
 export type { Logger, LogLevel } from "./logger";
 
 // Re-export generated types for advanced usage
-export type { components } from "./types/generated";
+export type { components } from "./types/rest";
 
 /**
  * Main Exchange SDK client

@@ -2,7 +2,7 @@
  * Service for enhancing raw API data with display values
  */
 
-import type { components } from "./types/generated";
+import type { components } from "./types/rest";
 import type { CacheService } from "./cache";
 import { toDisplayValue, formatPrice, formatSize } from "./format";
 

@@ -2,7 +2,7 @@
  * Cache service for markets and tokens
  */
 
-import type { components } from "./types/generated";
+import type { components } from "./types/rest";
 import type { Logger } from "./logger";
 
 export type Market = components["schemas"]["ApiMarket"];

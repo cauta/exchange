@@ -3,7 +3,7 @@
  * Auto-generated from Rust types via schemars
  */
 
-import type { components } from "./generated";
+import type { components } from "./rest";
 import type { ServerMessage as WsServerMessage } from "./generated/websocket";
 
 // Re-export REST API types
