@@ -1,12 +1,10 @@
-mod utils;
-
 use backend::models::api::{ClientMessage, ServerMessage, SubscriptionChannel};
 use backend::models::domain::{OrderType, Side};
+use exchange_test_utils::{helpers, TestEngine, TestServer};
 use futures::{SinkExt, StreamExt};
 use serde_json::json;
 use tokio::time::{timeout, Duration};
 use tokio_tungstenite::tungstenite::Message;
-use utils::TestServer;
 
 // Type alias for WebSocket stream to reduce verbosity
 type WsStream =
@@ -30,7 +28,7 @@ async fn test_ws_connection_establishes() {
         .expect("Failed to start test server");
 
     // Connect using raw tokio-tungstenite
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _response) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -50,7 +48,7 @@ async fn test_ws_connection_close_gracefully() {
         .await
         .expect("Failed to start test server");
 
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -72,7 +70,7 @@ async fn test_ws_multiple_concurrent_connections() {
     // Create multiple WebSocket connections
     let mut connections = Vec::new();
     for _ in 0..5 {
-        let ws_url = server.ws_url("/ws");
+        let ws_url = server.ws_url.clone();
         let (ws, _) = tokio_tungstenite::connect_async(&ws_url)
             .await
             .expect("Failed to connect to WebSocket");
@@ -103,13 +101,11 @@ async fn test_ws_subscribe_to_trades() {
         .expect("Failed to start test server");
 
     // Setup: Create test market
-    server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USD")
+    helpers::create_market_with_tokens(&server.test_db, "BTC", "USD")
         .await
         .expect("Failed to create test market");
 
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -138,13 +134,11 @@ async fn test_ws_subscribe_to_orderbook() {
         .expect("Failed to start test server");
 
     // Setup: Create test market
-    server
-        .test_db
-        .create_test_market_with_tokens("ETH", "USD")
+    helpers::create_market_with_tokens(&server.test_db, "ETH", "USD")
         .await
         .expect("Failed to create test market");
 
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -169,7 +163,7 @@ async fn test_ws_subscribe_to_user_updates() {
         .await
         .expect("Failed to start test server");
 
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -195,13 +189,11 @@ async fn test_ws_unsubscribe_from_channel() {
         .expect("Failed to start test server");
 
     // Setup: Create test market
-    server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USD")
+    helpers::create_market_with_tokens(&server.test_db, "BTC", "USD")
         .await
         .expect("Failed to create test market");
 
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -236,18 +228,14 @@ async fn test_ws_multiple_subscriptions_same_connection() {
         .expect("Failed to start test server");
 
     // Setup: Create test markets
-    server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USD")
+    helpers::create_market_with_tokens(&server.test_db, "BTC", "USD")
         .await
         .expect("Failed to create BTC/USD market");
-    server
-        .test_db
-        .create_test_market_with_tokens("ETH", "USD")
+    helpers::create_market_with_tokens(&server.test_db, "ETH", "USD")
         .await
         .expect("Failed to create ETH/USD market");
 
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -297,7 +285,7 @@ async fn test_ws_server_sends_pings() {
         .await
         .expect("Failed to start test server");
 
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -350,7 +338,7 @@ async fn test_ws_client_can_send_application_ping() {
         .await
         .expect("Failed to start test server");
 
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -376,7 +364,7 @@ async fn test_ws_handles_invalid_json() {
         .await
         .expect("Failed to start test server");
 
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -401,7 +389,7 @@ async fn test_ws_handles_unknown_message_type() {
         .await
         .expect("Failed to start test server");
 
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -435,13 +423,11 @@ async fn test_ws_rapid_subscribe_unsubscribe() {
         .expect("Failed to start test server");
 
     // Setup: Create test market
-    server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USD")
+    helpers::create_market_with_tokens(&server.test_db, "BTC", "USD")
         .await
         .expect("Failed to create test market");
 
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -532,9 +518,7 @@ async fn test_two_users_limit_order_matching_full_events() {
         .expect("Failed to start test server");
 
     // Setup: Create market
-    server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    helpers::create_market_with_tokens(&server.test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -570,7 +554,7 @@ async fn test_two_users_limit_order_matching_full_events() {
         .expect("Failed to add USDC");
 
     // Connect WebSocket for maker - subscribe to user events
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws_maker, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect maker WebSocket");
@@ -642,7 +626,7 @@ async fn test_two_users_limit_order_matching_full_events() {
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
     // Maker places sell order
-    let maker_order = utils::TestEngine::create_order(
+    let maker_order = TestEngine::create_order(
         &maker,
         "BTC/USDC",
         Side::Sell,
@@ -660,7 +644,7 @@ async fn test_two_users_limit_order_matching_full_events() {
 
     // Taker places matching buy order
     // Engine automatically locks taker's balance, executes trade, and broadcasts balance updates
-    let taker_order = utils::TestEngine::create_order(
+    let taker_order = TestEngine::create_order(
         &taker,
         "BTC/USDC",
         Side::Buy,
@@ -789,9 +773,7 @@ async fn test_two_users_partial_fill_with_cancellation() {
         .expect("Failed to start test server");
 
     // Setup
-    server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    helpers::create_market_with_tokens(&server.test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -828,7 +810,7 @@ async fn test_two_users_partial_fill_with_cancellation() {
         .expect("Failed to add USDC");
 
     // Connect WebSockets
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws_maker, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect");
@@ -897,7 +879,7 @@ async fn test_two_users_partial_fill_with_cancellation() {
 
     // Maker places sell order for 0.01 BTC at $50/BTC
     // Price: 50 USDC per BTC = 50 * 10^6 = 50_000_000 (USDC atoms per whole BTC)
-    let maker_order = utils::TestEngine::create_order(
+    let maker_order = TestEngine::create_order(
         &maker,
         "BTC/USDC",
         Side::Sell,
@@ -913,7 +895,7 @@ async fn test_two_users_partial_fill_with_cancellation() {
         .expect("Failed to place order");
 
     // Taker places buy order for 0.02 BTC (will partially fill with 0.01 BTC)
-    let taker_order = utils::TestEngine::create_order(
+    let taker_order = TestEngine::create_order(
         &taker,
         "BTC/USDC",
         Side::Buy,
@@ -1058,9 +1040,7 @@ async fn test_market_order_immediate_execution_all_events() {
         .expect("Failed to start test server");
 
     // Setup
-    server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    helpers::create_market_with_tokens(&server.test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -1094,7 +1074,7 @@ async fn test_market_order_immediate_execution_all_events() {
         .expect("Failed to add USDC");
 
     // Connect WebSockets with all subscriptions
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws_global, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect");
@@ -1141,7 +1121,7 @@ async fn test_market_order_immediate_execution_all_events() {
 
     // Maker places limit sell order for 0.02 BTC at $50/BTC
     // Note: Engine will automatically lock the required balance
-    let maker_order = utils::TestEngine::create_order(
+    let maker_order = TestEngine::create_order(
         &maker,
         "BTC/USDC",
         Side::Sell,
@@ -1166,7 +1146,7 @@ async fn test_market_order_immediate_execution_all_events() {
 
     // Taker places market buy order (immediate execution) for 0.02 BTC at $50/BTC = $1 USDC
     // Note: Engine will automatically lock/unlock the required balance
-    let taker_order = utils::TestEngine::create_order(
+    let taker_order = TestEngine::create_order(
         &taker,
         "BTC/USDC",
         Side::Buy,
@@ -1266,9 +1246,7 @@ async fn test_multiple_orders_and_cancellations_event_flow() {
         .expect("Failed to start test server");
 
     // Setup
-    server
-        .test_db
-        .create_test_market_with_tokens("ETH", "USDC")
+    helpers::create_market_with_tokens(&server.test_db, "ETH", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -1287,7 +1265,7 @@ async fn test_multiple_orders_and_cancellations_event_flow() {
         .expect("Failed to add balance");
 
     // Connect WebSocket
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect");
@@ -1333,14 +1311,8 @@ async fn test_multiple_orders_and_cancellations_event_flow() {
     for i in 1..=3 {
         let price = 3_000_000_000 + (i * 100_000_000); // $3000, $3100, $3200 per ETH (in USDC atoms per whole ETH)
         let size = 1_000_000; // 0.01 ETH
-        let order = utils::TestEngine::create_order(
-            &user,
-            "ETH/USDC",
-            Side::Buy,
-            OrderType::Limit,
-            price,
-            size,
-        );
+        let order =
+            TestEngine::create_order(&user, "ETH/USDC", Side::Buy, OrderType::Limit, price, size);
 
         // Engine will automatically lock the required balance
         let placed = server

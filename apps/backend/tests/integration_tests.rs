@@ -2,12 +2,10 @@
 // Tests the complete flow: REST API → Engine → Matcher → Executor → Database → WebSocket events
 
 use backend::models::domain::{OrderType, Side};
+use exchange_test_utils::{helpers, TestServer};
 use futures::{SinkExt, StreamExt};
 use serde_json::json;
 use tokio_tungstenite::tungstenite::Message;
-
-mod utils;
-use utils::TestServer;
 
 /// Helper to place an order via REST API
 async fn place_order_via_api(
@@ -108,9 +106,7 @@ async fn test_full_e2e_order_matching_via_api() {
     let server = TestServer::start().await.expect("Failed to start server");
 
     // Setup market
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -120,7 +116,7 @@ async fn test_full_e2e_order_matching_via_api() {
     drip_tokens_via_api(&server.address, "buyer", "USDC", "50000000000000000").await;
 
     // Connect to WebSocket
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (ws_stream, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -224,9 +220,7 @@ async fn test_full_e2e_order_matching_via_api() {
 async fn test_e2e_order_cancellation_via_api() {
     let server = TestServer::start().await.expect("Failed to start server");
 
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("ETH", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "ETH", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -259,9 +253,7 @@ async fn test_e2e_order_cancellation_via_api() {
 async fn test_e2e_partial_fill_via_api() {
     let server = TestServer::start().await.expect("Failed to start server");
 
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("SOL", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "SOL", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -309,9 +301,7 @@ async fn test_e2e_partial_fill_via_api() {
 async fn test_e2e_market_order_via_api() {
     let server = TestServer::start().await.expect("Failed to start server");
 
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("AVAX", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "AVAX", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -372,9 +362,7 @@ async fn test_e2e_market_order_via_api() {
 async fn test_e2e_orderbook_snapshots_via_websocket() {
     let server = TestServer::start().await.expect("Failed to start server");
 
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("ADA", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "ADA", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -382,7 +370,7 @@ async fn test_e2e_orderbook_snapshots_via_websocket() {
     drip_tokens_via_api(&server.address, "seller", "ADA", "10000000").await;
 
     // Connect to WebSocket
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (ws_stream, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -462,9 +450,7 @@ async fn test_e2e_orderbook_snapshots_via_websocket() {
 async fn test_e2e_price_time_priority_via_api() {
     let server = TestServer::start().await.expect("Failed to start server");
 
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("DOT", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "DOT", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -524,15 +510,11 @@ async fn test_e2e_price_time_priority_via_api() {
 async fn test_e2e_validation_errors_via_api() {
     let server = TestServer::start().await.expect("Failed to start server");
 
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("ATOM", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "ATOM", "USDC")
         .await
         .expect("Failed to create market");
 
-    server
-        .test_db
-        .create_test_user("trader")
+    helpers::create_user(&server.test_db, "trader")
         .await
         .expect("Failed to create trader");
 

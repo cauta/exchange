@@ -1210,14 +1210,15 @@ dependencies = [
  "anyhow",
  "axum",
  "backend",
+ "chrono",
  "clickhouse",
- "exchange-sdk",
  "reqwest",
  "sqlx",
  "testcontainers",
  "testcontainers-modules",
  "tokio",
  "tower-http",
+ "uuid",
 ]
 
 [[package]]

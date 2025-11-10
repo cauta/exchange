@@ -1,7 +1,5 @@
-mod utils;
-
+use exchange_test_utils::TestServer;
 use serde_json::Value;
-use utils::TestServer;
 
 #[tokio::test]
 async fn test_health_endpoint_e2e() {

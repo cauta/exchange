@@ -2,7 +2,11 @@ use backend::db::Db;
 use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::{clickhouse::ClickHouse, postgres::Postgres};
 
-/// Container handles for cleanup
+// ============================================================================
+// Test Containers - Database Setup
+// ============================================================================
+
+/// Container handles for test databases
 pub struct TestContainers {
     pub(crate) db: Db,
     pub(crate) _postgres_container: testcontainers::ContainerAsync<Postgres>,
@@ -16,7 +20,7 @@ impl TestContainers {
     /// and uses Db::connect() to automatically run migrations.
     /// The containers will be cleaned up when dropped.
     pub async fn setup() -> anyhow::Result<Self> {
-        // ================================ Start containers ================================
+        // Start containers
         let postgres_container = Postgres::default()
             .start()
             .await
@@ -37,7 +41,7 @@ impl TestContainers {
             .await
             .map_err(|e| anyhow::anyhow!("Failed to get ClickHouse port: {}", e))?;
 
-        // ================================ Build connection URLs ================================
+        // Build connection URLs
         let postgres_url = format!(
             "postgres://postgres:postgres@{}:{}/postgres",
             postgres_container.get_host().await.unwrap(),
@@ -50,8 +54,7 @@ impl TestContainers {
             clickhouse_port
         );
 
-        // ================================ Connect with explicit URLs ================================
-        // Pass URLs directly instead of using env vars to avoid conflicts in parallel tests
+        // Connect with explicit URLs to avoid conflicts in parallel tests
         let db = Db::connect_with_urls(Some(postgres_url), Some(clickhouse_url))
             .await
             .map_err(|e| anyhow::anyhow!("Failed to connect to databases: {}", e))?;
@@ -64,11 +67,35 @@ impl TestContainers {
     }
 
     /// Get a clone of the database connection
-    ///
-    /// This is public to allow backend tests to access the database.
-    /// Backend tests wrap this in their own TestDb struct.
-    /// SDK tests should NOT use this - they should only test via HTTP API.
     pub fn db_clone(&self) -> Db {
         self.db.clone()
+    }
+}
+
+// ============================================================================
+// Test Database - Wrapper with Direct DB Access
+// ============================================================================
+
+/// Test database wrapper
+///
+/// Provides access to the database for backend tests that need to verify internal state.
+/// For e2e tests, prefer using HTTP API helpers instead.
+#[allow(dead_code)]
+pub struct TestDb {
+    pub db: Db,
+    _containers: TestContainers,
+}
+
+#[allow(dead_code)]
+impl TestDb {
+    /// Set up test databases with containers
+    pub async fn setup() -> anyhow::Result<Self> {
+        let containers = TestContainers::setup().await?;
+        let db = containers.db_clone();
+
+        Ok(TestDb {
+            db,
+            _containers: containers,
+        })
     }
 }

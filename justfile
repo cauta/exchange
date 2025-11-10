@@ -18,29 +18,65 @@ compose:
 
 # ================================
 
+db:
+  #!/usr/bin/env bash
+  set -euo pipefail
+
+  # Check if PostgreSQL is running
+  if docker ps --filter name=exchange-postgres --format '{{{{.Names}}}}' | grep -q exchange-postgres; then
+    echo "✅ PostgreSQL already running"
+  else
+    echo "🚀 Starting PostgreSQL..."
+    docker compose up -d postgres
+  fi
+
+  # Check if ClickHouse is running
+  if docker ps --filter name=exchange-clickhouse --format '{{{{.Names}}}}' | grep -q exchange-clickhouse; then
+    echo "✅ ClickHouse already running"
+  else
+    echo "🚀 Starting ClickHouse..."
+    docker compose up -d clickhouse
+  fi
+
+  echo "⏳ Waiting for databases to be ready..."
+  sleep 3
+
+  echo "📊 Running migrations..."
+  just db-migrate
+
+  echo "🔧 Initializing exchange..."
+  just db-init
+
+  echo "✅ Database is ready!"
+
 db-run:
   docker compose up -d postgres clickhouse
 
-db:
-  just db-reset
-  just db-prepare
-  just db-setup
-  just db-init
+db-stop:
+  @docker compose down
+  @echo "✅ Databases stopped (data preserved)"
 
 db-init:
   # inits exchange with tokens and markets from config.toml
   # this also automatically sets up database schemas
   cd apps/backend && cargo run --bin init_exchange
 
-db-reset:
-  # Drop and recreate databases (WARNING: destroys all data)
-  psql $DATABASE_URL -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" 2>/dev/null || true
-  clickhouse client --user default --password password --query "DROP DATABASE IF EXISTS exchange" 2>/dev/null || true
-  just db-setup
-
-db-setup:
+db-migrate:
   cd apps/backend/src/db/pg && cargo sqlx migrate run --database-url $DATABASE_URL
   clickhouse client --user default --password password --query "$(cat apps/backend/src/db/ch/schema.sql)"
+
+db-reset:
+  @echo "🔄 Resetting databases (this will destroy all data)..."
+  @docker compose down -v
+  @echo "🚀 Starting fresh databases..."
+  @docker compose up -d postgres clickhouse
+  @echo "⏳ Waiting for databases to be ready..."
+  @sleep 3
+  @echo "📊 Running migrations..."
+  @just db-migrate
+  @echo "🔧 Initializing exchange..."
+  @just db-init
+  @echo "✅ Database reset complete!"
 
 db-prepare:
   cd apps/backend && cargo sqlx prepare --database-url $DATABASE_URL

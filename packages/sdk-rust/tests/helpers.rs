@@ -1,10 +1,10 @@
-use crate::TestServer;
 use exchange_sdk::ExchangeClient;
+use exchange_test_utils::TestServer;
 
-/// High-level test fixture for exchange testing
+/// High-level test fixture for SDK testing
 ///
-/// Provides a running test exchange with a pre-configured market and admin client.
-/// Use this for SDK and integration tests that need a complete exchange setup.
+/// Provides a running test exchange with a pre-configured market and SDK client.
+/// This is SDK-specific and uses the ExchangeClient to test the SDK functionality.
 pub struct TestExchange {
     pub server: TestServer,
     pub client: ExchangeClient,
@@ -187,20 +187,4 @@ impl TestExchange {
     pub fn price_to_atoms(&self, price: f64) -> u128 {
         (price * 10f64.powi(self.quote_decimals as i32)) as u128
     }
-}
-
-/// Helper to wait for a condition with timeout
-pub async fn wait_for<F, Fut>(mut condition: F, timeout_ms: u64) -> anyhow::Result<()>
-where
-    F: FnMut() -> Fut,
-    Fut: std::future::Future<Output = bool>,
-{
-    let start = std::time::Instant::now();
-    while start.elapsed().as_millis() < timeout_ms as u128 {
-        if condition().await {
-            return Ok(());
-        }
-        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
-    }
-    anyhow::bail!("Timeout waiting for condition")
 }

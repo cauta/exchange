@@ -1,8 +1,10 @@
 /// SDK error handling and validation tests
 ///
 /// These tests verify that the SDK properly handles errors and edge cases.
+mod helpers;
+
 use backend::models::domain::{OrderType, Side};
-use exchange_test_utils::TestExchange;
+use helpers::TestExchange;
 
 // ============================================================================
 // Error Handling Tests

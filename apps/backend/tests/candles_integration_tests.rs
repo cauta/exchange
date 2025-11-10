@@ -1,16 +1,13 @@
 /// Integration tests for the full trade → ClickHouse → candles flow
 /// These tests verify end-to-end functionality from trade execution to candle generation
 use backend::models::domain::{OrderType, Side};
-
-mod utils;
-use utils::{TestDb, TestEngine};
+use exchange_test_utils::{helpers, TestDb, TestEngine};
 
 /// Test that trades are persisted to ClickHouse when engine executes them
 #[tokio::test]
 async fn test_trades_persisted_to_clickhouse() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -83,8 +80,7 @@ async fn test_trades_persisted_to_clickhouse() {
 #[tokio::test]
 async fn test_candles_generated_from_trades() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("SOL", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "SOL", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -214,8 +210,7 @@ async fn test_candles_generated_from_trades() {
 #[tokio::test]
 async fn test_no_trades_means_no_candles() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("ETH", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "ETH", "USDC")
         .await
         .expect("Failed to create market");
 

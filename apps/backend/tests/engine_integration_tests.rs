@@ -1,7 +1,5 @@
 use backend::models::domain::{OrderStatus, OrderType, Side};
-
-mod utils;
-use utils::{TestDb, TestEngine};
+use exchange_test_utils::{helpers, TestDb, TestEngine};
 
 // ============================================================================
 // TESTS
@@ -10,8 +8,7 @@ use utils::{TestDb, TestEngine};
 #[tokio::test]
 async fn test_basic_limit_order_matching() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -63,8 +60,7 @@ async fn test_basic_limit_order_matching() {
 #[tokio::test]
 async fn test_partial_fill() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("ETH", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "ETH", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -109,8 +105,7 @@ async fn test_partial_fill() {
 #[tokio::test]
 async fn test_price_time_priority() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("SOL", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "SOL", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -173,8 +168,7 @@ async fn test_price_time_priority() {
 #[tokio::test]
 async fn test_fifo_time_priority_at_same_price() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("AVAX", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "AVAX", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -231,8 +225,7 @@ async fn test_fifo_time_priority_at_same_price() {
 #[tokio::test]
 async fn test_market_order_execution() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("MATIC", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "MATIC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -295,8 +288,7 @@ async fn test_market_order_execution() {
 #[tokio::test]
 async fn test_order_cancellation() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("DOT", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "DOT", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -331,8 +323,7 @@ async fn test_order_cancellation() {
 #[tokio::test]
 async fn test_cannot_cancel_others_order() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("ATOM", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "ATOM", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -365,12 +356,10 @@ async fn test_cannot_cancel_others_order() {
 #[tokio::test]
 async fn test_no_match_different_market() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market1 = test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    let market1 = helpers::create_market_with_tokens(&test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market1");
-    let market2 = test_db
-        .create_test_market_with_tokens("ETH", "USDC")
+    let market2 = helpers::create_market_with_tokens(&test_db, "ETH", "USDC")
         .await
         .expect("Failed to create market2");
 
@@ -413,8 +402,7 @@ async fn test_no_match_different_market() {
 #[tokio::test]
 async fn test_buy_limit_order_wont_match_above_limit() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("LINK", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "LINK", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -457,8 +445,7 @@ async fn test_buy_limit_order_wont_match_above_limit() {
 #[tokio::test]
 async fn test_sell_limit_order_wont_match_below_limit() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("UNI", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "UNI", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -498,8 +485,7 @@ async fn test_sell_limit_order_wont_match_below_limit() {
 #[tokio::test]
 async fn test_multiple_orders_complex_matching() {
     let test_db = TestDb::setup().await.expect("Failed to setup test DB");
-    let market = test_db
-        .create_test_market_with_tokens("ADA", "USDC")
+    let market = helpers::create_market_with_tokens(&test_db, "ADA", "USDC")
         .await
         .expect("Failed to create market");
 

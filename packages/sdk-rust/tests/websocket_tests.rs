@@ -1,9 +1,11 @@
 /// Comprehensive SDK WebSocket tests
 ///
 /// These tests verify real-time event streams using only the WebSocket API.
+mod helpers;
+
 use backend::models::domain::{OrderType, Side};
 use exchange_sdk::{SubscriptionChannel, WebSocketClient};
-use exchange_test_utils::TestExchange;
+use helpers::TestExchange;
 
 // ============================================================================
 // WebSocket Subscription Tests

@@ -1,11 +1,9 @@
-mod utils;
-
 use backend::models::api::{ClientMessage, ServerMessage, SubscriptionChannel};
 use backend::models::domain::{OrderType, Side};
+use exchange_test_utils::{helpers, TestEngine, TestServer};
 use futures::{SinkExt, StreamExt};
 use tokio::time::{timeout, Duration};
 use tokio_tungstenite::tungstenite::Message;
-use utils::TestServer;
 
 type WsStream =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
@@ -56,9 +54,7 @@ async fn test_balance_events_on_limit_order_placement() {
         .expect("Failed to start test server");
 
     // Setup: Create market and give user balance
-    server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    helpers::create_market_with_tokens(&server.test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -78,7 +74,7 @@ async fn test_balance_events_on_limit_order_placement() {
         .expect("Failed to add balance");
 
     // Connect WebSocket and subscribe to user events
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -106,7 +102,7 @@ async fn test_balance_events_on_limit_order_placement() {
     }
 
     // Place a limit order - engine automatically locks balance and broadcasts event
-    let order = utils::TestEngine::create_order(
+    let order = TestEngine::create_order(
         &user,
         "BTC/USDC",
         Side::Buy,
@@ -151,9 +147,7 @@ async fn test_balance_events_on_limit_order_fill() {
         .expect("Failed to start test server");
 
     // Setup: Create market
-    server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    helpers::create_market_with_tokens(&server.test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -189,7 +183,7 @@ async fn test_balance_events_on_limit_order_fill() {
         .expect("Failed to add USDC to taker");
 
     // Connect WebSocket for taker
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -206,7 +200,7 @@ async fn test_balance_events_on_limit_order_fill() {
     .expect("Failed to subscribe");
 
     // Maker places sell order
-    let maker_order = utils::TestEngine::create_order(
+    let maker_order = TestEngine::create_order(
         &maker,
         "BTC/USDC",
         Side::Sell,
@@ -221,7 +215,7 @@ async fn test_balance_events_on_limit_order_fill() {
         .expect("Failed to create maker order");
 
     // Taker places matching buy order (should fill and unlock balances)
-    let taker_order = utils::TestEngine::create_order(
+    let taker_order = TestEngine::create_order(
         &taker,
         "BTC/USDC",
         Side::Buy,
@@ -309,9 +303,7 @@ async fn test_balance_events_on_limit_order_cancellation() {
         .expect("Failed to start test server");
 
     // Setup: Create market and give user balance
-    server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    helpers::create_market_with_tokens(&server.test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -331,7 +323,7 @@ async fn test_balance_events_on_limit_order_cancellation() {
         .expect("Failed to add balance");
 
     // Connect WebSocket
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -348,7 +340,7 @@ async fn test_balance_events_on_limit_order_cancellation() {
     .expect("Failed to subscribe");
 
     // Place a limit order
-    let order = utils::TestEngine::create_order(
+    let order = TestEngine::create_order(
         &user,
         "BTC/USDC",
         Side::Buy,
@@ -443,9 +435,7 @@ async fn test_balance_events_on_market_order_partial_fill() {
         .expect("Failed to start test server");
 
     // Setup: Create market
-    server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    helpers::create_market_with_tokens(&server.test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -480,7 +470,7 @@ async fn test_balance_events_on_market_order_partial_fill() {
         .expect("Failed to add USDC to taker");
 
     // Maker places sell order for 1 BTC
-    let maker_order = utils::TestEngine::create_order(
+    let maker_order = TestEngine::create_order(
         &maker,
         "BTC/USDC",
         Side::Sell,
@@ -495,7 +485,7 @@ async fn test_balance_events_on_market_order_partial_fill() {
         .expect("Failed to create maker order");
 
     // Connect WebSocket for taker
-    let ws_url = server.ws_url("/ws");
+    let ws_url = server.ws_url.clone();
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("Failed to connect to WebSocket");
@@ -513,7 +503,7 @@ async fn test_balance_events_on_market_order_partial_fill() {
 
     // Taker places market order for 2 BTC (but only 1 available)
     // Market order should fill 1 BTC and unlock the remaining 1 BTC worth of USDC
-    let taker_order = utils::TestEngine::create_order(
+    let taker_order = TestEngine::create_order(
         &taker,
         "BTC/USDC",
         Side::Buy,

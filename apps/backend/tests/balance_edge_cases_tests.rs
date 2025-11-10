@@ -1,10 +1,8 @@
 // Edge case tests for balance validation, locking, and fee calculation
 
 use backend::models::domain::{OrderType, Side};
+use exchange_test_utils::{helpers, TestServer};
 use serde_json::json;
-
-mod utils;
-use utils::TestServer;
 
 /// Helper to drip tokens to a user via REST API
 async fn drip_tokens(
@@ -70,9 +68,7 @@ async fn place_order(
 #[tokio::test]
 async fn test_insufficient_balance_buy_order() {
     let server = TestServer::start().await.expect("Failed to start server");
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("ETH", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "ETH", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -111,9 +107,7 @@ async fn test_insufficient_balance_buy_order() {
 #[tokio::test]
 async fn test_insufficient_balance_sell_order() {
     let server = TestServer::start().await.expect("Failed to start server");
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("BTC", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "BTC", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -139,9 +133,7 @@ async fn test_insufficient_balance_sell_order() {
 #[tokio::test]
 async fn test_exact_balance_allowed() {
     let server = TestServer::start().await.expect("Failed to start server");
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("SOL", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "SOL", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -170,9 +162,7 @@ async fn test_exact_balance_allowed() {
 #[tokio::test]
 async fn test_multiple_orders_lock_balance() {
     let server = TestServer::start().await.expect("Failed to start server");
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("AVAX", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "AVAX", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -231,9 +221,7 @@ async fn test_multiple_orders_lock_balance() {
 #[tokio::test]
 async fn test_cancel_order_unlocks_balance() {
     let server = TestServer::start().await.expect("Failed to start server");
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("DOT", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "DOT", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -309,9 +297,7 @@ async fn test_cancel_order_unlocks_balance() {
 #[tokio::test]
 async fn test_partial_fill_unlocks_remaining() {
     let server = TestServer::start().await.expect("Failed to start server");
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("ATOM", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "ATOM", "USDC")
         .await
         .expect("Failed to create market");
 
@@ -367,9 +353,7 @@ async fn test_partial_fill_unlocks_remaining() {
 #[tokio::test]
 async fn test_zero_balance_rejection() {
     let server = TestServer::start().await.expect("Failed to start server");
-    let market = server
-        .test_db
-        .create_test_market_with_tokens("ADA", "USDC")
+    let market = helpers::create_market_with_tokens(&server.test_db, "ADA", "USDC")
         .await
         .expect("Failed to create market");
 

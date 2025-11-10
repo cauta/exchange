@@ -1,8 +1,6 @@
 use chrono::{DateTime, Utc};
+use exchange_test_utils::{helpers, TestDb};
 use std::str::FromStr;
-
-mod utils;
-use utils::TestDb;
 
 #[tokio::test]
 async fn test_user_crud_operations() {
@@ -12,8 +10,7 @@ async fn test_user_crud_operations() {
 
     // Test creating a user
     let user_address = "0x1234567890abcdef";
-    let user = test_db
-        .create_test_user(user_address)
+    let user = helpers::create_user(&test_db, user_address)
         .await
         .expect("Failed to create user");
 
@@ -42,8 +39,7 @@ async fn test_user_crud_operations() {
 
     // Test creating another user
     let user2_address = "0xabcdef1234567890";
-    let _user2 = test_db
-        .create_test_user(user2_address)
+    let _user2 = helpers::create_user(&test_db, user2_address)
         .await
         .expect("Failed to create second user");
 
@@ -58,8 +54,7 @@ async fn test_market_operations() {
         .expect("Failed to setup test database");
 
     // Test creating a market
-    let market = test_db
-        .create_test_market_with_tokens("BTC", "USD")
+    let market = helpers::create_market_with_tokens(&test_db, "BTC", "USD")
         .await
         .expect("Failed to create market");
 
@@ -90,8 +85,7 @@ async fn test_candle_operations() {
         .expect("Failed to setup test database");
 
     // First create a market to associate candles with
-    let market = test_db
-        .create_test_market_with_tokens("ETH", "USD")
+    let market = helpers::create_market_with_tokens(&test_db, "ETH", "USD")
         .await
         .expect("Failed to create market");
 
@@ -101,18 +95,15 @@ async fn test_candle_operations() {
     let timestamp3 = DateTime::from_str("2023-01-01T02:00:00Z").unwrap();
 
     // Insert test candles (open, high, low, close, volume)
-    test_db
-        .create_test_candle(&market.id, timestamp1, (100, 110, 95, 105, 1000))
+    helpers::create_candle(&test_db, &market.id, timestamp1, (100, 110, 95, 105, 1000))
         .await
         .expect("Failed to create candle 1");
 
-    test_db
-        .create_test_candle(&market.id, timestamp2, (105, 120, 100, 115, 1500))
+    helpers::create_candle(&test_db, &market.id, timestamp2, (105, 120, 100, 115, 1500))
         .await
         .expect("Failed to create candle 2");
 
-    test_db
-        .create_test_candle(&market.id, timestamp3, (115, 125, 110, 120, 2000))
+    helpers::create_candle(&test_db, &market.id, timestamp3, (115, 125, 110, 120, 2000))
         .await
         .expect("Failed to create candle 3");
 
@@ -160,28 +151,34 @@ async fn test_multiple_markets_and_candles() {
         .expect("Failed to setup test database");
 
     // Create multiple markets
-    let btc_market = test_db
-        .create_test_market_with_tokens("BTC", "USD")
+    let btc_market = helpers::create_market_with_tokens(&test_db, "BTC", "USD")
         .await
         .expect("Failed to create BTC market");
 
-    let eth_market = test_db
-        .create_test_market_with_tokens("ETH", "USD")
+    let eth_market = helpers::create_market_with_tokens(&test_db, "ETH", "USD")
         .await
         .expect("Failed to create ETH market");
 
     let timestamp = DateTime::from_str("2023-01-01T00:00:00Z").unwrap();
 
     // Insert candles for both markets
-    test_db
-        .create_test_candle(&btc_market.id, timestamp, (50000, 51000, 49000, 50500, 100))
-        .await
-        .expect("Failed to create BTC candle");
+    helpers::create_candle(
+        &test_db,
+        &btc_market.id,
+        timestamp,
+        (50000, 51000, 49000, 50500, 100),
+    )
+    .await
+    .expect("Failed to create BTC candle");
 
-    test_db
-        .create_test_candle(&eth_market.id, timestamp, (3000, 3100, 2900, 3050, 500))
-        .await
-        .expect("Failed to create ETH candle");
+    helpers::create_candle(
+        &test_db,
+        &eth_market.id,
+        timestamp,
+        (3000, 3100, 2900, 3050, 500),
+    )
+    .await
+    .expect("Failed to create ETH candle");
 
     // Get candles for each market separately
     let start_time = DateTime::from_str("2023-01-01T00:00:00Z").unwrap();
@@ -227,13 +224,11 @@ async fn test_database_isolation() {
     assert_eq!(tokens.len(), 0, "Database should start empty");
 
     // Create some data
-    let _user = test_db
-        .create_test_user("test_user")
+    let _user = helpers::create_user(&test_db, "test_user")
         .await
         .expect("Failed to create user");
 
-    let market = test_db
-        .create_test_market_with_tokens("SOL", "USD")
+    let market = helpers::create_market_with_tokens(&test_db, "SOL", "USD")
         .await
         .expect("Failed to create market");
 

@@ -2,8 +2,10 @@
 ///
 /// These tests verify the SDK through realistic trading scenarios,
 /// using ONLY the public REST and WebSocket APIs (no direct DB access for verification).
+mod helpers;
+
 use backend::models::domain::{OrderType, Side};
-use exchange_test_utils::TestExchange;
+use helpers::TestExchange;
 
 // ============================================================================
 // Basic Trading Workflows
