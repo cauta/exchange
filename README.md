@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/9dc14b75-28f1-4480-8e48-41a7f34aa5c3" width="100%" alt="Exchange Banner">
-</p>
+![banner](https://github.com/user-attachments/assets/07da9f14-c6dc-441f-a1d4-92f8264f0d5f)
 
 # exchange
 
