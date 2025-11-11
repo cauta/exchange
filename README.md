@@ -157,6 +157,7 @@ Modern Next.js trading interface with professional features:
 - **TypeScript SDK**: Type-safe API client with WebSocket subscriptions
 - **TradingView**: Advanced charting with custom drawing tools and real-time updates
 - **Turnkey**: Embedded wallet with secure key management, no browser extension required
+  - Note: When deploying, ensure `NEXT_PUBLIC_ORGANIZATION_ID` and `NEXT_PUBLIC_AUTH_PROXY_CONFIG_ID` are set as build-time environment variables
 
 ---
 
