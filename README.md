@@ -11,8 +11,7 @@ A full-stack crypto exchange. CLOB + frontend + market-making bots.
 ---
 
 ## Demo
-
-<video autoplay loop muted playsinline src="https://github.com/user-attachments/assets/1b8da093-f3c9-462c-bcf5-1397157188b1"></video>
+https://github.com/user-attachments/assets/cd2c3132-4aea-4137-b724-6d2ecf1a536b
 
 ---
 
