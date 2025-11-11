@@ -8,15 +8,11 @@ A full-stack crypto exchange. CLOB + frontend + market-making bots.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/exchange?referralCode=trevor)
 
----
-
 ## Demo
 
 One-click Railway deployment with live trading: authentication via Turnkey embedded wallet, real-time candle data after a few hours of market activity, and executing both market and limit orders.
 
 https://github.com/user-attachments/assets/cd2c3132-4aea-4137-b724-6d2ecf1a536b
-
----
 
 ## Project Structure
 
@@ -32,8 +28,6 @@ exchange/
 │   └── sdk/                  # Multi-language SDKs (TypeScript, Python, Rust)
 └── docker-compose.yaml       # Infra
 ```
-
----
 
 ## Table of Contents
 
@@ -53,8 +47,6 @@ exchange/
   - [Bots](#bots)
   - [Testing & Deployment](#testing--deployment)
 - [License](#license)
-
----
 
 ## 🚀 Getting Started
 
@@ -102,8 +94,6 @@ Access the app at:
 - Swagger UI: http://localhost:8888/api/docs
 - PostgreSQL: postgresql://localhost:5432
 - ClickHouse: http://localhost:8123
-
----
 
 ## 🏗️ Architecture
 
