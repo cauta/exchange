@@ -1,10 +1,8 @@
 ![banner](https://github.com/user-attachments/assets/07da9f14-c6dc-441f-a1d4-92f8264f0d5f)
 
-# exchange
+<div align="center">
 
 A full-stack crypto exchange. CLOB + frontend + market-making bots.
-
-<div align="center">
 
 ### **[Building a Crypto Exchange](https://trevortrinh.substack.com/p/building-a-crypto-exchange)**
 
@@ -15,8 +13,6 @@ A full-stack crypto exchange. CLOB + frontend + market-making bots.
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/exchange?referralCode=trevor)
 
 </div>
-
----
 
 ## Project Structure
 
