@@ -231,4 +231,72 @@ impl Db {
 
         Ok(orders)
     }
+
+    /// Count total recoverable orders for progress tracking
+    pub async fn count_recoverable_orders(&self) -> Result<i64> {
+        let row = sqlx::query(
+            r#"
+            SELECT COUNT(*) as count
+            FROM orders
+            WHERE status IN ('pending', 'partially_filled')
+              AND type = 'limit'
+            "#,
+        )
+        .fetch_one(&self.postgres)
+        .await?;
+
+        Ok(row.get("count"))
+    }
+
+    /// Get recoverable orders in batches using cursor-based pagination
+    /// Returns orders sorted by (market_id, created_at) for consistent ordering
+    /// Uses LIMIT/OFFSET for pagination - suitable for recovery scenarios
+    pub async fn get_recoverable_orders_batch(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Order>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT id, user_address, market_id, price, size, side::TEXT as side, type::TEXT as type, status::TEXT as status, filled_size, created_at, updated_at
+            FROM orders
+            WHERE status IN ('pending', 'partially_filled')
+              AND type = 'limit'
+            ORDER BY market_id, created_at ASC
+            LIMIT $1 OFFSET $2
+            "#,
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.postgres)
+        .await?;
+
+        let orders = rows
+            .iter()
+            .map(|row| {
+                let price: BigDecimal = row.get("price");
+                let size: BigDecimal = row.get("size");
+                let filled_size: BigDecimal = row.get("filled_size");
+                let side_str: String = row.get("side");
+                let type_str: String = row.get("type");
+                let status_str: String = row.get("status");
+
+                Order {
+                    id: row.get("id"),
+                    user_address: row.get("user_address"),
+                    market_id: row.get("market_id"),
+                    price: price.to_u128(),
+                    size: size.to_u128(),
+                    side: side_str.parse().unwrap_or(Side::Buy),
+                    order_type: type_str.parse().unwrap_or(OrderType::Limit),
+                    status: status_str.parse().unwrap_or(OrderStatus::Pending),
+                    filled_size: filled_size.to_u128(),
+                    created_at: row.get("created_at"),
+                    updated_at: row.get("updated_at"),
+                }
+            })
+            .collect();
+
+        Ok(orders)
+    }
 }

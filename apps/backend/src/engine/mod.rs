@@ -41,6 +41,107 @@ impl MatchingEngine {
         }
     }
 
+    /// Recover orderbooks from database on startup
+    /// This restores all pending and partially filled limit orders to the in-memory orderbook
+    /// Orders are added in created_at order to maintain price-time priority
+    ///
+    /// Uses batched loading to handle large datasets safely:
+    /// - Loads orders in configurable batch sizes to limit memory usage
+    /// - Releases write lock between batches to allow concurrent reads
+    /// - Provides progress logging for monitoring
+    pub async fn recover_orderbooks(&self) -> crate::errors::Result<()> {
+        const BATCH_SIZE: i64 = 10_000; // Orders per batch - tune based on memory constraints
+
+        log::info!("Starting orderbook recovery from database...");
+
+        // Get total count for progress tracking
+        let total_orders = self.db.count_recoverable_orders().await?;
+
+        if total_orders == 0 {
+            log::info!("No orders to recover");
+            return Ok(());
+        }
+
+        log::info!(
+            "Found {} orders to recover, processing in batches of {}",
+            total_orders,
+            BATCH_SIZE
+        );
+
+        let mut recovered_count: i64 = 0;
+        let mut market_counts: std::collections::HashMap<String, usize> =
+            std::collections::HashMap::new();
+        let start_time = std::time::Instant::now();
+
+        // Process orders in batches
+        loop {
+            // Fetch next batch
+            let batch = self
+                .db
+                .get_recoverable_orders_batch(BATCH_SIZE, recovered_count)
+                .await?;
+
+            if batch.is_empty() {
+                break;
+            }
+
+            let batch_len = batch.len() as i64;
+
+            // Acquire write lock only for the duration of adding this batch
+            {
+                let mut orderbooks = self.orderbooks.write().await;
+
+                for order in batch {
+                    *market_counts.entry(order.market_id.clone()).or_insert(0) += 1;
+                    let orderbook = orderbooks.get_or_create(&order.market_id);
+                    orderbook.add_order(order);
+                }
+            } // Write lock released here
+
+            recovered_count += batch_len;
+
+            // Log progress every batch
+            let progress = (recovered_count as f64 / total_orders as f64) * 100.0;
+            log::info!(
+                "Recovery progress: {}/{} orders ({:.1}%)",
+                recovered_count,
+                total_orders,
+                progress
+            );
+
+            // Yield to allow other tasks to run between batches
+            tokio::task::yield_now().await;
+        }
+
+        let elapsed = start_time.elapsed();
+
+        // Log recovery summary
+        log::info!(
+            "Orderbook recovery complete: {} orders across {} markets in {:.2}s",
+            recovered_count,
+            market_counts.len(),
+            elapsed.as_secs_f64()
+        );
+
+        // Log per-market counts (limit to avoid log spam)
+        let mut sorted_markets: Vec<_> = market_counts.into_iter().collect();
+        sorted_markets.sort_by(|a, b| b.1.cmp(&a.1)); // Sort by count descending
+
+        if sorted_markets.len() <= 20 {
+            for (market_id, count) in &sorted_markets {
+                log::info!("  {}: {} orders", market_id, count);
+            }
+        } else {
+            // Show top 10 and summary for large market counts
+            for (market_id, count) in sorted_markets.iter().take(10) {
+                log::info!("  {}: {} orders", market_id, count);
+            }
+            log::info!("  ... and {} more markets", sorted_markets.len() - 10);
+        }
+
+        Ok(())
+    }
+
     pub async fn run(mut self) {
         // Spawn background task for orderbook snapshots
         let snapshot_handle = self.spawn_snapshot_broadcaster();
