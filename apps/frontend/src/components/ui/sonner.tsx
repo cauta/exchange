@@ -28,8 +28,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           error: "bg-card/95 backdrop-blur-xl border-red-500/30 text-foreground",
           warning: "bg-card/95 backdrop-blur-xl border-yellow-500/30 text-foreground",
           info: "bg-card/95 backdrop-blur-xl border-border/50 text-foreground",
-          closeButton:
-            "bg-muted/80 border-border/50 text-foreground hover:bg-muted hover:border-border transition-all",
+          closeButton: "bg-muted/80 border-border/50 text-foreground hover:bg-muted hover:border-border transition-all",
         },
       }}
       style={
