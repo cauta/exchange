@@ -232,42 +232,20 @@ impl Db {
         Ok(orders)
     }
 
-    /// Count total recoverable orders for progress tracking
-    pub async fn count_recoverable_orders(&self) -> Result<i64> {
-        let row = sqlx::query(
-            r#"
-            SELECT COUNT(*) as count
-            FROM orders
-            WHERE status IN ('pending', 'partially_filled')
-              AND type = 'limit'
-            "#,
-        )
-        .fetch_one(&self.postgres)
-        .await?;
-
-        Ok(row.get("count"))
-    }
-
-    /// Get recoverable orders in batches using cursor-based pagination
-    /// Returns orders sorted by (market_id, created_at) for consistent ordering
-    /// Uses LIMIT/OFFSET for pagination - suitable for recovery scenarios
-    pub async fn get_recoverable_orders_batch(
-        &self,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<Order>> {
+    /// Get all recoverable orders for a specific market
+    /// Returns orders sorted by created_at ASC to maintain price-time priority
+    pub async fn get_recoverable_orders_for_market(&self, market_id: &str) -> Result<Vec<Order>> {
         let rows = sqlx::query(
             r#"
             SELECT id, user_address, market_id, price, size, side::TEXT as side, type::TEXT as type, status::TEXT as status, filled_size, created_at, updated_at
             FROM orders
-            WHERE status IN ('pending', 'partially_filled')
+            WHERE market_id = $1
+              AND status IN ('pending', 'partially_filled')
               AND type = 'limit'
-            ORDER BY market_id, created_at ASC
-            LIMIT $1 OFFSET $2
+            ORDER BY created_at ASC
             "#,
         )
-        .bind(limit)
-        .bind(offset)
+        .bind(market_id)
         .fetch_all(&self.postgres)
         .await?;
 

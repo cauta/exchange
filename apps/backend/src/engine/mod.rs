@@ -45,71 +45,58 @@ impl MatchingEngine {
     /// This restores all pending and partially filled limit orders to the in-memory orderbook
     /// Orders are added in created_at order to maintain price-time priority
     ///
-    /// Uses batched loading to handle large datasets safely:
-    /// - Loads orders in configurable batch sizes to limit memory usage
-    /// - Releases write lock between batches to allow concurrent reads
-    /// - Provides progress logging for monitoring
+    /// Recovery is done market-by-market for:
+    /// - Isolation: One market's failure doesn't affect others
+    /// - Scalability: Easy to parallelize later
+    /// - Memory control: Only one market's orders in memory at a time
     pub async fn recover_orderbooks(&self) -> crate::errors::Result<()> {
-        const BATCH_SIZE: i64 = 10_000; // Orders per batch - tune based on memory constraints
-
         log::info!("Starting orderbook recovery from database...");
+        let start_time = std::time::Instant::now();
 
-        // Get total count for progress tracking
-        let total_orders = self.db.count_recoverable_orders().await?;
+        // Load all markets
+        let markets = self.db.list_markets().await?;
 
-        if total_orders == 0 {
-            log::info!("No orders to recover");
+        if markets.is_empty() {
+            log::info!("No markets configured, skipping recovery");
             return Ok(());
         }
 
-        log::info!(
-            "Found {} orders to recover, processing in batches of {}",
-            total_orders,
-            BATCH_SIZE
-        );
+        log::info!("Recovering orderbooks for {} markets", markets.len());
 
-        let mut recovered_count: i64 = 0;
-        let mut market_counts: std::collections::HashMap<String, usize> =
-            std::collections::HashMap::new();
-        let start_time = std::time::Instant::now();
+        let mut total_orders = 0usize;
+        let mut recovered_markets = 0usize;
+        let mut failed_markets = Vec::new();
 
-        // Process orders in batches
-        loop {
-            // Fetch next batch
-            let batch = self
-                .db
-                .get_recoverable_orders_batch(BATCH_SIZE, recovered_count)
-                .await?;
-
-            if batch.is_empty() {
-                break;
+        // Recover each market independently
+        for (index, market) in markets.iter().enumerate() {
+            match self.recover_market(&market.id).await {
+                Ok(count) => {
+                    if count > 0 {
+                        log::info!(
+                            "[{}/{}] {}: recovered {} orders",
+                            index + 1,
+                            markets.len(),
+                            market.id,
+                            count
+                        );
+                        total_orders += count;
+                        recovered_markets += 1;
+                    }
+                }
+                Err(e) => {
+                    log::error!(
+                        "[{}/{}] {}: failed to recover - {}",
+                        index + 1,
+                        markets.len(),
+                        market.id,
+                        e
+                    );
+                    failed_markets.push(market.id.clone());
+                    // Continue to next market - don't let one failure stop recovery
+                }
             }
 
-            let batch_len = batch.len() as i64;
-
-            // Acquire write lock only for the duration of adding this batch
-            {
-                let mut orderbooks = self.orderbooks.write().await;
-
-                for order in batch {
-                    *market_counts.entry(order.market_id.clone()).or_insert(0) += 1;
-                    let orderbook = orderbooks.get_or_create(&order.market_id);
-                    orderbook.add_order(order);
-                }
-            } // Write lock released here
-
-            recovered_count += batch_len;
-
-            // Log progress every batch
-            let progress = (recovered_count as f64 / total_orders as f64) * 100.0;
-            log::info!(
-                "Recovery progress: {}/{} orders ({:.1}%)",
-                recovered_count,
-                total_orders,
-                progress
-            );
-
-            // Yield to allow other tasks to run between batches
+            // Yield between markets to allow other tasks to run
             tokio::task::yield_now().await;
         }
 
@@ -118,28 +105,45 @@ impl MatchingEngine {
         // Log recovery summary
         log::info!(
             "Orderbook recovery complete: {} orders across {} markets in {:.2}s",
-            recovered_count,
-            market_counts.len(),
+            total_orders,
+            recovered_markets,
             elapsed.as_secs_f64()
         );
 
-        // Log per-market counts (limit to avoid log spam)
-        let mut sorted_markets: Vec<_> = market_counts.into_iter().collect();
-        sorted_markets.sort_by(|a, b| b.1.cmp(&a.1)); // Sort by count descending
-
-        if sorted_markets.len() <= 20 {
-            for (market_id, count) in &sorted_markets {
-                log::info!("  {}: {} orders", market_id, count);
-            }
-        } else {
-            // Show top 10 and summary for large market counts
-            for (market_id, count) in sorted_markets.iter().take(10) {
-                log::info!("  {}: {} orders", market_id, count);
-            }
-            log::info!("  ... and {} more markets", sorted_markets.len() - 10);
+        if !failed_markets.is_empty() {
+            log::warn!(
+                "Failed to recover {} markets: {:?}",
+                failed_markets.len(),
+                failed_markets
+            );
         }
 
         Ok(())
+    }
+
+    /// Recover orders for a single market
+    /// Returns the number of orders recovered
+    async fn recover_market(&self, market_id: &str) -> crate::errors::Result<usize> {
+        // Fetch all recoverable orders for this market
+        let orders = self.db.get_recoverable_orders_for_market(market_id).await?;
+
+        if orders.is_empty() {
+            return Ok(0);
+        }
+
+        let count = orders.len();
+
+        // Add orders to the orderbook
+        {
+            let mut orderbooks = self.orderbooks.write().await;
+            let orderbook = orderbooks.get_or_create(market_id);
+
+            for order in orders {
+                orderbook.add_order(order);
+            }
+        }
+
+        Ok(count)
     }
 
     pub async fn run(mut self) {
