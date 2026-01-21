@@ -1,5 +1,5 @@
 use crate::db::Db;
-use crate::errors::Result;
+use crate::errors::{ExchangeError, Result};
 use crate::models::domain::{Order, OrderStatus, OrderType, Side};
 use crate::utils::BigDecimalExt;
 use bigdecimal::BigDecimal;
@@ -111,8 +111,9 @@ impl Db {
             "#
         )
         .bind(order_id)
-        .fetch_one(&self.postgres)
-        .await?;
+        .fetch_optional(&self.postgres)
+        .await?
+        .ok_or(ExchangeError::OrderNotFound)?;
 
         let price: BigDecimal = row.get("price");
         let size: BigDecimal = row.get("size");

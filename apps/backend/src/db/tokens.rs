@@ -1,5 +1,5 @@
 use crate::db::Db;
-use crate::errors::Result;
+use crate::errors::{ExchangeError, Result};
 use crate::models::{db::TokenRow, domain::Token};
 
 impl Db {
@@ -27,8 +27,11 @@ impl Db {
             "SELECT ticker, decimals, name FROM tokens WHERE ticker = $1",
             ticker
         )
-        .fetch_one(&self.postgres)
-        .await?;
+        .fetch_optional(&self.postgres)
+        .await?
+        .ok_or_else(|| ExchangeError::TokenNotFound {
+            ticker: ticker.to_string(),
+        })?;
 
         Ok(row.into())
     }
