@@ -41,6 +41,111 @@ impl MatchingEngine {
         }
     }
 
+    /// Recover orderbooks from database on startup
+    /// This restores all pending and partially filled limit orders to the in-memory orderbook
+    /// Orders are added in created_at order to maintain price-time priority
+    ///
+    /// Recovery is done market-by-market for:
+    /// - Isolation: One market's failure doesn't affect others
+    /// - Scalability: Easy to parallelize later
+    /// - Memory control: Only one market's orders in memory at a time
+    pub async fn recover_orderbooks(&self) -> crate::errors::Result<()> {
+        log::info!("Starting orderbook recovery from database...");
+        let start_time = std::time::Instant::now();
+
+        // Load all markets
+        let markets = self.db.list_markets().await?;
+
+        if markets.is_empty() {
+            log::info!("No markets configured, skipping recovery");
+            return Ok(());
+        }
+
+        log::info!("Recovering orderbooks for {} markets", markets.len());
+
+        let mut total_orders = 0usize;
+        let mut recovered_markets = 0usize;
+        let mut failed_markets = Vec::new();
+
+        // Recover each market independently
+        for (index, market) in markets.iter().enumerate() {
+            match self.recover_market(&market.id).await {
+                Ok(count) => {
+                    if count > 0 {
+                        log::info!(
+                            "[{}/{}] {}: recovered {} orders",
+                            index + 1,
+                            markets.len(),
+                            market.id,
+                            count
+                        );
+                        total_orders += count;
+                        recovered_markets += 1;
+                    }
+                }
+                Err(e) => {
+                    log::error!(
+                        "[{}/{}] {}: failed to recover - {}",
+                        index + 1,
+                        markets.len(),
+                        market.id,
+                        e
+                    );
+                    failed_markets.push(market.id.clone());
+                    // Continue to next market - don't let one failure stop recovery
+                }
+            }
+
+            // Yield between markets to allow other tasks to run
+            tokio::task::yield_now().await;
+        }
+
+        let elapsed = start_time.elapsed();
+
+        // Log recovery summary
+        log::info!(
+            "Orderbook recovery complete: {} orders across {} markets in {:.2}s",
+            total_orders,
+            recovered_markets,
+            elapsed.as_secs_f64()
+        );
+
+        if !failed_markets.is_empty() {
+            log::warn!(
+                "Failed to recover {} markets: {:?}",
+                failed_markets.len(),
+                failed_markets
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Recover orders for a single market
+    /// Returns the number of orders recovered
+    async fn recover_market(&self, market_id: &str) -> crate::errors::Result<usize> {
+        // Fetch all recoverable orders for this market
+        let orders = self.db.get_recoverable_orders_for_market(market_id).await?;
+
+        if orders.is_empty() {
+            return Ok(0);
+        }
+
+        let count = orders.len();
+
+        // Add orders to the orderbook
+        {
+            let mut orderbooks = self.orderbooks.write().await;
+            let orderbook = orderbooks.get_or_create(market_id);
+
+            for order in orders {
+                orderbook.add_order(order);
+            }
+        }
+
+        Ok(count)
+    }
+
     pub async fn run(mut self) {
         // Spawn background task for orderbook snapshots
         let snapshot_handle = self.spawn_snapshot_broadcaster();

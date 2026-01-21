@@ -231,4 +231,50 @@ impl Db {
 
         Ok(orders)
     }
+
+    /// Get all recoverable orders for a specific market
+    /// Returns orders sorted by created_at ASC to maintain price-time priority
+    pub async fn get_recoverable_orders_for_market(&self, market_id: &str) -> Result<Vec<Order>> {
+        let rows = sqlx::query(
+            r#"
+            SELECT id, user_address, market_id, price, size, side::TEXT as side, type::TEXT as type, status::TEXT as status, filled_size, created_at, updated_at
+            FROM orders
+            WHERE market_id = $1
+              AND status IN ('pending', 'partially_filled')
+              AND type = 'limit'
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(market_id)
+        .fetch_all(&self.postgres)
+        .await?;
+
+        let orders = rows
+            .iter()
+            .map(|row| {
+                let price: BigDecimal = row.get("price");
+                let size: BigDecimal = row.get("size");
+                let filled_size: BigDecimal = row.get("filled_size");
+                let side_str: String = row.get("side");
+                let type_str: String = row.get("type");
+                let status_str: String = row.get("status");
+
+                Order {
+                    id: row.get("id"),
+                    user_address: row.get("user_address"),
+                    market_id: row.get("market_id"),
+                    price: price.to_u128(),
+                    size: size.to_u128(),
+                    side: side_str.parse().unwrap_or(Side::Buy),
+                    order_type: type_str.parse().unwrap_or(OrderType::Limit),
+                    status: status_str.parse().unwrap_or(OrderStatus::Pending),
+                    filled_size: filled_size.to_u128(),
+                    created_at: row.get("created_at"),
+                    updated_at: row.get("updated_at"),
+                }
+            })
+            .collect();
+
+        Ok(orders)
+    }
 }

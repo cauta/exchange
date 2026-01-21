@@ -49,6 +49,12 @@ async fn main() -> anyhow::Result<()> {
     // ===============================
     let engine = MatchingEngine::new(db.clone(), engine_rx, event_tx.clone());
 
+    // Recover orderbooks from database (restore pending orders after restart)
+    if let Err(e) = engine.recover_orderbooks().await {
+        log::error!("Failed to recover orderbooks: {}", e);
+        // Continue anyway - orderbooks will be empty but server can still function
+    }
+
     tokio::spawn(async move {
         engine.run().await;
     });
