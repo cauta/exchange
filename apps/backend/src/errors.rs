@@ -55,6 +55,12 @@ pub enum ExchangeError {
     #[error("User '{address}' not found")]
     UserNotFound { address: String },
 
+    #[error("Balance not found for user '{user_address}' token '{token_ticker}'")]
+    BalanceNotFound {
+        user_address: String,
+        token_ticker: String,
+    },
+
     #[error("Failed to send order to engine")]
     EngineSendFailed,
 
@@ -104,6 +110,7 @@ impl ExchangeError {
             ExchangeError::InsufficientBalance { .. } => "INSUFFICIENT_BALANCE",
             ExchangeError::OrderNotFound => "ORDER_NOT_FOUND",
             ExchangeError::UserNotFound { .. } => "USER_NOT_FOUND",
+            ExchangeError::BalanceNotFound { .. } => "BALANCE_NOT_FOUND",
             ExchangeError::EngineSendFailed => "ENGINE_SEND_FAILED",
             ExchangeError::EngineReceiveFailed => "ENGINE_RECEIVE_FAILED",
             ExchangeError::UnlockFailed => "UNLOCK_FAILED",
@@ -122,6 +129,7 @@ impl ExchangeError {
             ExchangeError::MarketNotFound { .. } => StatusCode::NOT_FOUND,
             ExchangeError::OrderNotFound => StatusCode::NOT_FOUND,
             ExchangeError::UserNotFound { .. } => StatusCode::NOT_FOUND,
+            ExchangeError::BalanceNotFound { .. } => StatusCode::NOT_FOUND,
             ExchangeError::MarketAlreadyExists { .. } => StatusCode::CONFLICT,
             ExchangeError::InvalidParameter { .. } => StatusCode::BAD_REQUEST,
             ExchangeError::InvalidPrice => StatusCode::BAD_REQUEST,

@@ -1,5 +1,5 @@
 use crate::db::Db;
-use crate::errors::Result;
+use crate::errors::{ExchangeError, Result};
 use crate::models::{db::UserRow, domain::User};
 
 impl Db {
@@ -23,8 +23,11 @@ impl Db {
             "SELECT address, created_at FROM users WHERE address = $1",
             address
         )
-        .fetch_one(&self.postgres)
-        .await?;
+        .fetch_optional(&self.postgres)
+        .await?
+        .ok_or_else(|| ExchangeError::UserNotFound {
+            address: address.to_string(),
+        })?;
 
         Ok(row.into())
     }

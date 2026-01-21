@@ -60,9 +60,11 @@ impl Db {
     pub async fn get_market(&self, market_id: &str) -> Result<Market> {
         let row: MarketRow =
             sqlx::query_as!(MarketRow, "SELECT id, base_ticker, quote_ticker, tick_size, lot_size, min_size, maker_fee_bps, taker_fee_bps FROM markets WHERE id = $1", market_id)
-                .fetch_one(&self.postgres)
-                .await
-                .map_err(ExchangeError::from)?;
+                .fetch_optional(&self.postgres)
+                .await?
+                .ok_or_else(|| ExchangeError::MarketNotFound {
+                    market_id: market_id.to_string(),
+                })?;
 
         Ok(row.into())
     }

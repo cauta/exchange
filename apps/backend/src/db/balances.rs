@@ -1,5 +1,5 @@
 use crate::db::Db;
-use crate::errors::Result;
+use crate::errors::{ExchangeError, Result};
 use crate::models::db::BalanceRow;
 use crate::models::domain::Balance;
 use chrono::Utc;
@@ -16,8 +16,12 @@ impl Db {
         )
         .bind(user_address)
         .bind(token_ticker)
-        .fetch_one(&self.postgres)
-        .await?;
+        .fetch_optional(&self.postgres)
+        .await?
+        .ok_or_else(|| ExchangeError::BalanceNotFound {
+            user_address: user_address.to_string(),
+            token_ticker: token_ticker.to_string(),
+        })?;
 
         Ok(row.into())
     }
