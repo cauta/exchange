@@ -5,12 +5,24 @@ pub mod executor;
 pub mod matcher;
 pub mod orderbook;
 
+// OrderBook-rs integration (feature-gated)
+#[cfg(feature = "orderbook-rs")]
+pub mod adapter;
+#[cfg(feature = "orderbook-rs")]
+pub mod orderbooks_v2;
+
 use crate::db::Db;
 use crate::errors::ExchangeError;
 use crate::models::api::{OrderCancelled, OrderPlaced, OrdersCancelled};
 use crate::models::domain::{EngineEvent, EngineRequest, OrderStatus};
 use executor::{AffectedBalances, Executor};
+#[cfg(not(feature = "orderbook-rs"))]
 use matcher::Matcher;
+
+// Use V2 orderbooks when orderbook-rs feature is enabled
+#[cfg(feature = "orderbook-rs")]
+use orderbooks_v2::OrderbooksV2 as Orderbooks;
+#[cfg(not(feature = "orderbook-rs"))]
 use orderbook::Orderbooks;
 
 use std::collections::HashSet;
@@ -244,6 +256,9 @@ impl MatchingEngine {
             let orderbook = orderbooks.get_or_create(&order.market_id);
 
             // Match order against orderbook
+            #[cfg(feature = "orderbook-rs")]
+            let matches = orderbook.match_order(&order);
+            #[cfg(not(feature = "orderbook-rs"))]
             let matches = Matcher::match_order(&order, orderbook);
 
             // Execute trades if we have matches (also updates order status in DB)

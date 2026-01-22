@@ -5,6 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 default-run = "backend"
 
+[features]
+default = []
+orderbook-rs = ["dep:orderbook-rs"]
+
 [[bin]]
 name = "backend"
 path = "src/main.rs"
@@ -30,6 +34,10 @@ tower-http.workspace = true
 utoipa.workspace = true
 utoipa-swagger-ui.workspace = true
 uuid.workspace = true
+
+# OrderBook-rs integration (optional)
+orderbook-rs = { version = "0.4", optional = true }
+rust_decimal = "1.33"
 
 [dev-dependencies]
 criterion.workspace = true

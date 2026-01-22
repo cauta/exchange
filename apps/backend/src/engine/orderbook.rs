@@ -260,6 +260,7 @@ impl Orderbook {
             bids,
             asks,
             timestamp: Utc::now(),
+            stats: None, // Stats only available with orderbook-rs feature
         }
     }
 }

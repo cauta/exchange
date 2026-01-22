@@ -358,6 +358,41 @@ pub struct OrderbookData {
     pub market_id: String,
     pub bids: Vec<PriceLevel>,
     pub asks: Vec<PriceLevel>,
+    /// Optional analytics stats (only populated with orderbook-rs feature)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stats: Option<OrderbookStatsData>,
+}
+
+/// Market statistics from order book analysis (WebSocket API layer)
+///
+/// These analytics are computed by OrderBook-rs when using the V2 implementation.
+/// All values are stored as strings representing atomic units (same as prices/sizes).
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct OrderbookStatsData {
+    /// Volume-Weighted Average Price for bids
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vwap_bid: Option<String>,
+    /// Volume-Weighted Average Price for asks
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vwap_ask: Option<String>,
+    /// Absolute spread (best ask - best bid) in atomic units
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spread: Option<String>,
+    /// Spread in basis points (spread / mid_price * 10000)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spread_bps: Option<String>,
+    /// Micro price - fair price estimate incorporating depth
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub micro_price: Option<String>,
+    /// Order book imbalance: -1.0 (all asks) to 1.0 (all bids)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub imbalance: Option<f64>,
+    /// Total bid depth (sum of all bid sizes) in atomic units
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bid_depth: Option<String>,
+    /// Total ask depth (sum of all ask sizes) in atomic units
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ask_depth: Option<String>,
 }
 
 /// Trade data for WebSocket messages (API layer with String fields)

@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use tokio::time::interval;
 
-use crate::models::api::{OrderbookData, PriceLevel, ServerMessage};
+use crate::models::api::{OrderbookData, OrderbookStatsData, PriceLevel, ServerMessage};
 use crate::models::domain::{EngineEvent, Subscription};
 
 use super::{
@@ -182,6 +182,16 @@ fn engine_event_to_messages(
                                 size: level.size.to_string(),
                             })
                             .collect(),
+                        stats: orderbook.stats.as_ref().map(|s| OrderbookStatsData {
+                            vwap_bid: s.vwap_bid.clone(),
+                            vwap_ask: s.vwap_ask.clone(),
+                            spread: s.spread.clone(),
+                            spread_bps: s.spread_bps.clone(),
+                            micro_price: s.micro_price.clone(),
+                            imbalance: s.imbalance,
+                            bid_depth: s.bid_depth.clone(),
+                            ask_depth: s.ask_depth.clone(),
+                        }),
                     },
                 });
             }
