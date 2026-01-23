@@ -4,33 +4,15 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::errors::{ExchangeError, Result};
-use crate::models::domain::{Order, OrderbookSnapshot};
+use crate::models::domain::{Market, Order, OrderbookSnapshot};
 
 use super::orderbook_adapter::OrderbookAdapter;
-
-/// Configuration for a market's decimal precision
-#[derive(Debug, Clone, Copy)]
-pub struct MarketDecimals {
-    pub base_decimals: u8,
-    pub quote_decimals: u8,
-}
-
-impl Default for MarketDecimals {
-    fn default() -> Self {
-        Self {
-            base_decimals: 18,
-            quote_decimals: 6,
-        }
-    }
-}
 
 /// Manages multiple OrderbookAdapter instances across markets
 ///
 /// This is the V2 equivalent of the `Orderbooks` struct, using OrderBook-rs
 /// under the hood for improved performance.
 pub struct BookManagerAdapter {
-    /// Market decimal configurations
-    market_decimals: HashMap<String, MarketDecimals>,
     /// Individual orderbook adapters per market
     books: HashMap<String, OrderbookAdapter>,
 }
@@ -45,46 +27,26 @@ impl BookManagerAdapter {
     /// Create a new BookManagerAdapter
     pub fn new() -> Self {
         Self {
-            market_decimals: HashMap::new(),
             books: HashMap::new(),
         }
     }
 
-    /// Configure decimal precision for a market
-    ///
-    /// This should be called before any orders are added to the market
-    /// to ensure correct price/size conversion.
-    pub fn configure_market(&mut self, market_id: &str, base_decimals: u8, quote_decimals: u8) {
-        self.market_decimals.insert(
-            market_id.to_string(),
-            MarketDecimals {
-                base_decimals,
-                quote_decimals,
-            },
-        );
-    }
-
     /// Get or create an orderbook adapter for a market
     ///
-    /// If the market hasn't been configured, uses default decimals (18, 6).
-    pub fn get_or_create(&mut self, market_id: &str) -> &mut OrderbookAdapter {
-        if !self.books.contains_key(market_id) {
-            let decimals = self
-                .market_decimals
-                .get(market_id)
-                .copied()
-                .unwrap_or_default();
-
+    /// Uses the market's tick_size and lot_size for proper price/size scaling.
+    pub fn get_or_create(&mut self, market: &Market) -> &mut OrderbookAdapter {
+        if !self.books.contains_key(&market.id) {
             self.books.insert(
-                market_id.to_string(),
-                OrderbookAdapter::new(
-                    market_id.to_string(),
-                    decimals.base_decimals,
-                    decimals.quote_decimals,
-                ),
+                market.id.clone(),
+                OrderbookAdapter::new(market.id.clone(), market.tick_size, market.lot_size),
             );
         }
-        self.books.get_mut(market_id).unwrap()
+        self.books.get_mut(&market.id).unwrap()
+    }
+
+    /// Get an existing orderbook by market_id (without creating)
+    pub fn get(&mut self, market_id: &str) -> Option<&mut OrderbookAdapter> {
+        self.books.get_mut(market_id)
     }
 
     /// Cancel an order across all markets
@@ -158,6 +120,42 @@ mod tests {
     use crate::models::domain::{OrderStatus, OrderType, Side};
     use chrono::Utc;
 
+    // BTC/USDC market config (from config.toml)
+    const BTC_TICK_SIZE: u128 = 1_000_000;
+    const BTC_LOT_SIZE: u128 = 10_000;
+    const BTC_MIN_SIZE: u128 = 10_000;
+
+    // ETH/USDC market config (example)
+    const ETH_TICK_SIZE: u128 = 100_000;
+    const ETH_LOT_SIZE: u128 = 100_000;
+    const ETH_MIN_SIZE: u128 = 100_000;
+
+    fn make_btc_market() -> Market {
+        Market {
+            id: "BTC/USDC".to_string(),
+            base_ticker: "BTC".to_string(),
+            quote_ticker: "USDC".to_string(),
+            tick_size: BTC_TICK_SIZE,
+            lot_size: BTC_LOT_SIZE,
+            min_size: BTC_MIN_SIZE,
+            maker_fee_bps: 5,
+            taker_fee_bps: 10,
+        }
+    }
+
+    fn make_eth_market() -> Market {
+        Market {
+            id: "ETH/USDC".to_string(),
+            base_ticker: "ETH".to_string(),
+            quote_ticker: "USDC".to_string(),
+            tick_size: ETH_TICK_SIZE,
+            lot_size: ETH_LOT_SIZE,
+            min_size: ETH_MIN_SIZE,
+            maker_fee_bps: 5,
+            taker_fee_bps: 10,
+        }
+    }
+
     fn make_order(market_id: &str, user: &str, side: Side, price: u128, size: u128) -> Order {
         Order {
             id: Uuid::new_v4(),
@@ -177,28 +175,26 @@ mod tests {
     #[test]
     fn test_get_or_create() {
         let mut manager = BookManagerAdapter::new();
-
-        // Configure market
-        manager.configure_market("BTC/USDC", 8, 6);
+        let btc_market = make_btc_market();
 
         // Get orderbook (creates it)
-        let book = manager.get_or_create("BTC/USDC");
+        let book = manager.get_or_create(&btc_market);
         assert_eq!(book.market_id(), "BTC/USDC");
 
         // Get same orderbook (returns existing)
-        let _book = manager.get_or_create("BTC/USDC");
+        let _book = manager.get_or_create(&btc_market);
         assert_eq!(manager.len(), 1);
     }
 
     #[test]
     fn test_cancel_order() {
         let mut manager = BookManagerAdapter::new();
-        manager.configure_market("BTC/USDC", 8, 6);
+        let btc_market = make_btc_market();
 
         let order = make_order("BTC/USDC", "user1", Side::Buy, 50_000_000_000, 100_000_000);
         let order_id = order.id;
 
-        manager.get_or_create("BTC/USDC").add_order(order);
+        manager.get_or_create(&btc_market).add_order(order);
 
         // Cancel with correct user
         let result = manager.cancel_order(order_id, "user1");
@@ -212,12 +208,12 @@ mod tests {
     #[test]
     fn test_cancel_order_wrong_user() {
         let mut manager = BookManagerAdapter::new();
-        manager.configure_market("BTC/USDC", 8, 6);
+        let btc_market = make_btc_market();
 
         let order = make_order("BTC/USDC", "user1", Side::Buy, 50_000_000_000, 100_000_000);
         let order_id = order.id;
 
-        manager.get_or_create("BTC/USDC").add_order(order);
+        manager.get_or_create(&btc_market).add_order(order);
 
         // Cancel with wrong user
         let result = manager.cancel_order(order_id, "user2");
@@ -231,25 +227,19 @@ mod tests {
     #[test]
     fn test_cancel_all_orders() {
         let mut manager = BookManagerAdapter::new();
-        manager.configure_market("BTC/USDC", 8, 6);
-        manager.configure_market("ETH/USDC", 18, 6);
+        let btc_market = make_btc_market();
+        let eth_market = make_eth_market();
 
         // Add orders for user1 in both markets
         let order1 = make_order("BTC/USDC", "user1", Side::Buy, 50_000_000_000, 100_000_000);
-        let order2 = make_order(
-            "ETH/USDC",
-            "user1",
-            Side::Sell,
-            3_000_000_000,
-            1_000_000_000,
-        );
+        let order2 = make_order("ETH/USDC", "user1", Side::Sell, 3_000_000_000, 1_000_000_000);
 
         // Add order for user2
         let order3 = make_order("BTC/USDC", "user2", Side::Buy, 49_000_000_000, 100_000_000);
 
-        manager.get_or_create("BTC/USDC").add_order(order1);
-        manager.get_or_create("ETH/USDC").add_order(order2);
-        manager.get_or_create("BTC/USDC").add_order(order3);
+        manager.get_or_create(&btc_market).add_order(order1);
+        manager.get_or_create(&eth_market).add_order(order2);
+        manager.get_or_create(&btc_market).add_order(order3);
 
         // Cancel all user1 orders
         let cancelled = manager.cancel_all_orders("user1", None);
@@ -266,21 +256,15 @@ mod tests {
     #[test]
     fn test_cancel_all_orders_specific_market() {
         let mut manager = BookManagerAdapter::new();
-        manager.configure_market("BTC/USDC", 8, 6);
-        manager.configure_market("ETH/USDC", 18, 6);
+        let btc_market = make_btc_market();
+        let eth_market = make_eth_market();
 
         // Add orders for user1 in both markets
         let order1 = make_order("BTC/USDC", "user1", Side::Buy, 50_000_000_000, 100_000_000);
-        let order2 = make_order(
-            "ETH/USDC",
-            "user1",
-            Side::Sell,
-            3_000_000_000,
-            1_000_000_000,
-        );
+        let order2 = make_order("ETH/USDC", "user1", Side::Sell, 3_000_000_000, 1_000_000_000);
 
-        manager.get_or_create("BTC/USDC").add_order(order1);
-        manager.get_or_create("ETH/USDC").add_order(order2);
+        manager.get_or_create(&btc_market).add_order(order1);
+        manager.get_or_create(&eth_market).add_order(order2);
 
         // Cancel user1 orders only in BTC/USDC
         let cancelled = manager.cancel_all_orders("user1", Some("BTC/USDC"));

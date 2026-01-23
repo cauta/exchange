@@ -41,13 +41,13 @@ impl OrderbookAdapter {
     ///
     /// # Arguments
     /// * `market_id` - The market identifier (e.g., "BTC/USDC")
-    /// * `base_decimals` - Decimal places for base token
-    /// * `quote_decimals` - Decimal places for quote token
-    pub fn new(market_id: String, base_decimals: u8, quote_decimals: u8) -> Self {
+    /// * `tick_size` - Minimum price increment in atomic units
+    /// * `lot_size` - Minimum size increment in atomic units
+    pub fn new(market_id: String, tick_size: u128, lot_size: u128) -> Self {
         Self {
             book: OrderBook::new(&market_id),
             market_id,
-            converter: PriceConverter::new(base_decimals, quote_decimals),
+            converter: PriceConverter::new(tick_size, lot_size),
             order_map: HashMap::new(),
         }
     }
@@ -59,10 +59,9 @@ impl OrderbookAdapter {
             return;
         }
 
-        // Convert to OrderBook-rs types
-        // OrderBook-rs uses u64 internally, we need to scale our u128 values appropriately
-        let ob_price = self.to_ob_price(order.price);
-        let ob_size = self.to_ob_size(remaining_size);
+        // Convert to OrderBook-rs types using tick/lot scaling
+        let ob_price = self.converter.price_to_ticks(order.price);
+        let ob_size = self.converter.size_to_lots(remaining_size);
         let ob_side = match order.side {
             Side::Buy => orderbook_rs::Side::Buy,
             Side::Sell => orderbook_rs::Side::Sell,
@@ -222,48 +221,33 @@ impl OrderbookAdapter {
         // Use OrderBook-rs built-in analytics (top 100 levels)
         let enriched = self.book.enriched_snapshot(100);
 
-        // Calculate spread from best bid/ask if available
+        // Calculate spread from best bid/ask if available (convert ticks back to atomic units)
         let spread = match (self.book.best_bid(), self.book.best_ask()) {
-            (Some(bid), Some(ask)) => Some((ask.saturating_sub(bid)) as u128),
+            (Some(bid), Some(ask)) => {
+                let spread_ticks = ask.saturating_sub(bid);
+                Some(self.converter.ticks_to_price(spread_ticks))
+            }
             _ => None,
         };
 
         snapshot.stats = Some(OrderbookStats {
             vwap_bid: enriched
                 .vwap_bid
-                .map(|v| self.from_ob_price_f64(v).to_string()),
+                .map(|v| self.converter.ticks_to_price(v as u64).to_string()),
             vwap_ask: enriched
                 .vwap_ask
-                .map(|v| self.from_ob_price_f64(v).to_string()),
+                .map(|v| self.converter.ticks_to_price(v as u64).to_string()),
             spread: spread.map(|v| v.to_string()),
             spread_bps: enriched.spread_bps.map(|v| format!("{:.2}", v)),
             micro_price: enriched
                 .mid_price
-                .map(|v| self.from_ob_price_f64(v).to_string()),
+                .map(|v| self.converter.ticks_to_price(v as u64).to_string()),
             imbalance: Some(enriched.order_book_imbalance),
-            bid_depth: Some((enriched.bid_depth_total as u128).to_string()),
-            ask_depth: Some((enriched.ask_depth_total as u128).to_string()),
+            bid_depth: Some(self.converter.lots_to_size(enriched.bid_depth_total).to_string()),
+            ask_depth: Some(self.converter.lots_to_size(enriched.ask_depth_total).to_string()),
         });
 
         snapshot
-    }
-
-    /// Convert u128 price to u64 for OrderBook-rs
-    /// This scales down the price to fit in u64, maintaining relative precision
-    fn to_ob_price(&self, price: u128) -> u64 {
-        // For most use cases, prices fit in u64
-        // If price exceeds u64::MAX, we'd need a different approach
-        price.min(u64::MAX as u128) as u64
-    }
-
-    /// Convert f64 price back to u128
-    fn from_ob_price_f64(&self, price: f64) -> u128 {
-        price as u128
-    }
-
-    /// Convert u128 size to u64 for OrderBook-rs
-    fn to_ob_size(&self, size: u128) -> u64 {
-        size.min(u64::MAX as u128) as u64
     }
 
     /// Get the market ID
@@ -358,6 +342,12 @@ mod tests {
     use super::*;
     use crate::models::domain::OrderType;
 
+    // BTC/USDC market config (from config.toml):
+    // tick_size = 1_000_000 (0.01 USDC with 8 decimals)
+    // lot_size = 10_000 (0.0001 BTC with 8 decimals)
+    const BTC_TICK_SIZE: u128 = 1_000_000;
+    const BTC_LOT_SIZE: u128 = 10_000;
+
     fn make_order(side: Side, price: u128, size: u128) -> Order {
         Order {
             id: Uuid::new_v4(),
@@ -376,12 +366,12 @@ mod tests {
 
     #[test]
     fn test_add_and_snapshot() {
-        let mut adapter = OrderbookAdapter::new("BTC/USDC".to_string(), 8, 6);
+        let mut adapter = OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
 
-        // Add buy order at $50,000
+        // Add buy order at $500 (50_000_000_000 with 8 decimals)
         adapter.add_order(make_order(Side::Buy, 50_000_000_000, 100_000_000));
 
-        // Add sell order at $51,000
+        // Add sell order at $510
         adapter.add_order(make_order(Side::Sell, 51_000_000_000, 100_000_000));
 
         let snapshot = adapter.snapshot();
@@ -395,7 +385,7 @@ mod tests {
 
     #[test]
     fn test_remove_order() {
-        let mut adapter = OrderbookAdapter::new("BTC/USDC".to_string(), 8, 6);
+        let mut adapter = OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
 
         let order = make_order(Side::Buy, 50_000_000_000, 100_000_000);
         let order_id = order.id;
@@ -410,7 +400,7 @@ mod tests {
 
     #[test]
     fn test_remove_all_user_orders() {
-        let mut adapter = OrderbookAdapter::new("BTC/USDC".to_string(), 8, 6);
+        let mut adapter = OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
 
         // Add orders for user1
         let mut order1 = make_order(Side::Buy, 50_000_000_000, 100_000_000);

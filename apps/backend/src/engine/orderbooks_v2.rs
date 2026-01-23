@@ -31,19 +31,16 @@ impl OrderbooksV2 {
         }
     }
 
-    /// Configure decimal precision for a market
-    ///
-    /// Call this before adding orders to ensure correct price/size conversion.
-    pub fn configure_market(&mut self, market_id: &str, base_decimals: u8, quote_decimals: u8) {
-        self.manager
-            .configure_market(market_id, base_decimals, quote_decimals);
-    }
-
     /// Get or create a mutable reference to an orderbook for a market
     ///
-    /// Creates the orderbook if it doesn't exist.
-    pub fn get_or_create(&mut self, market_id: &str) -> &mut OrderbookAdapter {
-        self.manager.get_or_create(market_id)
+    /// Uses the market's tick_size and lot_size for proper price/size scaling.
+    pub fn get_or_create(&mut self, market: &Market) -> &mut OrderbookAdapter {
+        self.manager.get_or_create(market)
+    }
+
+    /// Get an existing orderbook by market_id (without creating)
+    pub fn get(&mut self, market_id: &str) -> Option<&mut OrderbookAdapter> {
+        self.manager.get(market_id)
     }
 
     /// Cancel an order across all markets
@@ -102,6 +99,24 @@ mod tests {
     use crate::models::domain::{OrderStatus, OrderType, Side};
     use chrono::Utc;
 
+    // BTC/USDC market config (from config.toml)
+    const BTC_TICK_SIZE: u128 = 1_000_000;
+    const BTC_LOT_SIZE: u128 = 10_000;
+    const BTC_MIN_SIZE: u128 = 10_000;
+
+    fn make_btc_market() -> Market {
+        Market {
+            id: "BTC/USDC".to_string(),
+            base_ticker: "BTC".to_string(),
+            quote_ticker: "USDC".to_string(),
+            tick_size: BTC_TICK_SIZE,
+            lot_size: BTC_LOT_SIZE,
+            min_size: BTC_MIN_SIZE,
+            maker_fee_bps: 5,
+            taker_fee_bps: 10,
+        }
+    }
+
     fn make_order(market_id: &str, side: Side, price: u128, size: u128) -> Order {
         Order {
             id: Uuid::new_v4(),
@@ -121,12 +136,10 @@ mod tests {
     #[test]
     fn test_orderbooks_v2_basic() {
         let mut orderbooks = OrderbooksV2::new();
-
-        // Configure market
-        orderbooks.configure_market("BTC/USDC", 8, 6);
+        let btc_market = make_btc_market();
 
         // Add orders
-        let book = orderbooks.get_or_create("BTC/USDC");
+        let book = orderbooks.get_or_create(&btc_market);
         book.add_order(make_order(
             "BTC/USDC",
             Side::Buy,
@@ -150,12 +163,10 @@ mod tests {
     #[test]
     fn test_orderbooks_v2_enriched_snapshots() {
         let mut orderbooks = OrderbooksV2::new();
-
-        // Configure market
-        orderbooks.configure_market("BTC/USDC", 8, 6);
+        let btc_market = make_btc_market();
 
         // Add orders
-        let book = orderbooks.get_or_create("BTC/USDC");
+        let book = orderbooks.get_or_create(&btc_market);
         book.add_order(make_order(
             "BTC/USDC",
             Side::Buy,

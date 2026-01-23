@@ -29,10 +29,15 @@ impl Orderbooks {
 
     /// Get or create a mutable reference to an orderbook for a market
     /// Creates the orderbook if it doesn't exist
-    pub fn get_or_create(&mut self, market_id: &str) -> &mut Orderbook {
+    pub fn get_or_create(&mut self, market: &Market) -> &mut Orderbook {
         self.orderbooks
-            .entry(market_id.to_string())
-            .or_insert_with(|| Orderbook::new(market_id.to_string()))
+            .entry(market.id.clone())
+            .or_insert_with(|| Orderbook::new(market.id.clone()))
+    }
+
+    /// Get an existing orderbook by market_id (without creating)
+    pub fn get(&mut self, market_id: &str) -> Option<&mut Orderbook> {
+        self.orderbooks.get_mut(market_id)
     }
 
     /// Cancel an order across all markets

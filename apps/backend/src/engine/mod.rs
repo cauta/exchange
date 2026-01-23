@@ -81,7 +81,7 @@ impl MatchingEngine {
 
         // Recover each market independently
         for (index, market) in markets.iter().enumerate() {
-            match self.recover_market(&market.id).await {
+            match self.recover_market(market).await {
                 Ok(count) => {
                     if count > 0 {
                         log::info!(
@@ -135,9 +135,12 @@ impl MatchingEngine {
 
     /// Recover orders for a single market
     /// Returns the number of orders recovered
-    async fn recover_market(&self, market_id: &str) -> crate::errors::Result<usize> {
+    async fn recover_market(
+        &self,
+        market: &crate::models::domain::Market,
+    ) -> crate::errors::Result<usize> {
         // Fetch all recoverable orders for this market
-        let orders = self.db.get_recoverable_orders_for_market(market_id).await?;
+        let orders = self.db.get_recoverable_orders_for_market(&market.id).await?;
 
         if orders.is_empty() {
             return Ok(0);
@@ -148,7 +151,7 @@ impl MatchingEngine {
         // Add orders to the orderbook
         {
             let mut orderbooks = self.orderbooks.write().await;
-            let orderbook = orderbooks.get_or_create(market_id);
+            let orderbook = orderbooks.get_or_create(market);
 
             for order in orders {
                 orderbook.add_order(order);
@@ -253,7 +256,7 @@ impl MatchingEngine {
         // Get matches from matcher and apply them
         let (matches, trades) = {
             let mut orderbooks = self.orderbooks.write().await;
-            let orderbook = orderbooks.get_or_create(&order.market_id);
+            let orderbook = orderbooks.get_or_create(&market);
 
             // Match order against orderbook
             #[cfg(feature = "orderbook-rs")]
