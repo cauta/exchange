@@ -20,10 +20,10 @@ use executor::{AffectedBalances, Executor};
 use matcher::Matcher;
 
 // Use V2 orderbooks when orderbook-rs feature is enabled
-#[cfg(feature = "orderbook-rs")]
-use orderbooks_v2::OrderbooksV2 as Orderbooks;
 #[cfg(not(feature = "orderbook-rs"))]
 use orderbook::Orderbooks;
+#[cfg(feature = "orderbook-rs")]
+use orderbooks_v2::OrderbooksV2 as Orderbooks;
 
 use std::collections::HashSet;
 use std::sync::Arc;

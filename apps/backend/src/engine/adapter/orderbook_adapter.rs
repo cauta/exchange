@@ -229,11 +229,17 @@ impl OrderbookAdapter {
         };
 
         snapshot.stats = Some(OrderbookStats {
-            vwap_bid: enriched.vwap_bid.map(|v| self.from_ob_price_f64(v).to_string()),
-            vwap_ask: enriched.vwap_ask.map(|v| self.from_ob_price_f64(v).to_string()),
+            vwap_bid: enriched
+                .vwap_bid
+                .map(|v| self.from_ob_price_f64(v).to_string()),
+            vwap_ask: enriched
+                .vwap_ask
+                .map(|v| self.from_ob_price_f64(v).to_string()),
             spread: spread.map(|v| v.to_string()),
             spread_bps: enriched.spread_bps.map(|v| format!("{:.2}", v)),
-            micro_price: enriched.mid_price.map(|v| self.from_ob_price_f64(v).to_string()),
+            micro_price: enriched
+                .mid_price
+                .map(|v| self.from_ob_price_f64(v).to_string()),
             imbalance: Some(enriched.order_book_imbalance),
             bid_depth: Some((enriched.bid_depth_total as u128).to_string()),
             ask_depth: Some((enriched.ask_depth_total as u128).to_string()),
@@ -270,7 +276,7 @@ impl OrderbookAdapter {
     /// This replicates the Matcher logic but works with our order_map
     pub fn match_order(&self, taker_order: &Order) -> Vec<crate::models::domain::Match> {
         use crate::models::domain::{Match, OrderType};
-        
+
         let mut matches = Vec::new();
         let mut remaining_size = taker_order.size.saturating_sub(taker_order.filled_size);
 
@@ -293,13 +299,17 @@ impl OrderbookAdapter {
             Side::Buy => {
                 // For buy taker: match against asks, lowest price first
                 opposite_orders.sort_by(|a, b| {
-                    a.price.cmp(&b.price).then_with(|| a.created_at.cmp(&b.created_at))
+                    a.price
+                        .cmp(&b.price)
+                        .then_with(|| a.created_at.cmp(&b.created_at))
                 });
             }
             Side::Sell => {
                 // For sell taker: match against bids, highest price first
                 opposite_orders.sort_by(|a, b| {
-                    b.price.cmp(&a.price).then_with(|| a.created_at.cmp(&b.created_at))
+                    b.price
+                        .cmp(&a.price)
+                        .then_with(|| a.created_at.cmp(&b.created_at))
                 });
             }
         }

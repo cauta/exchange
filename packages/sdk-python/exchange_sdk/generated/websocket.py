@@ -13,6 +13,29 @@ class ClientMessage3(BaseModel):
     type: Literal['ping']
 
 
+class OrderbookStatsData(BaseModel):
+    ask_depth: str | None = Field(
+        None, description='Total ask depth (sum of all ask sizes) in atomic units'
+    )
+    bid_depth: str | None = Field(
+        None, description='Total bid depth (sum of all bid sizes) in atomic units'
+    )
+    imbalance: float | None = Field(
+        None, description='Order book imbalance: -1.0 (all asks) to 1.0 (all bids)'
+    )
+    micro_price: str | None = Field(
+        None, description='Micro price - fair price estimate incorporating depth'
+    )
+    spread: str | None = Field(
+        None, description='Absolute spread (best ask - best bid) in atomic units'
+    )
+    spread_bps: str | None = Field(
+        None, description='Spread in basis points (spread / mid_price * 10000)'
+    )
+    vwap_ask: str | None = Field(None, description='Volume-Weighted Average Price for asks')
+    vwap_bid: str | None = Field(None, description='Volume-Weighted Average Price for bids')
+
+
 class PriceLevel(BaseModel):
     price: str
     size: str
@@ -102,6 +125,9 @@ class OrderbookData(BaseModel):
     asks: list[PriceLevel]
     bids: list[PriceLevel]
     market_id: str
+    stats: OrderbookStatsData | None = Field(
+        None, description='Optional analytics stats (only populated with orderbook-rs feature)'
+    )
 
 
 class ServerMessage1(BaseModel):

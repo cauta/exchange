@@ -117,6 +117,17 @@
         },
         "market_id": {
           "type": "string"
+        },
+        "stats": {
+          "description": "Optional analytics stats (only populated with orderbook-rs feature)",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OrderbookStatsData"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -124,6 +135,69 @@
         "bids",
         "asks"
       ]
+    },
+    "OrderbookStatsData": {
+      "description": "Market statistics from order book analysis (WebSocket API layer)\n\nThese analytics are computed by OrderBook-rs when using the V2 implementation.\nAll values are stored as strings representing atomic units (same as prices/sizes).",
+      "type": "object",
+      "properties": {
+        "ask_depth": {
+          "description": "Total ask depth (sum of all ask sizes) in atomic units",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "bid_depth": {
+          "description": "Total bid depth (sum of all bid sizes) in atomic units",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "imbalance": {
+          "description": "Order book imbalance: -1.0 (all asks) to 1.0 (all bids)",
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
+        },
+        "micro_price": {
+          "description": "Micro price - fair price estimate incorporating depth",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "spread": {
+          "description": "Absolute spread (best ask - best bid) in atomic units",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "spread_bps": {
+          "description": "Spread in basis points (spread / mid_price * 10000)",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "vwap_ask": {
+          "description": "Volume-Weighted Average Price for asks",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "vwap_bid": {
+          "description": "Volume-Weighted Average Price for bids",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
     },
     "PriceLevel": {
       "type": "object",

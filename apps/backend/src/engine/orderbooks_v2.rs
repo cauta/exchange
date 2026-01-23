@@ -127,8 +127,18 @@ mod tests {
 
         // Add orders
         let book = orderbooks.get_or_create("BTC/USDC");
-        book.add_order(make_order("BTC/USDC", Side::Buy, 50_000_000_000, 100_000_000));
-        book.add_order(make_order("BTC/USDC", Side::Sell, 51_000_000_000, 100_000_000));
+        book.add_order(make_order(
+            "BTC/USDC",
+            Side::Buy,
+            50_000_000_000,
+            100_000_000,
+        ));
+        book.add_order(make_order(
+            "BTC/USDC",
+            Side::Sell,
+            51_000_000_000,
+            100_000_000,
+        ));
 
         // Get snapshots
         let snapshots = orderbooks.snapshots();
@@ -146,8 +156,18 @@ mod tests {
 
         // Add orders
         let book = orderbooks.get_or_create("BTC/USDC");
-        book.add_order(make_order("BTC/USDC", Side::Buy, 50_000_000_000, 100_000_000));
-        book.add_order(make_order("BTC/USDC", Side::Sell, 51_000_000_000, 100_000_000));
+        book.add_order(make_order(
+            "BTC/USDC",
+            Side::Buy,
+            50_000_000_000,
+            100_000_000,
+        ));
+        book.add_order(make_order(
+            "BTC/USDC",
+            Side::Sell,
+            51_000_000_000,
+            100_000_000,
+        ));
 
         // Get enriched snapshots
         let snapshots = orderbooks.enriched_snapshots();

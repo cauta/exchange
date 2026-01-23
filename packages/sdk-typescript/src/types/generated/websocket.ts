@@ -108,9 +108,54 @@ export interface OrderbookData {
   asks: PriceLevel[];
   bids: PriceLevel[];
   market_id: string;
+  /**
+   * Optional analytics stats (only populated with orderbook-rs feature)
+   */
+  stats?: OrderbookStatsData | null;
 }
 
 export interface PriceLevel {
   price: string;
   size: string;
+}
+/**
+ * Market statistics from order book analysis (WebSocket API layer)
+ *
+ * These analytics are computed by OrderBook-rs when using the V2 implementation.
+ * All values are stored as strings representing atomic units (same as prices/sizes).
+ */
+
+export interface OrderbookStatsData {
+  /**
+   * Total ask depth (sum of all ask sizes) in atomic units
+   */
+  ask_depth?: string | null;
+  /**
+   * Total bid depth (sum of all bid sizes) in atomic units
+   */
+  bid_depth?: string | null;
+  /**
+   * Order book imbalance: -1.0 (all asks) to 1.0 (all bids)
+   */
+  imbalance?: number | null;
+  /**
+   * Micro price - fair price estimate incorporating depth
+   */
+  micro_price?: string | null;
+  /**
+   * Absolute spread (best ask - best bid) in atomic units
+   */
+  spread?: string | null;
+  /**
+   * Spread in basis points (spread / mid_price * 10000)
+   */
+  spread_bps?: string | null;
+  /**
+   * Volume-Weighted Average Price for asks
+   */
+  vwap_ask?: string | null;
+  /**
+   * Volume-Weighted Average Price for bids
+   */
+  vwap_bid?: string | null;
 }
