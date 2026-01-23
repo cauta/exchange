@@ -28,7 +28,10 @@ impl PriceConverter {
     pub fn new(tick_size: u128, lot_size: u128) -> Self {
         debug_assert!(tick_size > 0, "tick_size must be positive");
         debug_assert!(lot_size > 0, "lot_size must be positive");
-        Self { tick_size, lot_size }
+        Self {
+            tick_size,
+            lot_size,
+        }
     }
 
     /// Convert price (atomic units) → ticks for orderbook-rs

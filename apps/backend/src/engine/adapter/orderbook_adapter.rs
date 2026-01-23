@@ -243,8 +243,16 @@ impl OrderbookAdapter {
                 .mid_price
                 .map(|v| self.converter.ticks_to_price(v as u64).to_string()),
             imbalance: Some(enriched.order_book_imbalance),
-            bid_depth: Some(self.converter.lots_to_size(enriched.bid_depth_total).to_string()),
-            ask_depth: Some(self.converter.lots_to_size(enriched.ask_depth_total).to_string()),
+            bid_depth: Some(
+                self.converter
+                    .lots_to_size(enriched.bid_depth_total)
+                    .to_string(),
+            ),
+            ask_depth: Some(
+                self.converter
+                    .lots_to_size(enriched.ask_depth_total)
+                    .to_string(),
+            ),
         });
 
         snapshot
@@ -366,7 +374,8 @@ mod tests {
 
     #[test]
     fn test_add_and_snapshot() {
-        let mut adapter = OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
+        let mut adapter =
+            OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
 
         // Add buy order at $500 (50_000_000_000 with 8 decimals)
         adapter.add_order(make_order(Side::Buy, 50_000_000_000, 100_000_000));
@@ -385,7 +394,8 @@ mod tests {
 
     #[test]
     fn test_remove_order() {
-        let mut adapter = OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
+        let mut adapter =
+            OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
 
         let order = make_order(Side::Buy, 50_000_000_000, 100_000_000);
         let order_id = order.id;
@@ -400,7 +410,8 @@ mod tests {
 
     #[test]
     fn test_remove_all_user_orders() {
-        let mut adapter = OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
+        let mut adapter =
+            OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
 
         // Add orders for user1
         let mut order1 = make_order(Side::Buy, 50_000_000_000, 100_000_000);

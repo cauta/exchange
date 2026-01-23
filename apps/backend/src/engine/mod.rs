@@ -140,7 +140,10 @@ impl MatchingEngine {
         market: &crate::models::domain::Market,
     ) -> crate::errors::Result<usize> {
         // Fetch all recoverable orders for this market
-        let orders = self.db.get_recoverable_orders_for_market(&market.id).await?;
+        let orders = self
+            .db
+            .get_recoverable_orders_for_market(&market.id)
+            .await?;
 
         if orders.is_empty() {
             return Ok(0);

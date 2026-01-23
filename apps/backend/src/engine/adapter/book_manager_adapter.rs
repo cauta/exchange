@@ -232,7 +232,13 @@ mod tests {
 
         // Add orders for user1 in both markets
         let order1 = make_order("BTC/USDC", "user1", Side::Buy, 50_000_000_000, 100_000_000);
-        let order2 = make_order("ETH/USDC", "user1", Side::Sell, 3_000_000_000, 1_000_000_000);
+        let order2 = make_order(
+            "ETH/USDC",
+            "user1",
+            Side::Sell,
+            3_000_000_000,
+            1_000_000_000,
+        );
 
         // Add order for user2
         let order3 = make_order("BTC/USDC", "user2", Side::Buy, 49_000_000_000, 100_000_000);
@@ -261,7 +267,13 @@ mod tests {
 
         // Add orders for user1 in both markets
         let order1 = make_order("BTC/USDC", "user1", Side::Buy, 50_000_000_000, 100_000_000);
-        let order2 = make_order("ETH/USDC", "user1", Side::Sell, 3_000_000_000, 1_000_000_000);
+        let order2 = make_order(
+            "ETH/USDC",
+            "user1",
+            Side::Sell,
+            3_000_000_000,
+            1_000_000_000,
+        );
 
         manager.get_or_create(&btc_market).add_order(order1);
         manager.get_or_create(&eth_market).add_order(order2);
