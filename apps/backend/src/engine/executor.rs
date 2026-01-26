@@ -26,6 +26,30 @@ impl Executor {
         taker_order: &Order,
         market: &Market,
     ) -> Result<(Vec<Trade>, AffectedBalances)> {
+        // Add 5s timeout for entire execution
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            Self::execute_internal(db, matches, taker_order, market)
+        ).await;
+
+        match result {
+            Ok(ok_result) => ok_result,
+            Err(_timeout) => {
+                log::error!("Trade execution timeout - database slow?");
+                Err(crate::errors::ExchangeError::InvalidParameter {
+                    message: "Execution timeout".to_string(),
+                })
+            }
+        }
+    }
+
+    /// Internal execution method with the actual logic
+    async fn execute_internal(
+        db: Db,
+        matches: Vec<Match>,
+        taker_order: &Order,
+        market: &Market,
+    ) -> Result<(Vec<Trade>, AffectedBalances)> {
         if matches.is_empty() {
             return Ok((vec![], HashSet::new()));
         }

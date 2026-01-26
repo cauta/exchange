@@ -2,13 +2,7 @@
 // price time priority
 
 pub mod executor;
-pub mod matcher;
-pub mod orderbook;
-
-// OrderBook-rs integration (feature-gated)
-#[cfg(feature = "orderbook-rs")]
 pub mod adapter;
-#[cfg(feature = "orderbook-rs")]
 pub mod orderbooks_v2;
 
 use crate::db::Db;
@@ -16,24 +10,17 @@ use crate::errors::ExchangeError;
 use crate::models::api::{OrderCancelled, OrderPlaced, OrdersCancelled};
 use crate::models::domain::{EngineEvent, EngineRequest, OrderStatus};
 use executor::{AffectedBalances, Executor};
-#[cfg(not(feature = "orderbook-rs"))]
-use matcher::Matcher;
-
-// Use V2 orderbooks when orderbook-rs feature is enabled
-#[cfg(not(feature = "orderbook-rs"))]
-use orderbook::Orderbooks;
-#[cfg(feature = "orderbook-rs")]
 use orderbooks_v2::OrderbooksV2 as Orderbooks;
 
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::sync::{broadcast, mpsc};
 use tokio::task::JoinHandle;
 
 pub struct MatchingEngine {
     db: Db,
-    orderbooks: Arc<RwLock<Orderbooks>>,
+    orderbooks: Arc<Orderbooks>,  // No RwLock wrapper!
 
     engine_rx: mpsc::Receiver<EngineRequest>,
     event_tx: broadcast::Sender<EngineEvent>,
@@ -47,7 +34,7 @@ impl MatchingEngine {
     ) -> Self {
         Self {
             db: db.clone(),
-            orderbooks: Arc::new(RwLock::new(Orderbooks::new())),
+            orderbooks: Arc::new(Orderbooks::new()),  // No RwLock::new()
             engine_rx,
             event_tx,
         }
@@ -148,17 +135,12 @@ impl MatchingEngine {
         if orders.is_empty() {
             return Ok(0);
         }
-
         let count = orders.len();
 
-        // Add orders to the orderbook
-        {
-            let mut orderbooks = self.orderbooks.write().await;
-            let orderbook = orderbooks.get_or_create(market);
-
-            for order in orders {
-                orderbook.add_order(order);
-            }
+        // DashMap handles concurrency internally - no lock needed!
+        let mut orderbook = (*self.orderbooks).get_or_create(market);
+        for order in orders {
+            orderbook.add_order(order);
         }
 
         Ok(count)
@@ -258,25 +240,16 @@ impl MatchingEngine {
 
         // Get matches from matcher and apply them
         let (matches, trades) = {
-            let mut orderbooks = self.orderbooks.write().await;
-            let orderbook = orderbooks.get_or_create(&market);
+            // Only locks this specific market, not all markets!
+            let mut orderbook = (*self.orderbooks).get_or_create(&market);
 
-            // Match order against orderbook
-            #[cfg(feature = "orderbook-rs")]
             let matches = orderbook.match_order(&order);
-            #[cfg(not(feature = "orderbook-rs"))]
-            let matches = Matcher::match_order(&order, orderbook);
 
-            // Execute trades if we have matches (also updates order status in DB)
             let (trades, executor_affected) = if !matches.is_empty() {
                 match Executor::execute(self.db.clone(), matches.clone(), &order, &market).await {
                     Ok((trades, exec_affected)) => (trades, exec_affected),
                     Err(e) => {
-                        // Execution failed - unlock the full order amount
-                        let _ = self
-                            .db
-                            .unlock_balance(&order.user_address, &token_to_lock, amount_to_lock)
-                            .await;
+                        let _ = self.db.unlock_balance(&order.user_address, &token_to_lock, amount_to_lock).await;
                         return (Err(e), affected);
                     }
                 }
@@ -284,14 +257,11 @@ impl MatchingEngine {
                 (vec![], HashSet::new())
             };
 
-            // Track all balances affected by execution
             affected.extend(executor_affected);
-
-            // Update orderbook with executed trades
             orderbook.apply_trades(&order, &trades, &market);
 
             (matches, trades)
-        };
+        };  // Lock released - other markets unaffected!
 
         // Broadcast trade events
         for trade in &trades {
@@ -430,12 +400,9 @@ impl MatchingEngine {
         let mut affected = HashSet::new();
 
         // Cancel order using orderbooks method (handles search and ownership verification)
-        let cancelled_order = {
-            let mut orderbooks = self.orderbooks.write().await;
-            match orderbooks.cancel_order(order_id, &user_address) {
-                Ok(order) => order,
-                Err(e) => return (Err(e), affected),
-            }
+        let cancelled_order = match (*self.orderbooks).cancel_order(order_id, &user_address) {
+            Ok(order) => order,
+            Err(e) => return (Err(e), affected),
         };
 
         // Get market config to determine which token to unlock
@@ -519,10 +486,7 @@ impl MatchingEngine {
     ) -> (Result<OrdersCancelled, ExchangeError>, AffectedBalances) {
         let mut affected = HashSet::new();
         // Cancel all orders for the user using orderbooks method
-        let cancelled_orders = {
-            let mut orderbooks = self.orderbooks.write().await;
-            orderbooks.cancel_all_orders(&user_address, market_id.as_deref())
-        };
+        let cancelled_orders = (*self.orderbooks).cancel_all_orders(&user_address, market_id.as_deref());
 
         let mut cancelled_order_ids = Vec::new();
 
@@ -633,17 +597,23 @@ impl MatchingEngine {
             loop {
                 interval.tick().await;
 
-                // Get snapshots for all markets
-                let snapshots = {
-                    let orderbooks_read = orderbooks.read().await;
-                    orderbooks_read.snapshots()
-                };
-
-                // Broadcast each snapshot
+                // Generate snapshots in parallel using tokio spawn for each market
+                let snapshots = (*orderbooks).snapshots();
+                
+                // For each snapshot, broadcast in a separate task to enable parallelism
+                let mut broadcast_tasks = Vec::new();
                 for snapshot in snapshots {
-                    let _ = event_tx.send(EngineEvent::OrderbookSnapshot {
-                        orderbook: snapshot,
-                    });
+                    let event_tx_clone = event_tx.clone();
+                    broadcast_tasks.push(tokio::spawn(async move {
+                        let _ = event_tx_clone.send(EngineEvent::OrderbookSnapshot {
+                            orderbook: snapshot,
+                        });
+                    }));
+                }
+                
+                // Wait for all broadcasts to complete (optional, for cleanup)
+                for task in broadcast_tasks {
+                    let _ = task.await;
                 }
             }
         })

@@ -34,26 +34,26 @@ impl OrderbooksV2 {
     /// Get or create a mutable reference to an orderbook for a market
     ///
     /// Uses the market's tick_size and lot_size for proper price/size scaling.
-    pub fn get_or_create(&mut self, market: &Market) -> &mut OrderbookAdapter {
+    pub fn get_or_create(&self, market: &Market) -> dashmap::mapref::one::RefMut<'_, String, OrderbookAdapter> {
         self.manager.get_or_create(market)
     }
 
     /// Get an existing orderbook by market_id (without creating)
-    pub fn get(&mut self, market_id: &str) -> Option<&mut OrderbookAdapter> {
+    pub fn get(&self, market_id: &str) -> Option<dashmap::mapref::one::RefMut<'_, String, OrderbookAdapter>> {
         self.manager.get(market_id)
     }
 
     /// Cancel an order across all markets
     ///
     /// Returns the cancelled order if found and ownership is verified.
-    pub fn cancel_order(&mut self, order_id: Uuid, user_address: &str) -> Result<Order> {
+    pub fn cancel_order(&self, order_id: Uuid, user_address: &str) -> Result<Order> {
         self.manager.cancel_order(order_id, user_address)
     }
 
     /// Cancel all orders for a user, optionally filtered by market
     ///
     /// Returns a vector of all cancelled orders.
-    pub fn cancel_all_orders(&mut self, user_address: &str, market_id: Option<&str>) -> Vec<Order> {
+    pub fn cancel_all_orders(&self, user_address: &str, market_id: Option<&str>) -> Vec<Order> {
         self.manager.cancel_all_orders(user_address, market_id)
     }
 
@@ -135,11 +135,11 @@ mod tests {
 
     #[test]
     fn test_orderbooks_v2_basic() {
-        let mut orderbooks = OrderbooksV2::new();
+        let orderbooks = OrderbooksV2::new();
         let btc_market = make_btc_market();
 
         // Add orders
-        let book = orderbooks.get_or_create(&btc_market);
+        let mut book = orderbooks.get_or_create(&btc_market);
         book.add_order(make_order(
             "BTC/USDC",
             Side::Buy,
@@ -162,11 +162,11 @@ mod tests {
 
     #[test]
     fn test_orderbooks_v2_enriched_snapshots() {
-        let mut orderbooks = OrderbooksV2::new();
+        let orderbooks = OrderbooksV2::new();
         let btc_market = make_btc_market();
 
         // Add orders
-        let book = orderbooks.get_or_create(&btc_market);
+        let mut book = orderbooks.get_or_create(&btc_market);
         book.add_order(make_order(
             "BTC/USDC",
             Side::Buy,

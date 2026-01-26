@@ -4,9 +4,10 @@ use chrono::Utc;
 use orderbook_rs::prelude::*;
 use std::collections::HashMap;
 use uuid::Uuid;
+use tokio::sync::broadcast;
 
 use crate::models::domain::{
-    Market, Order, OrderStatus, OrderbookLevel, OrderbookSnapshot, OrderbookStats, Side,
+    Market, Order, OrderStatus, OrderbookLevel, OrderbookSnapshot, OrderbookStats, Side, EngineEvent,
 };
 
 use super::price_converter::PriceConverter;
@@ -27,6 +28,7 @@ pub struct OrderMetadata {
 /// - Converting between domain types (u128) and OrderBook-rs types (u64)
 /// - Maintaining a map of orders for lookup by ID
 /// - Generating snapshots with optional analytics stats
+/// - Emitting trade events for real-time monitoring
 pub struct OrderbookAdapter {
     market_id: String,
     book: OrderBook<OrderMetadata>,
@@ -34,6 +36,8 @@ pub struct OrderbookAdapter {
     converter: PriceConverter,
     /// Track orders by UUID for retrieval and cancellation
     order_map: HashMap<Uuid, Order>,
+    /// Trade event sender (optional for incremental rollout)
+    event_tx: Option<broadcast::Sender<EngineEvent>>,
 }
 
 impl OrderbookAdapter {
@@ -49,6 +53,29 @@ impl OrderbookAdapter {
             market_id,
             converter: PriceConverter::new(tick_size, lot_size),
             order_map: HashMap::new(),
+            event_tx: None,
+        }
+    }
+
+    /// Create a new orderbook adapter with trade event listener
+    ///
+    /// # Arguments
+    /// * `market_id` - The market identifier (e.g., "BTC/USDC")
+    /// * `tick_size` - Minimum price increment in atomic units
+    /// * `lot_size` - Minimum size increment in atomic units
+    /// * `event_tx` - Optional broadcast sender for engine events
+    pub fn new_with_listener(
+        market_id: String,
+        tick_size: u128,
+        lot_size: u128,
+        event_tx: Option<broadcast::Sender<EngineEvent>>,
+    ) -> Self {
+        Self {
+            book: OrderBook::new(&market_id),
+            market_id,
+            converter: PriceConverter::new(tick_size, lot_size),
+            order_map: HashMap::new(),
+            event_tx,
         }
     }
 
@@ -63,8 +90,8 @@ impl OrderbookAdapter {
         let ob_price = self.converter.price_to_ticks(order.price);
         let ob_size = self.converter.size_to_lots(remaining_size);
         let ob_side = match order.side {
-            Side::Buy => orderbook_rs::Side::Buy,
-            Side::Sell => orderbook_rs::Side::Sell,
+            crate::models::domain::Side::Buy => orderbook_rs::Side::Buy,
+            crate::models::domain::Side::Sell => orderbook_rs::Side::Sell,
         };
 
         // Store in our map for later retrieval
@@ -266,7 +293,7 @@ impl OrderbookAdapter {
     /// Match a taker order against this orderbook
     /// Returns a vector of matches (maker orders matched with taker order)
     /// This replicates the Matcher logic but works with our order_map
-    pub fn match_order(&self, taker_order: &Order) -> Vec<crate::models::domain::Match> {
+    pub fn match_order(&mut self, taker_order: &Order) -> Vec<crate::models::domain::Match> {
         use crate::models::domain::{Match, OrderType};
 
         let mut matches = Vec::new();
@@ -279,8 +306,8 @@ impl OrderbookAdapter {
             .filter(|o| {
                 // Opposite side
                 match taker_order.side {
-                    Side::Buy => o.side == Side::Sell,
-                    Side::Sell => o.side == Side::Buy,
+                    crate::models::domain::Side::Buy => o.side == crate::models::domain::Side::Sell,
+                    crate::models::domain::Side::Sell => o.side == crate::models::domain::Side::Buy,
                 }
             })
             .filter(|o| o.size > o.filled_size) // Has remaining size
@@ -288,7 +315,7 @@ impl OrderbookAdapter {
 
         // Sort by price-time priority
         match taker_order.side {
-            Side::Buy => {
+            crate::models::domain::Side::Buy => {
                 // For buy taker: match against asks, lowest price first
                 opposite_orders.sort_by(|a, b| {
                     a.price
@@ -296,7 +323,7 @@ impl OrderbookAdapter {
                         .then_with(|| a.created_at.cmp(&b.created_at))
                 });
             }
-            Side::Sell => {
+            crate::models::domain::Side::Sell => {
                 // For sell taker: match against bids, highest price first
                 opposite_orders.sort_by(|a, b| {
                     b.price
@@ -313,10 +340,10 @@ impl OrderbookAdapter {
 
             // Check if this price level can match
             let can_match = match (taker_order.side, taker_order.order_type) {
-                (Side::Buy, OrderType::Limit) => taker_order.price >= maker_order.price,
-                (Side::Buy, OrderType::Market) => true,
-                (Side::Sell, OrderType::Limit) => taker_order.price <= maker_order.price,
-                (Side::Sell, OrderType::Market) => true,
+                (crate::models::domain::Side::Buy, OrderType::Limit) => taker_order.price >= maker_order.price,
+                (crate::models::domain::Side::Buy, OrderType::Market) => true,
+                (crate::models::domain::Side::Sell, OrderType::Limit) => taker_order.price <= maker_order.price,
+                (crate::models::domain::Side::Sell, OrderType::Market) => true,
             };
 
             if !can_match {
@@ -338,6 +365,39 @@ impl OrderbookAdapter {
                 size: match_size,
             });
 
+            // Emit trade event if listener configured
+            if let Some(event_tx) = &self.event_tx {
+                let (buyer_address, seller_address, buyer_order_id, seller_order_id) = match taker_order.side {
+                    crate::models::domain::Side::Buy => (
+                        taker_order.user_address.clone(),
+                        maker_order.user_address.clone(),
+                        taker_order.id,
+                        maker_order.id,
+                    ),
+                    crate::models::domain::Side::Sell => (
+                        maker_order.user_address.clone(),
+                        taker_order.user_address.clone(),
+                        maker_order.id,
+                        taker_order.id,
+                    ),
+                };
+
+                let trade = crate::models::domain::Trade {
+                    id: Uuid::new_v4(),
+                    market_id: self.market_id.clone(),
+                    buyer_address,
+                    seller_address,
+                    buyer_order_id,
+                    seller_order_id,
+                    price: maker_order.price,
+                    size: match_size,
+                    side: taker_order.side,
+                    timestamp: Utc::now(),
+                };
+
+                let _ = event_tx.send(EngineEvent::TradeExecuted { trade });
+            }
+
             remaining_size -= match_size;
         }
 
@@ -356,7 +416,7 @@ mod tests {
     const BTC_TICK_SIZE: u128 = 1_000_000;
     const BTC_LOT_SIZE: u128 = 10_000;
 
-    fn make_order(side: Side, price: u128, size: u128) -> Order {
+    fn make_order(side: crate::models::domain::Side, price: u128, size: u128) -> Order {
         Order {
             id: Uuid::new_v4(),
             user_address: "test_user".to_string(),
@@ -378,10 +438,10 @@ mod tests {
             OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
 
         // Add buy order at $500 (50_000_000_000 with 8 decimals)
-        adapter.add_order(make_order(Side::Buy, 50_000_000_000, 100_000_000));
+        adapter.add_order(make_order(crate::models::domain::Side::Buy, 50_000_000_000, 100_000_000));
 
         // Add sell order at $510
-        adapter.add_order(make_order(Side::Sell, 51_000_000_000, 100_000_000));
+        adapter.add_order(make_order(crate::models::domain::Side::Sell, 51_000_000_000, 100_000_000));
 
         let snapshot = adapter.snapshot();
 
@@ -397,7 +457,7 @@ mod tests {
         let mut adapter =
             OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
 
-        let order = make_order(Side::Buy, 50_000_000_000, 100_000_000);
+        let order = make_order(crate::models::domain::Side::Buy, 50_000_000_000, 100_000_000);
         let order_id = order.id;
         adapter.add_order(order);
 
@@ -414,16 +474,16 @@ mod tests {
             OrderbookAdapter::new("BTC/USDC".to_string(), BTC_TICK_SIZE, BTC_LOT_SIZE);
 
         // Add orders for user1
-        let mut order1 = make_order(Side::Buy, 50_000_000_000, 100_000_000);
+        let mut order1 = make_order(crate::models::domain::Side::Buy, 50_000_000_000, 100_000_000);
         order1.user_address = "user1".to_string();
         adapter.add_order(order1);
 
-        let mut order2 = make_order(Side::Sell, 51_000_000_000, 100_000_000);
+        let mut order2 = make_order(crate::models::domain::Side::Sell, 51_000_000_000, 100_000_000);
         order2.user_address = "user1".to_string();
         adapter.add_order(order2);
 
         // Add order for user2
-        let mut order3 = make_order(Side::Buy, 49_000_000_000, 100_000_000);
+        let mut order3 = make_order(crate::models::domain::Side::Buy, 49_000_000_000, 100_000_000);
         order3.user_address = "user2".to_string();
         adapter.add_order(order3);
 
@@ -433,5 +493,36 @@ mod tests {
         let snapshot = adapter.snapshot();
         assert_eq!(snapshot.bids.len(), 1); // Only user2's order remains
         assert!(snapshot.asks.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_trade_listener_captures_trades() {
+        let (event_tx, mut event_rx) = broadcast::channel(100);
+        let mut adapter = OrderbookAdapter::new_with_listener(
+            "BTC/USDC".to_string(),
+            BTC_TICK_SIZE,
+            BTC_LOT_SIZE,
+            Some(event_tx),
+        );
+
+        // Add maker order
+        let maker = make_order(crate::models::domain::Side::Sell, 50_000_000_000, 1_000_000);
+        adapter.add_order(maker);
+
+        // Add taker order (should match)
+        let taker = make_order(crate::models::domain::Side::Buy, 50_000_000_000, 1_000_000);
+        adapter.match_order(&taker);
+
+        // Verify trade event captured
+        let event = event_rx.recv().await.unwrap();
+        match event {
+            crate::models::domain::EngineEvent::TradeExecuted { trade } => {
+                assert_eq!(trade.price, 50_000_000_000);
+                assert_eq!(trade.size, 1_000_000);
+                assert_eq!(trade.market_id, "BTC/USDC");
+                assert_eq!(trade.side, crate::models::domain::Side::Buy);
+            }
+            _ => panic!("Expected TradeExecuted event"),
+        }
     }
 }

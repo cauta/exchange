@@ -284,6 +284,7 @@ dependencies = [
  "chrono",
  "clickhouse",
  "criterion",
+ "dashmap",
  "dotenvy",
  "env_logger",
  "exchange-test-utils",
