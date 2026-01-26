@@ -1,18 +1,21 @@
 //! V2 Orderbooks implementation using OrderBook-rs
 //!
-//! This module provides the same public interface as `orderbook.rs` but uses
-//! OrderBook-rs under the hood for improved performance via lock-free data structures.
+//! This module provides an async interface backed by BookManagerTokio from orderbook-rs.
+//! Uses lock-free data structures for improved concurrency and performance.
 
 use crate::errors::Result;
-use crate::models::domain::{Market, Order, OrderbookSnapshot};
+use crate::models::domain::{EngineEvent, Market, Match, Order, OrderbookSnapshot, Trade};
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
-use super::adapter::{BookManagerAdapter, OrderbookAdapter};
+use super::adapter::BookManagerAdapter;
 
 /// V2 Orderbooks implementation using OrderBook-rs
 ///
-/// This maintains the same public interface as the original `Orderbooks` struct
-/// to allow easy switching via feature flag.
+/// This uses BookManagerTokio from orderbook-rs for:
+/// - Lock-free orderbook operations via crossbeam-skiplist
+/// - Async-compatible trade event processing
+/// - Centralized trade event routing
 pub struct OrderbooksV2 {
     manager: BookManagerAdapter,
 }
@@ -31,65 +34,88 @@ impl OrderbooksV2 {
         }
     }
 
-    /// Get or create a mutable reference to an orderbook for a market
+    /// Create a new OrderbooksV2 instance with event broadcasting
+    pub fn with_event_tx(event_tx: broadcast::Sender<EngineEvent>) -> Self {
+        Self {
+            manager: BookManagerAdapter::with_event_tx(event_tx),
+        }
+    }
+
+    /// Initialize a market's orderbook
+    pub async fn init_market(&self, market: &Market) {
+        self.manager.init_market(market).await;
+    }
+
+    /// Add an order to the orderbook
+    pub async fn add_order(&self, market: &Market, order: &Order) {
+        self.manager.add_order(market, order).await;
+    }
+
+    /// Match an order against the orderbook
     ///
-    /// Uses the market's tick_size and lot_size for proper price/size scaling.
-    pub fn get_or_create(&self, market: &Market) -> dashmap::mapref::one::RefMut<'_, String, OrderbookAdapter> {
-        self.manager.get_or_create(market)
+    /// Returns matches and optionally emits trade events if configured.
+    pub async fn match_order(&self, market: &Market, order: &Order) -> Vec<Match> {
+        self.manager.match_order(market, order).await
     }
 
-    /// Get an existing orderbook by market_id (without creating)
-    pub fn get(&self, market_id: &str) -> Option<dashmap::mapref::one::RefMut<'_, String, OrderbookAdapter>> {
-        self.manager.get(market_id)
+    /// Apply executed trades to the orderbook
+    ///
+    /// Updates maker order fill amounts and adds remaining taker order if applicable.
+    pub async fn apply_trades(&self, taker_order: &Order, trades: &[Trade], market: &Market) {
+        self.manager.apply_trades(taker_order, trades, market).await;
     }
 
-    /// Cancel an order across all markets
+    /// Cancel an order
     ///
     /// Returns the cancelled order if found and ownership is verified.
-    pub fn cancel_order(&self, order_id: Uuid, user_address: &str) -> Result<Order> {
-        self.manager.cancel_order(order_id, user_address)
+    pub async fn cancel_order(&self, order_id: Uuid, user_address: &str) -> Result<Order> {
+        self.manager.cancel_order(order_id, user_address).await
     }
 
     /// Cancel all orders for a user, optionally filtered by market
-    ///
-    /// Returns a vector of all cancelled orders.
-    pub fn cancel_all_orders(&self, user_address: &str, market_id: Option<&str>) -> Vec<Order> {
-        self.manager.cancel_all_orders(user_address, market_id)
+    pub async fn cancel_all_orders(
+        &self,
+        user_address: &str,
+        market_id: Option<&str>,
+    ) -> Vec<Order> {
+        self.manager
+            .cancel_all_orders(user_address, market_id)
+            .await
     }
 
-    /// Generate snapshots for all markets (without stats)
+    /// Generate snapshots for all markets
     pub fn snapshots(&self) -> Vec<OrderbookSnapshot> {
         self.manager.snapshots()
     }
 
-    /// Generate snapshots for all markets with analytics stats
-    ///
-    /// This provides additional market analytics from OrderBook-rs:
-    /// - VWAP (bid/ask)
-    /// - Spread (absolute and bps)
-    /// - Micro price
-    /// - Order book imbalance
-    /// - Total depth (bid/ask)
-    pub fn enriched_snapshots(&self) -> Vec<OrderbookSnapshot> {
-        self.manager.enriched_snapshots()
+    /// Generate snapshots with analytics stats from OrderBook-rs
+    pub async fn enriched_snapshots(&self) -> Vec<OrderbookSnapshot> {
+        self.manager.enriched_snapshots().await
     }
-}
 
-/// Wrapper around OrderbookAdapter to provide compatibility with the original Orderbook interface
-///
-/// This allows the matching engine to work with both V1 (original) and V2 (OrderBook-rs) orderbooks
-/// with minimal code changes.
-impl OrderbookAdapter {
-    /// Apply executed trades to the orderbook (compatibility method)
-    ///
-    /// This delegates to the adapter's apply_trades method.
-    pub fn apply_trades_compat(
-        &mut self,
-        taker_order: &Order,
-        trades: &[crate::models::domain::Trade],
-        market: &Market,
-    ) {
-        self.apply_trades(taker_order, trades, market);
+    /// Update an order's filled amount
+    pub async fn update_order_fill(&self, order_id: Uuid, fill_size: u128) {
+        self.manager.update_order_fill(order_id, fill_size).await;
+    }
+
+    /// Get the number of managed orderbooks
+    pub fn len(&self) -> usize {
+        self.manager.len()
+    }
+
+    /// Check if there are no managed orderbooks
+    pub fn is_empty(&self) -> bool {
+        self.manager.is_empty()
+    }
+
+    /// Start the trade event processor
+    pub async fn start_trade_processor(&self) -> tokio::task::JoinHandle<()> {
+        self.manager.start_trade_processor().await
+    }
+
+    /// Get an order by ID
+    pub fn get_order(&self, order_id: Uuid) -> Option<Order> {
+        self.manager.get_order(order_id)
     }
 }
 
@@ -117,10 +143,10 @@ mod tests {
         }
     }
 
-    fn make_order(market_id: &str, side: Side, price: u128, size: u128) -> Order {
+    fn make_order(market_id: &str, user: &str, side: Side, price: u128, size: u128) -> Order {
         Order {
             id: Uuid::new_v4(),
-            user_address: "test_user".to_string(),
+            user_address: user.to_string(),
             market_id: market_id.to_string(),
             price,
             size,
@@ -133,25 +159,24 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_orderbooks_v2_basic() {
+    #[tokio::test]
+    async fn test_orderbooks_v2_basic() {
         let orderbooks = OrderbooksV2::new();
         let btc_market = make_btc_market();
 
         // Add orders
-        let mut book = orderbooks.get_or_create(&btc_market);
-        book.add_order(make_order(
-            "BTC/USDC",
-            Side::Buy,
-            50_000_000_000,
-            100_000_000,
-        ));
-        book.add_order(make_order(
-            "BTC/USDC",
-            Side::Sell,
-            51_000_000_000,
-            100_000_000,
-        ));
+        orderbooks
+            .add_order(
+                &btc_market,
+                &make_order("BTC/USDC", "user1", Side::Buy, 50_000_000_000, 100_000_000),
+            )
+            .await;
+        orderbooks
+            .add_order(
+                &btc_market,
+                &make_order("BTC/USDC", "user1", Side::Sell, 51_000_000_000, 100_000_000),
+            )
+            .await;
 
         // Get snapshots
         let snapshots = orderbooks.snapshots();
@@ -160,32 +185,68 @@ mod tests {
         assert_eq!(snapshots[0].asks.len(), 1);
     }
 
-    #[test]
-    fn test_orderbooks_v2_enriched_snapshots() {
+    #[tokio::test]
+    async fn test_orderbooks_v2_enriched_snapshots() {
         let orderbooks = OrderbooksV2::new();
         let btc_market = make_btc_market();
 
         // Add orders
-        let mut book = orderbooks.get_or_create(&btc_market);
-        book.add_order(make_order(
-            "BTC/USDC",
-            Side::Buy,
-            50_000_000_000,
-            100_000_000,
-        ));
-        book.add_order(make_order(
-            "BTC/USDC",
-            Side::Sell,
-            51_000_000_000,
-            100_000_000,
-        ));
+        orderbooks
+            .add_order(
+                &btc_market,
+                &make_order("BTC/USDC", "user1", Side::Buy, 50_000_000_000, 100_000_000),
+            )
+            .await;
+        orderbooks
+            .add_order(
+                &btc_market,
+                &make_order("BTC/USDC", "user1", Side::Sell, 51_000_000_000, 100_000_000),
+            )
+            .await;
 
         // Get enriched snapshots
-        let snapshots = orderbooks.enriched_snapshots();
+        let snapshots = orderbooks.enriched_snapshots().await;
         assert_eq!(snapshots.len(), 1);
 
         // Stats should be present
         let stats = snapshots[0].stats.as_ref();
         assert!(stats.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_orderbooks_v2_cancel_order() {
+        let orderbooks = OrderbooksV2::new();
+        let btc_market = make_btc_market();
+
+        let order = make_order("BTC/USDC", "user1", Side::Buy, 50_000_000_000, 100_000_000);
+        let order_id = order.id;
+
+        orderbooks.add_order(&btc_market, &order).await;
+
+        // Cancel the order
+        let result = orderbooks.cancel_order(order_id, "user1").await;
+        assert!(result.is_ok());
+
+        // Verify order is removed
+        let snapshots = orderbooks.snapshots();
+        assert!(snapshots[0].bids.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_orderbooks_v2_match_order() {
+        let orderbooks = OrderbooksV2::new();
+        let btc_market = make_btc_market();
+
+        // Add maker sell order
+        let maker = make_order("BTC/USDC", "maker", Side::Sell, 50_000_000_000, 100_000_000);
+        orderbooks.add_order(&btc_market, &maker).await;
+
+        // Match with taker buy order
+        let taker = make_order("BTC/USDC", "taker", Side::Buy, 50_000_000_000, 50_000_000);
+        let matches = orderbooks.match_order(&btc_market, &taker).await;
+
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].size, 50_000_000);
+        assert_eq!(matches[0].price, 50_000_000_000);
     }
 }

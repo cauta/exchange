@@ -1,8 +1,8 @@
 // process
 // price time priority
 
-pub mod executor;
 pub mod adapter;
+pub mod executor;
 pub mod orderbooks_v2;
 
 use crate::db::Db;
@@ -20,7 +20,7 @@ use tokio::task::JoinHandle;
 
 pub struct MatchingEngine {
     db: Db,
-    orderbooks: Arc<Orderbooks>,  // No RwLock wrapper!
+    orderbooks: Arc<Orderbooks>, // No RwLock wrapper!
 
     engine_rx: mpsc::Receiver<EngineRequest>,
     event_tx: broadcast::Sender<EngineEvent>,
@@ -34,7 +34,7 @@ impl MatchingEngine {
     ) -> Self {
         Self {
             db: db.clone(),
-            orderbooks: Arc::new(Orderbooks::new()),  // No RwLock::new()
+            orderbooks: Arc::new(Orderbooks::new()), // No RwLock::new()
             engine_rx,
             event_tx,
         }
@@ -137,10 +137,10 @@ impl MatchingEngine {
         }
         let count = orders.len();
 
-        // DashMap handles concurrency internally - no lock needed!
-        let mut orderbook = (*self.orderbooks).get_or_create(market);
+        // Initialize market and add orders
+        self.orderbooks.init_market(market).await;
         for order in orders {
-            orderbook.add_order(order);
+            self.orderbooks.add_order(market, &order).await;
         }
 
         Ok(count)
@@ -239,29 +239,25 @@ impl MatchingEngine {
         }
 
         // Get matches from matcher and apply them
-        let (matches, trades) = {
-            // Only locks this specific market, not all markets!
-            let mut orderbook = (*self.orderbooks).get_or_create(&market);
+        let matches = self.orderbooks.match_order(&market, &order).await;
 
-            let matches = orderbook.match_order(&order);
-
-            let (trades, executor_affected) = if !matches.is_empty() {
-                match Executor::execute(self.db.clone(), matches.clone(), &order, &market).await {
-                    Ok((trades, exec_affected)) => (trades, exec_affected),
-                    Err(e) => {
-                        let _ = self.db.unlock_balance(&order.user_address, &token_to_lock, amount_to_lock).await;
-                        return (Err(e), affected);
-                    }
+        let (trades, executor_affected) = if !matches.is_empty() {
+            match Executor::execute(self.db.clone(), matches.clone(), &order, &market).await {
+                Ok((trades, exec_affected)) => (trades, exec_affected),
+                Err(e) => {
+                    let _ = self
+                        .db
+                        .unlock_balance(&order.user_address, &token_to_lock, amount_to_lock)
+                        .await;
+                    return (Err(e), affected);
                 }
-            } else {
-                (vec![], HashSet::new())
-            };
+            }
+        } else {
+            (vec![], HashSet::new())
+        };
 
-            affected.extend(executor_affected);
-            orderbook.apply_trades(&order, &trades, &market);
-
-            (matches, trades)
-        };  // Lock released - other markets unaffected!
+        affected.extend(executor_affected);
+        self.orderbooks.apply_trades(&order, &trades, &market).await;
 
         // Broadcast trade events
         for trade in &trades {
@@ -400,7 +396,7 @@ impl MatchingEngine {
         let mut affected = HashSet::new();
 
         // Cancel order using orderbooks method (handles search and ownership verification)
-        let cancelled_order = match (*self.orderbooks).cancel_order(order_id, &user_address) {
+        let cancelled_order = match self.orderbooks.cancel_order(order_id, &user_address).await {
             Ok(order) => order,
             Err(e) => return (Err(e), affected),
         };
@@ -486,7 +482,10 @@ impl MatchingEngine {
     ) -> (Result<OrdersCancelled, ExchangeError>, AffectedBalances) {
         let mut affected = HashSet::new();
         // Cancel all orders for the user using orderbooks method
-        let cancelled_orders = (*self.orderbooks).cancel_all_orders(&user_address, market_id.as_deref());
+        let cancelled_orders = self
+            .orderbooks
+            .cancel_all_orders(&user_address, market_id.as_deref())
+            .await;
 
         let mut cancelled_order_ids = Vec::new();
 
@@ -598,8 +597,8 @@ impl MatchingEngine {
                 interval.tick().await;
 
                 // Generate snapshots in parallel using tokio spawn for each market
-                let snapshots = (*orderbooks).snapshots();
-                
+                let snapshots = orderbooks.snapshots();
+
                 // For each snapshot, broadcast in a separate task to enable parallelism
                 let mut broadcast_tasks = Vec::new();
                 for snapshot in snapshots {
@@ -610,7 +609,7 @@ impl MatchingEngine {
                         });
                     }));
                 }
-                
+
                 // Wait for all broadcasts to complete (optional, for cleanup)
                 for task in broadcast_tasks {
                     let _ = task.await;

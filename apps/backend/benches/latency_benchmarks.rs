@@ -1,5 +1,4 @@
-use backend::engine::matcher::Matcher;
-use backend::engine::orderbook::Orderbook;
+use backend::engine::orderbooks_v2::OrderbooksV2;
 use backend::models::domain::{Market, Order, OrderStatus, OrderType, Side};
 use chrono::Utc;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
@@ -43,23 +42,31 @@ fn bench_order_matching_latency(c: &mut Criterion) {
     group.sample_size(1000);
     group.measurement_time(Duration::from_secs(10));
 
+    let market = create_test_market();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
     // Pre-populate orderbook with realistic depth
-    let mut orderbook = Orderbook::new("BTC/USDC".to_string());
-    for i in 0..100 {
-        let sell_order = create_order(
-            &format!("seller{}", i),
-            "BTC/USDC",
-            Side::Sell,
-            50_000_000_000 + (i as u128 * 1000),
-            1_000_000,
-        );
-        orderbook.add_order(sell_order);
-    }
+    let orderbook = OrderbooksV2::new();
+    rt.block_on(async {
+        orderbook.init_market(&market).await;
+        for i in 0..100 {
+            let sell_order = create_order(
+                &format!("seller{}", i),
+                "BTC/USDC",
+                Side::Sell,
+                50_000_000_000 + (i as u128 * 1000),
+                1_000_000,
+            );
+            orderbook.add_order(&market, &sell_order).await;
+        }
+    });
 
     group.bench_function("match_taker_buy", |b| {
         b.iter(|| {
             let buy_order = create_order("buyer", "BTC/USDC", Side::Buy, 50_010_000_000, 5_000_000);
-            let matches = Matcher::match_order(black_box(&buy_order), &orderbook);
+            let matches = rt.block_on(async {
+                orderbook.match_order(&market, black_box(&buy_order)).await
+            });
             black_box(matches);
         });
     });
@@ -73,19 +80,26 @@ fn bench_critical_path_latency(c: &mut Criterion) {
     group.sample_size(500);
     group.measurement_time(Duration::from_secs(10));
 
+    let market = create_test_market();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
     group.bench_function("place_match_fill_cycle", |b| {
         b.iter(|| {
-            let mut orderbook = Orderbook::new("BTC/USDC".to_string());
+            let orderbook = OrderbooksV2::new();
+            
+            rt.block_on(async {
+                orderbook.init_market(&market).await;
+                
+                // Place maker order
+                let maker = create_order("seller", "BTC/USDC", Side::Sell, 50_000_000_000, 10_000_000);
+                orderbook.add_order(&market, &maker).await;
 
-            // Place maker order
-            let maker = create_order("seller", "BTC/USDC", Side::Sell, 50_000_000_000, 10_000_000);
-            orderbook.add_order(maker);
+                // Place taker order that matches
+                let taker = create_order("buyer", "BTC/USDC", Side::Buy, 50_000_000_000, 10_000_000);
 
-            // Place taker order that matches
-            let taker = create_order("buyer", "BTC/USDC", Side::Buy, 50_000_000_000, 10_000_000);
-
-            let matches = Matcher::match_order(black_box(&taker), &orderbook);
-            black_box(matches);
+                let matches = orderbook.match_order(&market, black_box(&taker)).await;
+                black_box(matches);
+            });
         });
     });
 
@@ -97,25 +111,31 @@ fn bench_orderbook_add_latency(c: &mut Criterion) {
     let mut group = c.benchmark_group("orderbook_add_latency");
     group.sample_size(1000);
 
+    let market = create_test_market();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
     for size in [10, 100, 1000].iter() {
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
             b.iter_batched(
                 || {
-                    let mut orderbook = Orderbook::new("BTC/USDC".to_string());
-                    // Pre-populate
-                    for i in 0..size {
-                        let order = create_order(
-                            &format!("seller{}", i),
-                            "BTC/USDC",
-                            Side::Sell,
-                            50_000_000_000 + (i as u128 * 1000),
-                            1_000_000,
-                        );
-                        orderbook.add_order(order);
-                    }
+                    let orderbook = OrderbooksV2::new();
+                    rt.block_on(async {
+                        orderbook.init_market(&market).await;
+                        // Pre-populate
+                        for i in 0..size {
+                            let order = create_order(
+                                &format!("seller{}", i),
+                                "BTC/USDC",
+                                Side::Sell,
+                                50_000_000_000 + (i as u128 * 1000),
+                                1_000_000,
+                            );
+                            orderbook.add_order(&market, &order).await;
+                        }
+                    });
                     orderbook
                 },
-                |mut orderbook| {
+                |orderbook| {
                     let new_order = create_order(
                         "new_seller",
                         "BTC/USDC",
@@ -123,7 +143,9 @@ fn bench_orderbook_add_latency(c: &mut Criterion) {
                         50_500_000_000,
                         1_000_000,
                     );
-                    orderbook.add_order(black_box(new_order));
+                    rt.block_on(async {
+                        orderbook.add_order(&market, black_box(&new_order)).await;
+                    });
                     black_box(orderbook);
                 },
                 criterion::BatchSize::SmallInput,
@@ -139,31 +161,39 @@ fn bench_cancel_order_latency(c: &mut Criterion) {
     let mut group = c.benchmark_group("cancel_order_latency");
     group.sample_size(1000);
 
+    let market = create_test_market();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
     for size in [10, 100, 1000].iter() {
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
             b.iter_batched(
                 || {
-                    let mut orderbook = Orderbook::new("BTC/USDC".to_string());
+                    let orderbook = OrderbooksV2::new();
                     let mut order_ids = Vec::new();
 
-                    // Pre-populate
-                    for i in 0..size {
-                        let order = create_order(
-                            &format!("seller{}", i),
-                            "BTC/USDC",
-                            Side::Sell,
-                            50_000_000_000 + (i as u128 * 1000),
-                            1_000_000,
-                        );
-                        order_ids.push(order.id);
-                        orderbook.add_order(order);
-                    }
+                    rt.block_on(async {
+                        orderbook.init_market(&market).await;
+                        // Pre-populate
+                        for i in 0..size {
+                            let order = create_order(
+                                &format!("seller{}", i),
+                                "BTC/USDC",
+                                Side::Sell,
+                                50_000_000_000 + (i as u128 * 1000),
+                                1_000_000,
+                            );
+                            order_ids.push(order.id);
+                            orderbook.add_order(&market, &order).await;
+                        }
+                    });
                     (orderbook, order_ids)
                 },
-                |(mut orderbook, order_ids)| {
+                |(orderbook, order_ids)| {
                     // Remove middle order
                     let cancel_id = order_ids[size / 2];
-                    let result = orderbook.remove_order(black_box(cancel_id));
+                    let result = rt.block_on(async {
+                        orderbook.cancel_order(black_box(cancel_id), &format!("seller{}", size / 2)).await
+                    });
                     black_box(result);
                 },
                 criterion::BatchSize::SmallInput,
@@ -179,33 +209,39 @@ fn bench_snapshot_latency(c: &mut Criterion) {
     let mut group = c.benchmark_group("snapshot_generation_latency");
     group.sample_size(500);
 
+    let market = create_test_market();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
     for size in [10, 50, 100, 500].iter() {
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
-            let mut orderbook = Orderbook::new("BTC/USDC".to_string());
+            let orderbook = OrderbooksV2::new();
+            
+            rt.block_on(async {
+                orderbook.init_market(&market).await;
+                // Add both bids and asks
+                for i in 0..size / 2 {
+                    let sell_order = create_order(
+                        &format!("seller{}", i),
+                        "BTC/USDC",
+                        Side::Sell,
+                        50_000_000_000 + (i as u128 * 1000),
+                        1_000_000,
+                    );
+                    orderbook.add_order(&market, &sell_order).await;
 
-            // Add both bids and asks
-            for i in 0..size / 2 {
-                let sell_order = create_order(
-                    &format!("seller{}", i),
-                    "BTC/USDC",
-                    Side::Sell,
-                    50_000_000_000 + (i as u128 * 1000),
-                    1_000_000,
-                );
-                orderbook.add_order(sell_order);
-
-                let buy_order = create_order(
-                    &format!("buyer{}", i),
-                    "BTC/USDC",
-                    Side::Buy,
-                    49_000_000_000 - (i as u128 * 1000),
-                    1_000_000,
-                );
-                orderbook.add_order(buy_order);
-            }
+                    let buy_order = create_order(
+                        &format!("buyer{}", i),
+                        "BTC/USDC",
+                        Side::Buy,
+                        49_000_000_000 - (i as u128 * 1000),
+                        1_000_000,
+                    );
+                    orderbook.add_order(&market, &buy_order).await;
+                }
+            });
 
             b.iter(|| {
-                let snapshot = orderbook.snapshot();
+                let snapshot = orderbook.snapshots();
                 black_box(snapshot);
             });
         });
@@ -220,21 +256,27 @@ fn bench_worst_case_latency(c: &mut Criterion) {
     group.sample_size(100);
     group.measurement_time(Duration::from_secs(15));
 
+    let market = create_test_market();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
     group.bench_function("market_sweep_1000_levels", |b| {
         b.iter_batched(
             || {
-                let mut orderbook = Orderbook::new("BTC/USDC".to_string());
-                // Fill with 1000 price levels
-                for i in 0..1000 {
-                    let sell_order = create_order(
-                        &format!("seller{}", i),
-                        "BTC/USDC",
-                        Side::Sell,
-                        50_000_000_000 + (i as u128 * 1000),
-                        1_000_000,
-                    );
-                    orderbook.add_order(sell_order);
-                }
+                let orderbook = OrderbooksV2::new();
+                rt.block_on(async {
+                    orderbook.init_market(&market).await;
+                    // Fill with 1000 price levels
+                    for i in 0..1000 {
+                        let sell_order = create_order(
+                            &format!("seller{}", i),
+                            "BTC/USDC",
+                            Side::Sell,
+                            50_000_000_000 + (i as u128 * 1000),
+                            1_000_000,
+                        );
+                        orderbook.add_order(&market, &sell_order).await;
+                    }
+                });
                 orderbook
             },
             |orderbook| {
@@ -253,7 +295,9 @@ fn bench_worst_case_latency(c: &mut Criterion) {
                     updated_at: Utc::now(),
                 };
 
-                let matches = Matcher::match_order(black_box(&market_order), &orderbook);
+                let matches = rt.block_on(async {
+                    orderbook.match_order(&market, black_box(&market_order)).await
+                });
                 black_box(matches);
             },
             criterion::BatchSize::SmallInput,
@@ -268,19 +312,27 @@ fn bench_best_case_latency(c: &mut Criterion) {
     let mut group = c.benchmark_group("best_case_latency");
     group.sample_size(1000);
 
+    let market = create_test_market();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
     group.bench_function("immediate_match_top_of_book", |b| {
         b.iter_batched(
             || {
-                let mut orderbook = Orderbook::new("BTC/USDC".to_string());
-                let sell_order =
-                    create_order("seller", "BTC/USDC", Side::Sell, 50_000_000_000, 10_000_000);
-                orderbook.add_order(sell_order);
+                let orderbook = OrderbooksV2::new();
+                rt.block_on(async {
+                    orderbook.init_market(&market).await;
+                    let sell_order =
+                        create_order("seller", "BTC/USDC", Side::Sell, 50_000_000_000, 10_000_000);
+                    orderbook.add_order(&market, &sell_order).await;
+                });
                 orderbook
             },
             |orderbook| {
                 let buy_order =
                     create_order("buyer", "BTC/USDC", Side::Buy, 50_000_000_000, 5_000_000);
-                let matches = Matcher::match_order(black_box(&buy_order), &orderbook);
+                let matches = rt.block_on(async {
+                    orderbook.match_order(&market, black_box(&buy_order)).await
+                });
                 black_box(matches);
             },
             criterion::BatchSize::SmallInput,

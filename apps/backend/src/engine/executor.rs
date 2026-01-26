@@ -29,8 +29,9 @@ impl Executor {
         // Add 5s timeout for entire execution
         let result = tokio::time::timeout(
             std::time::Duration::from_secs(5),
-            Self::execute_internal(db, matches, taker_order, market)
-        ).await;
+            Self::execute_internal(db, matches, taker_order, market),
+        )
+        .await;
 
         match result {
             Ok(ok_result) => ok_result,
