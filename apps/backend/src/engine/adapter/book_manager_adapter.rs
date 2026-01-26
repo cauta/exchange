@@ -11,8 +11,8 @@ use dashmap::DashMap;
 use log::{debug, info};
 use orderbook_rs::prelude::*;
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::{broadcast, RwLock};
+use std::sync::{Arc, Mutex};
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
 use crate::errors::{ExchangeError, Result};
@@ -74,7 +74,7 @@ struct MarketConfig {
 /// - Orderbook snapshots with analytics
 pub struct BookManagerAdapter {
     /// BookManagerTokio from orderbook-rs for managing all orderbooks
-    manager: Arc<RwLock<BookManagerTokio<OrderMetadata>>>,
+    manager: Arc<Mutex<BookManagerTokio<OrderMetadata>>>,
     /// Market configurations (tick_size, lot_size) per market
     market_configs: Arc<DashMap<String, MarketConfig>>,
     /// Global index for O(1) order cancellation: UUID → market_id
@@ -96,7 +96,7 @@ impl BookManagerAdapter {
     /// Create a new BookManagerAdapter
     pub fn new() -> Self {
         Self {
-            manager: Arc::new(RwLock::new(BookManagerTokio::new())),
+            manager: Arc::new(Mutex::new(BookManagerTokio::new())),
             market_configs: Arc::new(DashMap::new()),
             uuid_to_market: Arc::new(DashMap::new()),
             order_storage: Arc::new(DashMap::new()),
@@ -107,7 +107,7 @@ impl BookManagerAdapter {
     /// Create a new BookManagerAdapter with event broadcasting
     pub fn with_event_tx(event_tx: broadcast::Sender<EngineEvent>) -> Self {
         Self {
-            manager: Arc::new(RwLock::new(BookManagerTokio::new())),
+            manager: Arc::new(Mutex::new(BookManagerTokio::new())),
             market_configs: Arc::new(DashMap::new()),
             uuid_to_market: Arc::new(DashMap::new()),
             order_storage: Arc::new(DashMap::new()),
@@ -119,7 +119,7 @@ impl BookManagerAdapter {
     ///
     /// Must be called before adding orders for a market.
     pub async fn init_market(&self, market: &Market) {
-        let mut manager = self.manager.write().await;
+        let mut manager = self.manager.lock().unwrap();
 
         if !manager.has_book(&market.id) {
             manager.add_book(&market.id);
@@ -189,7 +189,7 @@ impl BookManagerAdapter {
             .insert(order.id, order.clone());
 
         // Add to OrderBook-rs
-        let mut manager = self.manager.write().await;
+        let mut manager = self.manager.lock().unwrap();
         if let Some(book) = manager.get_book_mut(&market.id) {
             let order_id = OrderId::from_uuid(order.id);
             let result = book.add_limit_order(
@@ -242,7 +242,7 @@ impl BookManagerAdapter {
         };
 
         // Remove from OrderBook-rs
-        let mut manager = self.manager.write().await;
+        let mut manager = self.manager.lock().unwrap();
         if let Some(book) = manager.get_book_mut(&market_id) {
             let ob_order_id = OrderId::from_uuid(order_id);
             let _ = book.cancel_order(ob_order_id);
@@ -262,7 +262,7 @@ impl BookManagerAdapter {
         market_id: Option<&str>,
     ) -> Vec<Order> {
         let mut cancelled = Vec::new();
-        let mut manager = self.manager.write().await;
+        let mut manager = self.manager.lock().unwrap();
 
         let markets_to_check: Vec<String> = if let Some(mid) = market_id {
             vec![mid.to_string()]
@@ -456,7 +456,7 @@ impl BookManagerAdapter {
                     self.uuid_to_market.remove(&order_id);
 
                     // Also remove from OrderBook-rs
-                    let mut manager = self.manager.write().await;
+                    let mut manager = self.manager.lock().unwrap();
                     if let Some(book) = manager.get_book_mut(&market_id) {
                         let ob_order_id = OrderId::from_uuid(order_id);
                         let _ = book.cancel_order(ob_order_id);
@@ -556,7 +556,7 @@ impl BookManagerAdapter {
     /// Generate enriched snapshots with analytics from OrderBook-rs
     pub async fn enriched_snapshots(&self) -> Vec<OrderbookSnapshot> {
         let mut snapshots = Vec::new();
-        let manager = self.manager.read().await;
+        let manager = self.manager.lock().unwrap();
 
         for entry in self.order_storage.iter() {
             let market_id = entry.key();
@@ -622,13 +622,13 @@ impl BookManagerAdapter {
 
     /// Get the list of all managed market symbols
     pub async fn managed_symbols(&self) -> Vec<String> {
-        let manager = self.manager.read().await;
+        let manager = self.manager.lock().unwrap();
         manager.symbols()
     }
 
     /// Get the number of books in the underlying manager
     pub async fn managed_book_count(&self) -> usize {
-        let manager = self.manager.read().await;
+        let manager = self.manager.lock().unwrap();
         manager.book_count()
     }
 
@@ -636,13 +636,13 @@ impl BookManagerAdapter {
     ///
     /// This processor handles trade events from OrderBook-rs's internal TradeListener.
     pub async fn start_trade_processor(&self) -> tokio::task::JoinHandle<()> {
-        let mut manager = self.manager.write().await;
+        let mut manager = self.manager.lock().unwrap();
         manager.start_trade_processor()
     }
 
     /// Check if a market has been initialized
     pub async fn has_market(&self, market_id: &str) -> bool {
-        let manager = self.manager.read().await;
+        let manager = self.manager.lock().unwrap();
         manager.has_book(market_id)
     }
 
